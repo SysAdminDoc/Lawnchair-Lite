@@ -8,8 +8,6 @@
 
 > Lightweight Android launcher with 5 built-in dark themes, customizable layouts, and a clean app drawer. Inspired by Lawnchair, built from scratch with Jetpack Compose.
 
-![Screenshot](screenshot.png)
-
 ## Quick Start
 
 ```bash
