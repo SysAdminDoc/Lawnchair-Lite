@@ -1,4 +1,4 @@
-# Lawnchair Lite v0.1.0 - ProGuard Rules
+# Lawnchair Lite v2.1.0 - ProGuard Rules
 
 # Keep Compose
 -dontwarn androidx.compose.**

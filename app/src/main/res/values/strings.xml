@@ -4,5 +4,5 @@
     <string name="search_hint">Search apps\u2026</string>
     <string name="settings_title">Home Settings</string>
     <string name="no_apps_found">No apps found</string>
-    <string name="version">v0.8.0</string>
+    <string name="version">v2.1.0</string>
 </resources>

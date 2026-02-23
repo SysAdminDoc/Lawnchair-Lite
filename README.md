@@ -1,133 +1,56 @@
-# Lawnchair Lite
+# Lawnchair Lite v2.0.0
 
-![Version](https://img.shields.io/badge/version-0.1.0-blue)
-![License](https://img.shields.io/badge/license-MIT-green)
-![Platform](https://img.shields.io/badge/platform-Android%2028+-3DDC84?logo=android&logoColor=white)
-![Kotlin](https://img.shields.io/badge/Kotlin-1.9+-7F52FF?logo=kotlin&logoColor=white)
-![Compose](https://img.shields.io/badge/Jetpack%20Compose-BOM%202024.01-4285F4)
+Minimal, fast Android launcher with professional-grade stability.
 
-> Lightweight Android launcher with 5 built-in dark themes, customizable layouts, and a clean app drawer. Inspired by Lawnchair, built from scratch with Jetpack Compose.
+## Stability Architecture (v2.0.0)
 
-## Quick Start
+Built on crash patterns identified across Lawnchair v14-v15 beta releases:
 
-```bash
-git clone https://github.com/SysAdminDoc/lawnchair-lite.git
-cd lawnchair-lite
-```
-
-1. Open in Android Studio (Hedgehog 2023.1.1+)
-2. Sync Gradle
-3. Build & run on device/emulator (API 28+)
-4. Set as default home app when prompted
+- **Global crash handler** with notification-based bug reporting (modeled after LawnchairApp's UncaughtExceptionHandler)
+- **DataStore corruption recovery** via `ReplaceFileCorruptionHandler` — corrupted preferences reset to defaults instead of crash-looping
+- **Defensive PackageManager calls** — all PM/LauncherApps interactions wrapped for `DeadSystemException`, `SecurityException`, `NameNotFoundException`
+- **Package existence validation** before operations — prevents the race condition where customizing an app being uninstalled causes a crash (Lawnchair 15 Beta 2 fix)
+- **Debounced package events** (300ms) — bulk install/uninstall doesn't trigger N consecutive reloads
+- **LruCache for icon packs** (500 entry limit) — prevents OOM on large icon packs
+- **Safe grid deserialization** — malformed workspace data returns empty cells, never crashes
+- **Atomic DataStore writes** — process death during save never corrupts settings
+- **Reflection-based API calls** for status bar expansion — OEM ROMs that block it fail gracefully
+- **Per-app error isolation** during app list loading — one bad package entry doesn't prevent loading the rest
 
 ## Features
 
-| Feature | Description | Default |
-|---------|-------------|---------|
-| 5 Dark Themes | Midnight, Glass, OLED, Mocha, Aurora | Glass |
-| Grid Layout | 4x5, 5x6, 6x7 configurable columns | 4x5 |
-| Icon Shapes | Squircle, Circle, Square, Teardrop, Cylinder | Squircle |
-| App Drawer | Grid, List, A-Z alphabetical views | Grid |
-| Dock | Configurable 4-6 pinned apps | 5 apps |
-| Dense Mode | Compact layout with smaller icons/labels | Off |
-| Clock Widget | Live clock with date on home screen | On |
-| Dock Search | Search bar above dock opens drawer | On |
-| Context Menu | Long-press for info, dock, hide, uninstall | - |
-| Hidden Apps | Hide apps from drawer and home grid | - |
-| Page Indicator | Animated dot indicators for home pages | - |
-| Package Listener | Auto-refresh on app install/uninstall | - |
-| Persistent Settings | DataStore-backed preferences survive restarts | - |
-| Edge-to-Edge | Transparent status/nav bars, wallpaper visible | - |
+- Multiple home pages with swipe navigation
+- App drawer with alphabetical fast scroller
+- Folder creation via drag-and-drop
+- Icon pack support (ADW/Nova format)
+- Custom icon labels
+- Hide apps from drawer
+- 5 theme modes (Midnight, Glass, OLED, Mocha, Aurora)
+- Configurable grid (3-8 cols, 3-10 rows), dock (3-7 icons), icon sizes
+- Double-tap and swipe-down gestures (lock, notifications, drawer, settings, kill apps)
+- Auto-place newly installed apps on home screen
+- Backup/restore layout as JSON
+- Device admin for screen lock gesture
+- Context menu on home/dock icons (rename, rearrange, remove, uninstall, app info)
+- Edit mode with wiggle animation for rearranging
 
 ## Architecture
 
 ```
-┌─────────────────┐     ┌─────────────────┐     ┌──────────────────┐
-│  MainActivity    │────>│ LauncherViewModel│────>│  AppRepository   │
-│                  │     │                  │     │                  │
-│  Entry point     │     │  State mgmt     │     │  PackageManager  │
-│  Edge-to-edge    │     │  Settings flow  │     │  App loading     │
-│  Package events  │     │  Search/filter  │     │  Launch/uninstall│
-└─────────────────┘     └─────────────────┘     └──────────────────┘
-         │                       │
-         ▼                       ▼
-┌─────────────────┐     ┌─────────────────┐
-│  HomeScreen      │     │  LauncherPrefs   │
-│                  │     │                  │
-│  Pager + Grid   │     │  DataStore       │
-│  Clock + Dock   │     │  Theme/Layout    │
-│  Drawer/Settings│     │  Dock/Hidden     │
-└─────────────────┘     └─────────────────┘
+LauncherApplication    - Global crash handler + notification reporter
+MainActivity           - Lifecycle, debounced package receiver
+LauncherViewModel      - State management, debounced operations, package validation
+LauncherPrefs          - DataStore with corruption handler, atomic writes
+AppRepository          - Hardened PM calls, package existence checks
+IconPackManager        - LruCache, defensive XML parsing
+AppModel               - Safe deserialization, data types
+UI (Compose)           - HomeScreen, AppDrawer, Components, Settings, Theme
 ```
 
-## Themes
+## Build
 
-| Theme | Accent | Style |
-|-------|--------|-------|
-| Midnight Dark | `#7C6AFF` Purple | Deep navy surfaces, purple glow |
-| Frosted Glass | `#00D4FF` Cyan | Translucent panels, glass blur |
-| OLED Black | `#00E676` Green | Pure black, minimal borders |
-| Catppuccin Mocha | `#CBA6F7` Lavender | Warm dark, community palette |
-| Northern Aurora | `#64FFDA` Teal | Deep blue-black, aurora glow |
-
-## Project Structure
-
-```
-app/src/main/java/app/lawnchairlite/
-├── LauncherApplication.kt      # Application class
-├── MainActivity.kt             # Entry point, system bars, package listener
-├── LauncherViewModel.kt        # Central state management
-├── data/
-│   ├── AppModel.kt             # Data classes, enums
-│   ├── AppRepository.kt        # PackageManager queries, app launching
-│   └── LauncherPrefs.kt        # DataStore persistent settings
-└── ui/
-    ├── Theme.kt                # 5 color schemes + CompositionLocal
-    ├── Components.kt           # AppIcon, SearchBar, Clock, Dock, ContextMenu
-    ├── AppDrawer.kt            # Grid/List/Alpha drawer views
-    ├── SettingsScreen.kt       # Theme picker, toggles, layout options
-    └── HomeScreen.kt           # Main screen composable
+```bash
+./gradlew assembleDebug
 ```
 
-## Permissions
-
-| Permission | Reason |
-|-----------|--------|
-| `QUERY_ALL_PACKAGES` | List installed apps in drawer |
-| `SET_WALLPAPER` | Wallpaper management |
-| `VIBRATE` | Haptic feedback on long-press |
-| `BIND_APPWIDGET` | Future widget hosting |
-
-## What This Doesn't Do
-
-- No recents/recent apps integration (requires Launcher3/QuickSwitch)
-- No gesture navigation hooks (system-level API)
-- No Google Feed/Discover page
-- No Smartspacer integration
-- No icon pack support (planned)
-
-## FAQ
-
-**Q: How do I set this as my default launcher?**
-After installing, press the home button and select "Lawnchair Lite" then "Always".
-
-**Q: Why can't I see some apps?**
-Check if they're hidden. Long-press any app > "Hide app" toggles visibility.
-
-**Q: How do I add apps to the dock?**
-Long-press an app > "Add to dock". Remove the same way.
-
-## Roadmap
-
-- [ ] Icon pack support
-- [ ] Swipe gestures (up/down custom actions)
-- [ ] Widget hosting
-- [ ] Folder support
-- [ ] App usage sorting
-- [ ] Backup/restore settings
-
-## License
-
-MIT - see `LICENSE` for details.
-
-Issues and PRs welcome.
+Requires Android SDK 28+ (Android 9), targets SDK 34 (Android 14).
