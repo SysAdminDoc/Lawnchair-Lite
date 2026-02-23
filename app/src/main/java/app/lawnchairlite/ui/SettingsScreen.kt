@@ -28,7 +28,7 @@ import com.google.accompanist.drawablepainter.rememberDrawablePainter
 import kotlinx.coroutines.launch
 
 /**
- * Lawnchair Lite v0.9.0 - Settings
+ * Lawnchair Lite v2.1.0 - Settings
  */
 @Composable
 fun SettingsPanel(
@@ -120,6 +120,7 @@ fun SettingsPanel(
                 Lbl("Features", colors)
                 Tog("At-a-Glance Clock", settings.showClock, colors) { vm.setShowClock(it) }
                 Tog("Dock Search Bar", settings.showDockSearch, colors) { vm.setShowDockSearch(it) }
+                Tog("Auto-Place New Apps", settings.autoPlaceNew, colors) { vm.setAutoPlaceNew(it) }
 
                 // Gestures
                 Lbl("Gestures", colors)
@@ -168,19 +169,8 @@ fun SettingsPanel(
                     Text("Tap to unhide", color = colors.textSecondary, fontSize = 10.sp, modifier = Modifier.padding(top = 2.dp))
                 }
 
-                // Help
-                Lbl("How to Use", colors)
-                HelpText("Swipe left/right for multiple home pages.", colors)
-                HelpText("Long-press an icon to drag and rearrange.", colors)
-                HelpText("Drag icon onto another to create a folder.", colors)
-                HelpText("Drag to Remove (top-left) or Uninstall (top-right).", colors)
-                HelpText("Long-press in drawer for pin/hide/uninstall.", colors)
-                HelpText("Double-tap and swipe-down are configurable gestures.", colors)
-                HelpText("Grab drawer and push down to close it.", colors)
-                HelpText("Icon packs from Play Store are auto-detected.", colors)
-
                 Lbl("About", colors)
-                Text("Lawnchair Lite v0.9.0", color = colors.text, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                Text("Lawnchair Lite v${app.lawnchairlite.BuildConfig.VERSION_NAME}", color = colors.text, fontSize = 14.sp, fontWeight = FontWeight.Medium)
                 Text("Lightweight launcher inspired by Lawnchair/Pixel Launcher.", color = colors.textSecondary, fontSize = 12.sp, modifier = Modifier.padding(top = 2.dp, bottom = 32.dp))
             }
         }
@@ -198,7 +188,6 @@ private fun IconPackSection(
     val activePack = settings.iconPack
     val activeLabel = if (activePack.isBlank()) "System Default" else packs.find { it.packageName == activePack }?.label ?: activePack.substringAfterLast(".")
 
-    // Current selection / toggle
     Row(
         Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(c.card)
             .border(0.5.dp, if (activePack.isNotBlank()) c.accent.copy(alpha = 0.4f) else c.border, RoundedCornerShape(12.dp))
@@ -230,7 +219,6 @@ private fun IconPackSection(
                 }.padding(horizontal = 10.dp, vertical = 4.dp))
     }
 
-    // Pack list
     AnimatedVisibility(expanded, enter = expandVertically() + fadeIn(), exit = shrinkVertically() + fadeOut()) {
         Column(Modifier.padding(top = 8.dp)) {
             if (packs.isEmpty()) {
@@ -282,7 +270,6 @@ private fun IconPackSection(
 // ── Helpers ──────────────────────────────────────────────────────────
 
 @Composable private fun Lbl(t: String, c: LauncherColors) { Text(t.uppercase(), color = c.accent, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp, modifier = Modifier.padding(top = 22.dp, bottom = 10.dp)) }
-@Composable private fun HelpText(t: String, c: LauncherColors) { Text(t, color = c.textSecondary, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp)) }
 
 @Composable private fun <T> Chips(opts: List<Pair<T, String>>, sel: T, c: LauncherColors, onSel: (T) -> Unit) {
     Row(

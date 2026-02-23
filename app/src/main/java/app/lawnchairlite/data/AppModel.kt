@@ -2,9 +2,12 @@ package app.lawnchairlite.data
 
 import android.content.ComponentName
 import android.graphics.drawable.Drawable
+import android.util.Log
 
 /**
- * Lawnchair Lite v0.9.0 - Data Model
+ * Lawnchair Lite v2.1.0 - Data Model
+ *
+ * Stability: Deserialization never throws. Malformed data returns null.
  */
 data class AppInfo(
     val label: String, val packageName: String, val activityName: String,
@@ -40,19 +43,53 @@ data class DragState(
     val sourceIndex: Int = -1, val appInfo: AppInfo? = null,
 )
 
+/**
+ * Escaping for serialized data. Folder names and custom labels can contain
+ * the delimiter characters |, :, and = which would corrupt the grid/label
+ * serialization format. We escape them with backslash sequences.
+ *
+ * \p = pipe (|), \c = colon (:), \e = equals (=), \b = backslash (\)
+ */
+private fun escapeField(s: String): String = s
+    .replace("\\", "\\b")
+    .replace("|", "\\p")
+    .replace(":", "\\c")
+    .replace("=", "\\e")
+
+private fun unescapeField(s: String): String = s
+    .replace("\\e", "=")
+    .replace("\\c", ":")
+    .replace("\\p", "|")
+    .replace("\\b", "\\")
+
 fun GridCell.serialize(): String = when (this) {
     is GridCell.App -> "A:${appKey}"
-    is GridCell.Folder -> "F:${name}:${appKeys.joinToString(",")}"
+    is GridCell.Folder -> "F:${escapeField(name)}:${appKeys.joinToString(",")}"
 }
 
-fun deserializeCell(s: String): GridCell? = when {
-    s == "_" || s.isBlank() -> null
-    s.startsWith("A:") -> GridCell.App(s.removePrefix("A:"))
-    s.startsWith("F:") -> {
-        val parts = s.removePrefix("F:").split(":", limit = 2)
-        if (parts.size == 2) GridCell.Folder(parts[0], parts[1].split(",").filter { it.isNotBlank() }) else null
+/**
+ * Defensive deserialization: never throws. Returns null for any malformed input.
+ * This prevents corrupted grid data from crashing the launcher on startup.
+ */
+fun deserializeCell(s: String): GridCell? = try {
+    when {
+        s == "_" || s.isBlank() -> null
+        s.startsWith("A:") -> {
+            val key = s.removePrefix("A:")
+            if (key.contains("/") && key.length > 3) GridCell.App(key) else null
+        }
+        s.startsWith("F:") -> {
+            val parts = s.removePrefix("F:").split(":", limit = 2)
+            if (parts.size == 2 && parts[1].isNotBlank()) {
+                val keys = parts[1].split(",").filter { it.isNotBlank() && it.contains("/") }
+                if (keys.isNotEmpty()) GridCell.Folder(unescapeField(parts[0]), keys) else null
+            } else null
+        }
+        else -> null
     }
-    else -> null
+} catch (e: Exception) {
+    Log.w("AppModel", "deserializeCell failed for: ${s.take(50)}", e)
+    null
 }
 
 fun serializeGrid(cells: List<GridCell?>): String = cells.joinToString("|") { it?.serialize() ?: "_" }

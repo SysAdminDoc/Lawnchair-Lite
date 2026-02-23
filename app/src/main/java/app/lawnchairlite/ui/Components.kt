@@ -12,10 +12,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Folder
-import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -38,14 +35,16 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import app.lawnchairlite.LauncherViewModel
 import app.lawnchairlite.data.AppInfo
+import app.lawnchairlite.data.DragSource
 import app.lawnchairlite.data.GridCell
 import app.lawnchairlite.data.IconShape
 import com.google.accompanist.drawablepainter.rememberDrawablePainter
 import java.text.SimpleDateFormat
 import java.util.*
 
-/** Lawnchair Lite v0.9.0 - UI Components */
+/** Lawnchair Lite v2.1.0 - UI Components */
 
 fun iconClip(shape: IconShape): androidx.compose.ui.graphics.Shape = when (shape) {
     IconShape.CIRCLE -> CircleShape
@@ -97,7 +96,7 @@ fun FolderIconContent(folder: GridCell.Folder, shape: IconShape, resolveApp: (St
 @Composable
 fun DragGhost(cell: GridCell?, app: AppInfo?, shape: IconShape, offset: Offset, resolveApp: (String) -> AppInfo?, sizeDp: Dp = 50.dp) {
     if (cell == null) return; val c = LocalLauncherColors.current; val d = LocalDensity.current; val half = sizeDp / 2
-    Box(Modifier.offset(x = with(d) { offset.x.toDp() - half }, y = with(d) { offset.y.toDp() - half }).size(sizeDp + 6.dp).shadow(8.dp, iconClip(shape)).clip(iconClip(shape)).background(c.card).graphicsLayer(alpha = 0.9f, scaleX = 1.15f, scaleY = 1.15f), Alignment.Center) {
+    Box(Modifier.offset(x = with(d) { offset.x.toDp() - half }, y = with(d) { offset.y.toDp() - half }).size(sizeDp + 6.dp).shadow(12.dp, iconClip(shape)).clip(iconClip(shape)).background(c.card).graphicsLayer(alpha = 0.95f, scaleX = 1.2f, scaleY = 1.2f), Alignment.Center) {
         when (cell) {
             is GridCell.App -> if (app?.icon != null) Image(rememberDrawablePainter(app.icon), null, Modifier.fillMaxSize().padding(5.dp))
             is GridCell.Folder -> {
@@ -116,7 +115,8 @@ fun DragGhost(cell: GridCell?, app: AppInfo?, shape: IconShape, offset: Offset, 
 @Composable
 fun RemoveZone(hovering: Boolean, modifier: Modifier = Modifier) {
     val c = LocalLauncherColors.current; val bg by animateColorAsState(if (hovering) Color(0xFFEF5350) else c.surface.copy(alpha = 0.85f), label = "rz")
-    Box(modifier.fillMaxWidth(0.5f).height(52.dp).background(bg), Alignment.Center) {
+    val scale by animateFloatAsState(if (hovering) 1.08f else 1f, spring(stiffness = 300f), label = "rzs")
+    Box(modifier.fillMaxWidth(0.5f).height(52.dp).graphicsLayer(scaleX = scale, scaleY = scale).background(bg, RoundedCornerShape(bottomStart = 14.dp)), Alignment.Center) {
         Row(verticalAlignment = Alignment.CenterVertically) { Icon(Icons.Default.Close, null, tint = if (hovering) Color.White else c.textSecondary, modifier = Modifier.size(16.dp)); Spacer(Modifier.width(5.dp)); Text("Remove", color = if (hovering) Color.White else c.textSecondary, fontSize = 12.sp, fontWeight = FontWeight.Medium) }
     }
 }
@@ -124,8 +124,9 @@ fun RemoveZone(hovering: Boolean, modifier: Modifier = Modifier) {
 @Composable
 fun UninstallZone(hovering: Boolean, isSystemApp: Boolean, modifier: Modifier = Modifier) {
     val c = LocalLauncherColors.current; val bg by animateColorAsState(when { isSystemApp -> c.surface.copy(alpha = 0.5f); hovering -> Color(0xFFD32F2F); else -> c.surface.copy(alpha = 0.85f) }, label = "uz")
+    val scale by animateFloatAsState(if (hovering && !isSystemApp) 1.08f else 1f, spring(stiffness = 300f), label = "uzs")
     val t = when { isSystemApp -> c.textSecondary.copy(alpha = 0.4f); hovering -> Color.White; else -> c.textSecondary }
-    Box(modifier.fillMaxWidth(1f).height(52.dp).background(bg), Alignment.Center) { Row(verticalAlignment = Alignment.CenterVertically) { Icon(Icons.Default.Delete, null, tint = t, modifier = Modifier.size(16.dp)); Spacer(Modifier.width(5.dp)); Text(if (isSystemApp) "System App" else "Uninstall", color = t, fontSize = 12.sp, fontWeight = FontWeight.Medium) } }
+    Box(modifier.fillMaxWidth(1f).height(52.dp).graphicsLayer(scaleX = scale, scaleY = scale).background(bg, RoundedCornerShape(bottomEnd = 14.dp)), Alignment.Center) { Row(verticalAlignment = Alignment.CenterVertically) { Icon(Icons.Default.Delete, null, tint = t, modifier = Modifier.size(16.dp)); Spacer(Modifier.width(5.dp)); Text(if (isSystemApp) "System App" else "Uninstall", color = t, fontSize = 12.sp, fontWeight = FontWeight.Medium) } }
 }
 
 @Composable
@@ -189,15 +190,85 @@ fun FastScrollerRail(letters: List<Char>, onLetterSelected: (Char) -> Unit, modi
     }
 }
 
+// ── Home/Dock Context Menu ───────────────────────────────────────────
+
+@Composable
+fun HomeContextMenu(
+    menuState: LauncherViewModel.HomeMenuState,
+    shape: IconShape,
+    vm: LauncherViewModel,
+    onDismiss: () -> Unit,
+) {
+    val c = LocalLauncherColors.current
+    val cell = menuState.cell
+    val app = menuState.appInfo
+    val isFolder = cell is GridCell.Folder
+    val sourceLabel = if (menuState.source == DragSource.DOCK) "Dock" else "Home"
+
+    Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.5f)).pointerInput(Unit) { detectTapGestures { onDismiss() } }, Alignment.Center) {
+        Column(
+            Modifier.widthIn(min = 240.dp, max = 280.dp).clip(RoundedCornerShape(20.dp))
+                .background(c.surface).border(0.5.dp, c.border, RoundedCornerShape(20.dp))
+                .pointerInput(Unit) { detectTapGestures { } }.padding(vertical = 12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Spacer(Modifier.height(8.dp))
+
+            // Icon preview
+            when (cell) {
+                is GridCell.App -> if (app != null) {
+                    Box(Modifier.size(54.dp).clip(iconClip(shape)).background(c.card), Alignment.Center) {
+                        if (app.icon != null) Image(rememberDrawablePainter(app.icon), null, Modifier.fillMaxSize().padding(5.dp))
+                    }
+                    Spacer(Modifier.height(6.dp))
+                    Text(vm.customLabels.collectAsState().value[cell.appKey] ?: app.label, color = c.text, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                    Text(app.packageName, color = c.textSecondary, fontSize = 10.sp)
+                }
+                is GridCell.Folder -> {
+                    FolderIconContent(cell, shape, { vm.resolveApp(it) }, 54.dp, showLabel = false)
+                    Spacer(Modifier.height(6.dp))
+                    Text(cell.name, color = c.accent, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                    Text("${cell.appKeys.size} apps", color = c.textSecondary, fontSize = 10.sp)
+                }
+            }
+
+            Spacer(Modifier.height(12.dp))
+            Divider(color = c.border.copy(alpha = 0.3f), thickness = 0.5.dp)
+
+            // Actions
+            if (cell is GridCell.App && app != null) {
+                CtxItem("Rename", c) { vm.startLabelEdit(cell.appKey) }
+                CtxItem("Rearrange Icons", c) { vm.enterEditMode() }
+                Divider(color = c.border.copy(alpha = 0.3f), thickness = 0.5.dp)
+                CtxItem("App Info", c) { vm.appInfo(app); onDismiss() }
+                CtxItem("Remove from $sourceLabel", c) { vm.removeFromGrid(menuState.source, menuState.index) }
+                if (!app.isSystemApp) {
+                    Divider(color = c.border.copy(alpha = 0.3f), thickness = 0.5.dp)
+                    CtxItem("Uninstall", c, isRed = true) { vm.uninstall(app); vm.removeFromGrid(menuState.source, menuState.index) }
+                }
+            } else if (isFolder) {
+                val folder = cell as GridCell.Folder
+                CtxItem("Open Folder", c) { vm.openFolderView(folder, menuState.source, menuState.index); onDismiss() }
+                CtxItem("Rename Folder", c) { vm.startFolderRename(menuState.source, menuState.index, folder.name); onDismiss() }
+                CtxItem("Rearrange Icons", c) { vm.enterEditMode() }
+                Divider(color = c.border.copy(alpha = 0.3f), thickness = 0.5.dp)
+                CtxItem("Remove from $sourceLabel", c, isRed = true) { vm.removeFromGrid(menuState.source, menuState.index) }
+            }
+        }
+    }
+}
+
+// ── Folder Overlay (improved - selective X, better UX) ───────────────
+
 @Composable
 fun FolderOverlay(folder: GridCell.Folder, shape: IconShape, iconSizeDp: Dp, resolveApp: (String) -> AppInfo?, customLabels: Map<String, String>, onAppClick: (AppInfo) -> Unit, onRemoveApp: (String) -> Unit, onReorder: (List<String>) -> Unit, onRename: () -> Unit, onDismiss: () -> Unit) {
     val c = LocalLauncherColors.current
     val orderedKeys = remember(folder.appKeys) { mutableStateListOf(*folder.appKeys.toTypedArray()) }
     var editMode by remember { mutableStateOf(false) }
     var dragIdx by remember { mutableIntStateOf(-1) }
+    var selectedForRemoval by remember { mutableStateOf<String?>(null) }
     val slotRootBounds = remember { mutableStateMapOf<Int, Rect>() }
     var containerRootOffset by remember { mutableStateOf(Offset.Zero) }
-    // Clean stale bounds when keys change
     LaunchedEffect(orderedKeys.size) { slotRootBounds.keys.filter { it >= orderedKeys.size }.forEach { slotRootBounds.remove(it) } }
 
     Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.55f)).pointerInput(Unit) { detectTapGestures { onDismiss() } }, Alignment.Center) {
@@ -208,7 +279,7 @@ fun FolderOverlay(folder: GridCell.Folder, shape: IconShape, iconSizeDp: Dp, res
                 Text(if (editMode) "Done" else "Edit", color = if (editMode) Color(0xFF66BB6A) else c.textSecondary, fontSize = 12.sp, fontWeight = FontWeight.Medium,
                     modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(if (editMode) Color(0xFF66BB6A).copy(alpha = 0.12f) else c.card)
                         .border(0.5.dp, if (editMode) Color(0xFF66BB6A).copy(alpha = 0.3f) else c.border, RoundedCornerShape(8.dp))
-                        .clickable { editMode = !editMode; dragIdx = -1 }.padding(horizontal = 10.dp, vertical = 4.dp))
+                        .clickable { editMode = !editMode; dragIdx = -1; selectedForRemoval = null }.padding(horizontal = 10.dp, vertical = 4.dp))
             }
             Spacer(Modifier.height(14.dp))
             if (orderedKeys.isEmpty()) Text("Empty", color = c.textSecondary, fontSize = 13.sp)
@@ -219,9 +290,8 @@ fun FolderOverlay(folder: GridCell.Folder, shape: IconShape, iconSizeDp: Dp, res
                         .then(if (editMode) Modifier.pointerInput(editMode) {
                             detectDragGesturesAfterLongPress(
                                 onDragStart = { localPos ->
-                                    // Convert local position to root coordinates
                                     val rootPos = localPos + containerRootOffset
-                                    for ((i, b) in slotRootBounds) { if (b.contains(rootPos)) { dragIdx = i; break } }
+                                    for ((i, b) in slotRootBounds) { if (b.contains(rootPos)) { dragIdx = i; selectedForRemoval = null; break } }
                                 },
                                 onDrag = { change, _ ->
                                     change.consume()
@@ -246,25 +316,37 @@ fun FolderOverlay(folder: GridCell.Folder, shape: IconShape, iconSizeDp: Dp, res
                                 row.forEachIndexed { colIdx, key ->
                                     val flatIdx = rowIdx * 4 + colIdx
                                     val app = resolveApp(key)
+                                    val isBeingDragged = dragIdx == flatIdx
+                                    val isSelectedForRemoval = selectedForRemoval == key
                                     Box(
                                         Modifier.width(66.dp)
                                             .onGloballyPositioned { slotRootBounds[flatIdx] = it.boundsInRoot() }
                                             .graphicsLayer(
-                                                alpha = if (dragIdx == flatIdx) 0.4f else 1f,
-                                                scaleX = if (dragIdx == flatIdx) 1.1f else 1f,
-                                                scaleY = if (dragIdx == flatIdx) 1.1f else 1f,
+                                                alpha = if (isBeingDragged) 0.4f else 1f,
+                                                scaleX = if (isBeingDragged) 1.15f else 1f,
+                                                scaleY = if (isBeingDragged) 1.15f else 1f,
                                             ),
                                         contentAlignment = Alignment.Center,
                                     ) {
                                         if (app != null) {
                                             if (editMode) {
-                                                AppIconContent(app, shape, iconSizeDp, showLabel = true, customLabel = customLabels[key])
-                                                Box(
-                                                    Modifier.align(Alignment.TopEnd).offset(x = 6.dp, y = (-4).dp).size(18.dp)
-                                                        .clip(CircleShape).background(Color(0xFFEF5350))
-                                                        .clickable { onRemoveApp(key) },
-                                                    Alignment.Center,
-                                                ) { Text("X", color = Color.White, fontSize = 9.sp, fontWeight = FontWeight.Bold) }
+                                                // In edit mode: tap toggles X on that specific icon only
+                                                Box(Modifier.pointerInput(key) {
+                                                    detectTapGestures(onTap = {
+                                                        selectedForRemoval = if (selectedForRemoval == key) null else key
+                                                    })
+                                                }) {
+                                                    AppIconContent(app, shape, iconSizeDp, showLabel = true, customLabel = customLabels[key])
+                                                }
+                                                // Only show X on the tapped icon
+                                                if (isSelectedForRemoval) {
+                                                    Box(
+                                                        Modifier.align(Alignment.TopEnd).offset(x = 6.dp, y = (-4).dp).size(20.dp)
+                                                            .shadow(4.dp, CircleShape).clip(CircleShape).background(Color(0xFFEF5350))
+                                                            .clickable { onRemoveApp(key); selectedForRemoval = null },
+                                                        Alignment.Center,
+                                                    ) { Icon(Icons.Default.Close, null, tint = Color.White, modifier = Modifier.size(12.dp)) }
+                                                }
                                             } else {
                                                 TappableAppIcon(app, shape, iconSizeDp, showLabel = true, customLabel = customLabels[key], onClick = { onAppClick(app) }, onLongClick = { editMode = true })
                                             }
@@ -278,10 +360,11 @@ fun FolderOverlay(folder: GridCell.Folder, shape: IconShape, iconSizeDp: Dp, res
                 }
             }
             Spacer(Modifier.height(4.dp))
-            Text(if (editMode) "Hold & drag to reorder  |  X to remove" else "Long-press to edit  |  Tap to open", color = c.textSecondary, fontSize = 10.sp)
         }
     }
 }
+
+// ── Drawer Context Menu ──────────────────────────────────────────────
 
 @Composable
 fun DrawerContextMenu(app: AppInfo, shape: IconShape, onPinHome: () -> Unit, onPinDock: () -> Unit, onHide: () -> Unit, onAppInfo: () -> Unit, onUninstall: () -> Unit, onDismiss: () -> Unit) {

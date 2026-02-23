@@ -6,7 +6,7 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import app.lawnchairlite.data.ThemeMode
 
-/** Lawnchair Lite v0.9.0 - Theme Engine */
+/** Lawnchair Lite v2.1.0 - Theme Engine */
 data class LauncherColors(
     val background: Color, val backgroundSecondary: Color, val surface: Color, val surfaceHover: Color,
     val card: Color, val accent: Color, val accentGlow: Color, val text: Color, val textSecondary: Color,

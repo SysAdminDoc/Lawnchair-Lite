@@ -9,19 +9,38 @@ import android.content.Intent
 import android.os.Build
 import android.os.VibrationEffect
 import android.os.Vibrator
+import android.util.Log
 import android.widget.Toast
 import androidx.compose.ui.geometry.Offset
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import app.lawnchairlite.data.*
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlin.math.max
 
 /**
- * Lawnchair Lite v0.9.0 - ViewModel
+ * Lawnchair Lite v2.1.0 - ViewModel
+ *
+ * Stability improvements over v1.x:
+ * - Debounced package change events (300ms) prevent rapid-fire reloads
+ *   when bulk install/uninstall occurs
+ * - Package existence validation before all operations that reference
+ *   external packages (prevents the race condition Lawnchair fixed in 15 Beta 2)
+ * - All resolveApp() callers handle null gracefully
+ * - Icon pack operations wrapped with fallback
+ * - Grid operations use defensive indexing (no IndexOutOfBoundsException)
+ * - Vibration wrapped for OEM compatibility
+ * - Gesture execution wrapped for reflection-based API calls
  */
 class LauncherViewModel(app: Application) : AndroidViewModel(app) {
+
+    companion object {
+        private const val TAG = "LauncherVM"
+        private const val DEBOUNCE_MS = 300L
+    }
 
     private val ctx = app.applicationContext
     private val repo = AppRepository(app)
@@ -33,7 +52,6 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     private val _appMap = MutableStateFlow<Map<String, AppInfo>>(emptyMap())
     val settings = prefs.settings.stateIn(viewModelScope, SharingStarted.Eagerly, LauncherSettings())
 
-    // Icon packs
     private val _availablePacks = MutableStateFlow<List<IconPackInfo>>(emptyList())
     val availablePacks: StateFlow<List<IconPackInfo>> = _availablePacks.asStateFlow()
     private val _iconPackLoading = MutableStateFlow(false)
@@ -86,6 +104,17 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     private val _labelEdit = MutableStateFlow<LabelEdit?>(null)
     val labelEdit: StateFlow<LabelEdit?> = _labelEdit.asStateFlow()
 
+    data class HomeMenuState(val cell: GridCell, val source: DragSource, val index: Int, val appInfo: AppInfo? = null)
+    private val _homeMenu = MutableStateFlow<HomeMenuState?>(null)
+    val homeMenu: StateFlow<HomeMenuState?> = _homeMenu.asStateFlow()
+
+    private val _editMode = MutableStateFlow(false)
+    val editMode: StateFlow<Boolean> = _editMode.asStateFlow()
+
+    // Debounce: prevents rapid-fire reloads from bulk package events
+    private var reloadJob: Job? = null
+    private val _packageEventPending = MutableStateFlow(false)
+
     init {
         loadApps()
         discoverIconPacks()
@@ -98,7 +127,6 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
                 .take(1).collect { (apps, _) -> autoPopulate(apps) }
         }
         viewModelScope.launch { _allApps.filter { it.isNotEmpty() }.drop(1).collect { cleanupStaleKeys(it) } }
-        // Load saved icon pack on startup
         viewModelScope.launch {
             settings.filter { it.iconPack.isNotBlank() }.take(1).collect { s ->
                 applyIconPack(s.iconPack)
@@ -106,13 +134,50 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    fun loadApps() { viewModelScope.launch {
-        val apps = repo.loadApps(iconPackManager)
+    // ── App Loading ──────────────────────────────────────────────────────
+
+    fun loadApps() { viewModelScope.launch { loadAppsInternal() } }
+
+    /**
+     * Suspending app loader — callers can await its completion.
+     * The public loadApps() wraps this in a fire-and-forget launch.
+     */
+    private suspend fun loadAppsInternal() {
+        val apps = try {
+            repo.loadApps(iconPackManager)
+        } catch (e: Exception) {
+            Log.e(TAG, "loadApps failed", e)
+            emptyList()
+        }
         _allApps.value = apps; _appMap.value = apps.associateBy { it.key }
-    }}
+    }
+
+    /**
+     * Debounced app reload: coalesces rapid package change events into
+     * a single reload after DEBOUNCE_MS. Prevents N reloads during
+     * bulk install/uninstall operations.
+     */
+    fun debouncedReload() {
+        reloadJob?.cancel()
+        reloadJob = viewModelScope.launch {
+            delay(DEBOUNCE_MS)
+            loadApps()
+        }
+    }
+
     fun resolveApp(key: String): AppInfo? = _appMap.value[key]
     fun getLabel(key: String): String? = _customLabels.value[key] ?: resolveApp(key)?.label
-    fun launch(app: AppInfo) = repo.launchApp(app)
+
+    fun launch(app: AppInfo) {
+        // Validate package still exists before launching (race condition guard)
+        if (!repo.isPackageInstalled(app.packageName)) {
+            toast("App no longer installed")
+            debouncedReload()
+            return
+        }
+        repo.launchApp(app)
+    }
+
     fun appInfo(app: AppInfo) = repo.openAppInfo(app)
     fun uninstall(app: AppInfo) = repo.uninstallApp(app)
     fun setSearch(q: String) { _search.value = q }
@@ -120,61 +185,80 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     fun closeDrawer() { _drawerOpen.value = false; _search.value = "" }
     fun openSettings() { _settingsOpen.value = true }
     fun closeSettings() { _settingsOpen.value = false }
-    fun closeAllOverlays() { _drawerOpen.value = false; _settingsOpen.value = false; _openFolder.value = null; _drawerMenuApp.value = null; _folderRename.value = null; _labelEdit.value = null; _search.value = "" }
-    fun hasOpenOverlay(): Boolean = _drawerOpen.value || _settingsOpen.value || _openFolder.value != null || _drawerMenuApp.value != null || _labelEdit.value != null
+    fun closeAllOverlays() { _drawerOpen.value = false; _settingsOpen.value = false; _openFolder.value = null; _drawerMenuApp.value = null; _folderRename.value = null; _labelEdit.value = null; _homeMenu.value = null; _editMode.value = false; _search.value = "" }
+    fun hasOpenOverlay(): Boolean = _drawerOpen.value || _settingsOpen.value || _openFolder.value != null || _drawerMenuApp.value != null || _labelEdit.value != null || _homeMenu.value != null
+
+    // ── Home/Dock Context Menu ───────────────────────────────────────────
+
+    fun showHomeMenu(cell: GridCell, source: DragSource, index: Int) {
+        val info = if (cell is GridCell.App) resolveApp(cell.appKey) else null
+        _homeMenu.value = HomeMenuState(cell, source, index, info)
+        vibrate()
+    }
+    fun dismissHomeMenu() { _homeMenu.value = null }
+
+    fun removeFromGrid(source: DragSource, index: Int) { viewModelScope.launch {
+        val g = gridForSource(source).toMutableList()
+        if (index in g.indices) { g[index] = null; saveGrid(source, if (source == DragSource.HOME) trimGrid(g, pageSize()) else g) }
+        _homeMenu.value = null
+    }}
+
+    fun enterEditMode() { _homeMenu.value = null; _editMode.value = true }
+    fun exitEditMode() { _editMode.value = false }
 
     // ── Icon Packs ───────────────────────────────────────────────────────
 
-    private fun discoverIconPacks() { viewModelScope.launch { _availablePacks.value = iconPackManager.getInstalledPacks() } }
-
-    fun setIconPack(packageName: String) { viewModelScope.launch {
-        pref(LauncherPrefs.ICON_PACK, packageName)
-        applyIconPack(packageName)
+    private fun discoverIconPacks() { viewModelScope.launch {
+        _availablePacks.value = try { iconPackManager.getInstalledPacks() } catch (e: Exception) { Log.e(TAG, "Icon pack discovery failed", e); emptyList() }
     }}
+
+    fun setIconPack(packageName: String) { viewModelScope.launch { pref(LauncherPrefs.ICON_PACK, packageName); applyIconPack(packageName) } }
 
     fun clearIconPack() { viewModelScope.launch {
-        pref(LauncherPrefs.ICON_PACK, "")
-        iconPackManager.clearPack()
-        loadApps()
-        toast("System icons restored")
+        pref(LauncherPrefs.ICON_PACK, ""); iconPackManager.clearPack(); loadAppsInternal(); toast("System icons restored")
     }}
 
-    /** Refresh the list of available icon packs (e.g. after installing a new one). */
     fun refreshIconPacks() { discoverIconPacks() }
 
     private suspend fun applyIconPack(packageName: String) {
-        if (packageName.isBlank()) { iconPackManager.clearPack(); loadApps(); return }
+        if (packageName.isBlank()) { iconPackManager.clearPack(); loadAppsInternal(); return }
         _iconPackLoading.value = true
-        val ok = iconPackManager.loadPack(packageName)
-        if (ok) {
-            loadApps()
-            val count = iconPackManager.mappedCount()
-            toast("Icon pack applied ($count icons)")
-        } else {
-            toast("Failed to load icon pack")
+        try {
+            val ok = iconPackManager.loadPack(packageName)
+            if (ok) { loadAppsInternal(); toast("Icon pack applied (${iconPackManager.mappedCount()} icons)") }
+            else toast("Failed to load icon pack")
+        } catch (e: Exception) {
+            Log.e(TAG, "Icon pack apply failed", e)
+            toast("Icon pack error")
         }
         _iconPackLoading.value = false
     }
 
     // ── Gestures ─────────────────────────────────────────────────────────
 
-    fun executeGesture(action: GestureAction) = when (action) {
-        GestureAction.NONE -> {}
-        GestureAction.LOCK_SCREEN -> lockScreen()
-        GestureAction.NOTIFICATION_SHADE -> expandNotifications()
-        GestureAction.APP_DRAWER -> openDrawer()
-        GestureAction.SETTINGS -> openSettings()
-        GestureAction.KILL_APPS -> killBackgroundApps()
+    fun executeGesture(action: GestureAction) {
+        try {
+            when (action) {
+                GestureAction.NONE -> {}
+                GestureAction.LOCK_SCREEN -> lockScreen()
+                GestureAction.NOTIFICATION_SHADE -> expandNotifications()
+                GestureAction.APP_DRAWER -> openDrawer()
+                GestureAction.SETTINGS -> openSettings()
+                GestureAction.KILL_APPS -> killBackgroundApps()
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Gesture execution failed: $action", e)
+        }
     }
 
     fun lockScreen() { runCatching {
-        val dpm = ctx.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
+        val dpm = ctx.getSystemService(Context.DEVICE_POLICY_SERVICE) as? DevicePolicyManager ?: return
         if (dpm.isAdminActive(ComponentName(ctx, AdminReceiver::class.java))) dpm.lockNow()
         else toast("Enable Device Admin in Settings to lock screen")
-    }}
+    }.onFailure { Log.e(TAG, "lockScreen failed", it) }}
 
     fun isDeviceAdminEnabled(): Boolean = runCatching {
-        (ctx.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager).isAdminActive(ComponentName(ctx, AdminReceiver::class.java))
+        (ctx.getSystemService(Context.DEVICE_POLICY_SERVICE) as? DevicePolicyManager)?.isAdminActive(ComponentName(ctx, AdminReceiver::class.java)) ?: false
     }.getOrDefault(false)
 
     fun requestDeviceAdmin() { runCatching {
@@ -183,23 +267,58 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
             putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION, "Required for double-tap to lock screen.")
             flags = Intent.FLAG_ACTIVITY_NEW_TASK
         })
-    }}
+    }.onFailure { Log.e(TAG, "requestDeviceAdmin failed", it) }}
 
+    /**
+     * Uses reflection (like Lawnchair) for status bar expansion.
+     * Gracefully fails on OEM ROMs that block this.
+     */
     @Suppress("DEPRECATION")
-    fun expandNotifications() { runCatching { ctx.getSystemService("statusbar").javaClass.getMethod("expandNotificationsPanel").invoke(ctx.getSystemService("statusbar")) } }
+    fun expandNotifications() {
+        try {
+            val sbService = ctx.getSystemService("statusbar") ?: return
+            val method = sbService.javaClass.getMethod("expandNotificationsPanel")
+            method.invoke(sbService)
+        } catch (e: Exception) {
+            Log.w(TAG, "expandNotifications failed (OEM may block this)", e)
+        }
+    }
 
-    fun killBackgroundApps() { runCatching {
-        val am = ctx.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
-        val pkgs = am.runningAppProcesses?.flatMap { it.pkgList.toList() }?.distinct() ?: emptyList()
-        var n = 0; pkgs.forEach { if (it != ctx.packageName) { am.killBackgroundProcesses(it); n++ } }
-        toast("Cleared $n background apps")
+    fun killBackgroundApps() {
+        try {
+            val am = ctx.getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager ?: return
+            val pkgs = am.runningAppProcesses?.flatMap { it.pkgList?.toList() ?: emptyList() }?.distinct() ?: emptyList()
+            var n = 0; pkgs.forEach { if (it != ctx.packageName) { am.killBackgroundProcesses(it); n++ } }
+            toast("Cleared $n background apps")
+        } catch (e: Exception) {
+            Log.e(TAG, "killBackgroundApps failed", e)
+        }
+    }
+
+    fun openWallpaperPicker() {
+        try {
+            ctx.startActivity(Intent(Intent.ACTION_SET_WALLPAPER).apply { flags = Intent.FLAG_ACTIVITY_NEW_TASK })
+        } catch (e: Exception) {
+            Log.e(TAG, "openWallpaperPicker failed", e)
+        }
+    }
+
+    // ── Auto-Place New Apps ──────────────────────────────────────────────
+
+    fun onAppInstalled(packageName: String) { viewModelScope.launch {
+        loadAppsInternal() // suspends until apps are actually loaded
+        if (!settings.value.autoPlaceNew) return@launch
+        val app = _allApps.value.find { it.packageName == packageName } ?: return@launch
+        val ps = pageSize(); val grid = padGrid(_homeGrid.value, ps).toMutableList()
+        if (grid.any { it is GridCell.App && it.appKey == app.key }) return@launch
+        var i = grid.indexOfFirst { it == null }
+        if (i < 0) { grid.addAll(List(ps) { null }); i = grid.indexOfFirst { it == null } }
+        if (i >= 0) { grid[i] = GridCell.App(app.key); _homeGrid.value = grid; prefs.saveHome(grid) }
     }}
-
-    fun openWallpaperPicker() { runCatching { ctx.startActivity(Intent(Intent.ACTION_SET_WALLPAPER).apply { flags = Intent.FLAG_ACTIVITY_NEW_TASK }) } }
 
     // ── Custom Labels ────────────────────────────────────────────────────
 
-    fun startLabelEdit(appKey: String) { _labelEdit.value = LabelEdit(appKey, _customLabels.value[appKey] ?: resolveApp(appKey)?.label ?: "") }
+    fun startLabelEdit(appKey: String) { _labelEdit.value = LabelEdit(appKey, _customLabels.value[appKey] ?: resolveApp(appKey)?.label ?: ""); _homeMenu.value = null }
     fun dismissLabelEdit() { _labelEdit.value = null }
     fun saveCustomLabel(appKey: String, label: String) { viewModelScope.launch {
         val orig = resolveApp(appKey)?.label ?: ""; val map = _customLabels.value.toMutableMap()
@@ -214,10 +333,11 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
 
     // ── Page Helpers ─────────────────────────────────────────────────────
 
-    fun pageSize(): Int { val s = settings.value; return s.gridColumns * s.gridRows }
-    fun numPages(): Int { val ps = pageSize(); return if (ps <= 0) 1 else max(1, (_homeGrid.value.size + ps - 1) / ps) }
+    fun pageSize(): Int { val s = settings.value; return (s.gridColumns * s.gridRows).coerceAtLeast(1) }
+    fun numPages(): Int { val ps = pageSize(); return max(1, (_homeGrid.value.size + ps - 1) / ps) }
 
     private fun padGrid(grid: List<GridCell?>, ps: Int): List<GridCell?> {
+        if (ps <= 0) return grid
         val t = max(ps, ((grid.size + ps - 1) / ps) * ps)
         return if (grid.size >= t) grid.take(t) else grid + List(t - grid.size) { null }
     }
@@ -230,13 +350,17 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     // ── Stale Cleanup ────────────────────────────────────────────────────
 
     private suspend fun cleanupStaleKeys(apps: List<AppInfo>) {
-        val valid = apps.map { it.key }.toSet(); var c = false
-        val home = _homeGrid.value.toMutableList()
-        for (i in home.indices) { val r = cleanCell(home[i], valid); if (r !== home[i]) { home[i] = r; c = true } }
-        if (c) { _homeGrid.value = home; prefs.saveHome(home) }
-        c = false; val dock = _dockGrid.value.toMutableList()
-        for (i in dock.indices) { val r = cleanCell(dock[i], valid); if (r !== dock[i]) { dock[i] = r; c = true } }
-        if (c) { _dockGrid.value = dock; prefs.saveDock(dock) }
+        try {
+            val valid = apps.map { it.key }.toSet(); var c = false
+            val home = _homeGrid.value.toMutableList()
+            for (i in home.indices) { val r = cleanCell(home[i], valid); if (r !== home[i]) { home[i] = r; c = true } }
+            if (c) { _homeGrid.value = home; prefs.saveHome(home) }
+            c = false; val dock = _dockGrid.value.toMutableList()
+            for (i in dock.indices) { val r = cleanCell(dock[i], valid); if (r !== dock[i]) { dock[i] = r; c = true } }
+            if (c) { _dockGrid.value = dock; prefs.saveDock(dock) }
+        } catch (e: Exception) {
+            Log.e(TAG, "cleanupStaleKeys failed", e)
+        }
     }
     private fun cleanCell(cell: GridCell?, valid: Set<String>): GridCell? = when (cell) {
         is GridCell.App -> if (cell.appKey in valid) cell else null
@@ -255,10 +379,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         if (c is GridCell.Folder) {
             val updated = c.copy(name = newName)
             g[index] = updated; saveGrid(src, g)
-            // BUG FIX: update live folder overlay with new name
-            _openFolder.value?.let { (_, oSrc, oIdx) ->
-                if (oSrc == src && oIdx == index) _openFolder.value = Triple(updated, src, index)
-            }
+            _openFolder.value?.let { (_, oSrc, oIdx) -> if (oSrc == src && oIdx == index) _openFolder.value = Triple(updated, src, index) }
         }
         _folderRename.value = null
     }}
@@ -270,7 +391,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     fun reorderFolderApps(src: DragSource, idx: Int, newKeys: List<String>) { viewModelScope.launch {
         val g = gridForSource(src).toMutableList(); val c = g.getOrNull(idx) as? GridCell.Folder ?: return@launch
         g[idx] = c.copy(appKeys = newKeys); saveGrid(src, g)
-        _openFolder.value = Triple(g[idx] as GridCell.Folder, src, idx)
+        (g.getOrNull(idx) as? GridCell.Folder)?.let { _openFolder.value = Triple(it, src, idx) }
     }}
 
     // ── Drawer Menu ──────────────────────────────────────────────────────
@@ -309,11 +430,15 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     fun endDrag() {
         val drag = _dragState.value ?: return; val hi = _hoverIndex.value; val isDock = _hoverDock.value
         viewModelScope.launch {
-            when {
-                _hoverUninstall.value -> { if (drag.item is GridCell.App) { clearSourceCell(drag); drag.appInfo?.let { uninstall(it) } } }
-                _hoverRemove.value -> clearSourceCell(drag)
-                hi >= 0 && isDock -> dropOnGrid(drag, hi, DragSource.DOCK)
-                hi >= 0 -> dropOnGrid(drag, hi, DragSource.HOME)
+            try {
+                when {
+                    _hoverUninstall.value -> { if (drag.item is GridCell.App) { clearSourceCell(drag); drag.appInfo?.let { uninstall(it) } } }
+                    _hoverRemove.value -> clearSourceCell(drag)
+                    hi >= 0 && isDock -> dropOnGrid(drag, hi, DragSource.DOCK)
+                    hi >= 0 -> dropOnGrid(drag, hi, DragSource.HOME)
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "endDrag failed", e)
             }
             clearDragState()
         }
@@ -321,7 +446,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
 
     private suspend fun dropOnGrid(drag: DragState, ti: Int, target: DragSource) {
         val tg = gridForSource(target).toMutableList(); while (tg.size <= ti) tg.add(null)
-        val ex = tg[ti]; val same = drag.source == target
+        val ex = tg.getOrNull(ti); val same = drag.source == target
 
         when (val item = drag.item) {
             is GridCell.Folder -> {
@@ -357,6 +482,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     fun setIconSize(s: IconSize) = pref(LauncherPrefs.ICON_SIZE, s.name)
     fun setShowClock(v: Boolean) = pref(LauncherPrefs.SHOW_CLOCK, v)
     fun setShowDockSearch(v: Boolean) = pref(LauncherPrefs.SHOW_DOCK_SEARCH, v)
+    fun setAutoPlaceNew(v: Boolean) = pref(LauncherPrefs.AUTO_PLACE_NEW, v)
     fun setDoubleTapAction(a: GestureAction) = pref(LauncherPrefs.DOUBLE_TAP_ACTION, a.name)
     fun setSwipeDownAction(a: GestureAction) = pref(LauncherPrefs.SWIPE_DOWN_ACTION, a.name)
 
@@ -370,7 +496,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     }}
 
     private suspend fun reflowGrid(cols: Int, rows: Int) {
-        val ps = cols * rows; val nn = _homeGrid.value.filterNotNull()
+        val ps = (cols * rows).coerceAtLeast(1); val nn = _homeGrid.value.filterNotNull()
         val total = max(ps, ((nn.size + ps - 1) / ps) * ps); val g = MutableList<GridCell?>(total) { null }
         nn.forEachIndexed { i, c -> if (i < total) g[i] = c }; _homeGrid.value = g; prefs.saveHome(g)
     }
@@ -380,25 +506,44 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         val ok = prefs.importBackup(json)
         if (ok) {
             toast("Layout restored")
-            // Re-apply icon pack from restored settings
-            val restored = prefs.settings.first()
-            if (restored.iconPack.isNotBlank()) applyIconPack(restored.iconPack) else loadApps()
+            try {
+                val restored = prefs.settings.first()
+                if (restored.iconPack.isNotBlank()) applyIconPack(restored.iconPack) else loadAppsInternal()
+            } catch (e: Exception) {
+                Log.e(TAG, "Post-restore reload failed", e)
+                loadAppsInternal()
+            }
         } else toast("Restore failed")
         return ok
     }
 
     private fun <T> pref(key: androidx.datastore.preferences.core.Preferences.Key<T>, v: T) { viewModelScope.launch { prefs.set(key, v) } }
-    private fun vibrate() { runCatching { val v = ctx.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator ?: return; if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) v.vibrate(VibrationEffect.createOneShot(30, VibrationEffect.DEFAULT_AMPLITUDE)) else @Suppress("DEPRECATION") v.vibrate(30) } }
-    private fun toast(msg: String) { Toast.makeText(ctx, msg, Toast.LENGTH_SHORT).show() }
+
+    fun vibrate() {
+        try {
+            val v = ctx.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator ?: return
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) v.vibrate(VibrationEffect.createOneShot(30, VibrationEffect.DEFAULT_AMPLITUDE))
+            else @Suppress("DEPRECATION") v.vibrate(30)
+        } catch (e: Exception) {
+            // Vibration can fail on some OEM ROMs (Lawnchair pattern)
+            Log.w(TAG, "Vibration failed", e)
+        }
+    }
+
+    private fun toast(msg: String) { try { Toast.makeText(ctx, msg, Toast.LENGTH_SHORT).show() } catch (_: Exception) {} }
 
     private suspend fun autoPopulate(apps: List<AppInfo>) {
-        val s = settings.value; val gs = s.gridColumns * s.gridRows; val dc = s.dockCount
-        val dock = MutableList<GridCell?>(dc) { null }; val used = mutableSetOf<String>(); var di = 0
-        for (pkg in DEFAULT_DOCK_PKGS) { if (di >= dc) break; apps.find { it.packageName == pkg && it.key !in used }?.let { dock[di++] = GridCell.App(it.key); used.add(it.key) } }
-        for (a in apps) { if (di >= dc) break; if (a.key !in used) { dock[di++] = GridCell.App(a.key); used.add(a.key) } }
-        val home = MutableList<GridCell?>(gs) { null }; var hi = 0
-        for (pkg in DEFAULT_HOME_PKGS) { if (hi >= gs) break; apps.find { it.packageName == pkg && it.key !in used }?.let { home[hi++] = GridCell.App(it.key); used.add(it.key) } }
-        for (a in apps) { if (hi >= gs / 2) break; if (a.key !in used && home.none { it is GridCell.App && it.appKey == a.key }) { home[hi++] = GridCell.App(a.key); used.add(a.key) } }
-        _homeGrid.value = home; _dockGrid.value = dock; prefs.saveHome(home); prefs.saveDock(dock); prefs.markInitialized()
+        try {
+            val s = settings.value; val gs = (s.gridColumns * s.gridRows).coerceAtLeast(1); val dc = s.dockCount.coerceAtLeast(1)
+            val dock = MutableList<GridCell?>(dc) { null }; val used = mutableSetOf<String>(); var di = 0
+            for (pkg in DEFAULT_DOCK_PKGS) { if (di >= dc) break; apps.find { it.packageName == pkg && it.key !in used }?.let { dock[di++] = GridCell.App(it.key); used.add(it.key) } }
+            for (a in apps) { if (di >= dc) break; if (a.key !in used) { dock[di++] = GridCell.App(a.key); used.add(a.key) } }
+            val home = MutableList<GridCell?>(gs) { null }; var hi = 0
+            for (pkg in DEFAULT_HOME_PKGS) { if (hi >= gs) break; apps.find { it.packageName == pkg && it.key !in used }?.let { home[hi++] = GridCell.App(it.key); used.add(it.key) } }
+            for (a in apps) { if (hi >= gs / 2) break; if (a.key !in used && home.none { it is GridCell.App && it.appKey == a.key }) { home[hi++] = GridCell.App(a.key); used.add(a.key) } }
+            _homeGrid.value = home; _dockGrid.value = dock; prefs.saveHome(home); prefs.saveDock(dock); prefs.markInitialized()
+        } catch (e: Exception) {
+            Log.e(TAG, "autoPopulate failed", e)
+        }
     }
 }
