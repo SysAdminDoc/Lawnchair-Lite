@@ -43,7 +43,7 @@ import app.lawnchairlite.data.*
 import kotlinx.coroutines.launch
 
 /**
- * Lawnchair Lite v2.8.0 - Home Screen
+ * Lawnchair Lite v2.9.0 - Home Screen
  *
  * Drawer transition ported from Launcher3's AbstractStateChangeTouchController
  * + AllAppsSwipeController + AllAppsTransitionController.
@@ -103,6 +103,7 @@ fun HomeScreen(vm: LauncherViewModel) {
     val selectedCategory by vm.selectedCategory.collectAsState()
     val widgetPickerOpen by vm.widgetPickerOpen.collectAsState()
     val widgetInfos by vm.widgets.collectAsState()
+    val suggestedApps by vm.suggestedApps.collectAsState()
     val colors = LocalLauncherColors.current
     val isDragging = drag != null
     val iconDp = settings.iconSize.dp.dp
@@ -344,6 +345,15 @@ fun HomeScreen(vm: LauncherViewModel) {
 
                 if (settings.showClock && !isDragging && !editMode) AtAGlanceClock(onDateClick = { vm.openCalendarApp() }, onTimeClick = { vm.openClockApp() })
 
+                if (settings.showSuggestions && suggestedApps.isNotEmpty() && !isDragging && !editMode) {
+                    SuggestionRow(
+                        apps = suggestedApps,
+                        shape = settings.iconShape,
+                        iconSizeDp = iconDp,
+                        onAppClick = { vm.launch(it) },
+                    )
+                }
+
                 val paddedGrid = remember(homeGrid, pageSize, numPages) { val t = numPages * pageSize; if (homeGrid.size >= t) homeGrid.take(t) else homeGrid + List(t - homeGrid.size) { null } }
 
                 val gridPadH = settings.gridPaddingH.dp
@@ -571,6 +581,10 @@ fun HomeScreen(vm: LauncherViewModel) {
                 onContactTap = { uri -> vm.openContact(uri); scope.launch { drawerProgress.animateTo(0f, tween(200)) }; vm.setSearch("") },
                 onContactCall = { number -> vm.callContact(number); scope.launch { drawerProgress.animateTo(0f, tween(200)) }; vm.setSearch("") },
                 onSearchWeb = { vm.searchWeb(it) },
+                searchHistory = vm.searchHistory.collectAsState().value,
+                onSearchHistoryTap = { vm.setSearch(it) },
+                onSearchHistoryRemove = { vm.removeSearchHistoryItem(it) },
+                onSearchHistoryClear = { vm.clearSearchHistory() },
                 onProgressChange = { newP ->
                     scope.launch { drawerProgress.snapTo(newP) }
                 },

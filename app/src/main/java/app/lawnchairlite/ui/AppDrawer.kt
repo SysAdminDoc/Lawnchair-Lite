@@ -35,7 +35,7 @@ import app.lawnchairlite.data.IconShape
 import kotlinx.coroutines.launch
 
 /**
- * Lawnchair Lite v2.8.0 - App Drawer
+ * Lawnchair Lite v2.9.0 - App Drawer
  *
  * v2.2.0: Recent apps row, notification badges, package name search
  */
@@ -68,6 +68,10 @@ fun AppDrawer(
     onContactTap: (String) -> Unit = {},
     onContactCall: (String) -> Unit = {},
     onSearchWeb: (String) -> Unit,
+    searchHistory: List<String> = emptyList(),
+    onSearchHistoryTap: (String) -> Unit = {},
+    onSearchHistoryRemove: (String) -> Unit = {},
+    onSearchHistoryClear: () -> Unit = {},
     onProgressChange: (Float) -> Unit,
     onSettle: (velocityPxPerSec: Float) -> Unit,
 ) {
@@ -168,6 +172,15 @@ fun AppDrawer(
                         .background(colors.textSecondary.copy(alpha = 0.5f)))
                 }
                 DrawerSearch(searchQuery, onSearchChange, Modifier.padding(horizontal = 20.dp, vertical = 4.dp))
+                if (searchQuery.isBlank() && searchHistory.isNotEmpty()) {
+                    Spacer(Modifier.height(4.dp))
+                    SearchHistoryChips(
+                        history = searchHistory,
+                        onTap = onSearchHistoryTap,
+                        onRemove = onSearchHistoryRemove,
+                        onClearAll = onSearchHistoryClear,
+                    )
+                }
                 if (showCategories && searchQuery.isBlank()) {
                     Spacer(Modifier.height(4.dp))
                     Row(

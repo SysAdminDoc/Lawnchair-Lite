@@ -6,6 +6,8 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
@@ -54,7 +56,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.ui.viewinterop.AndroidView
 
-/** Lawnchair Lite v2.8.0 - UI Components */
+/** Lawnchair Lite v2.9.0 - UI Components */
 
 fun iconClip(shape: IconShape): androidx.compose.ui.graphics.Shape = when (shape) {
     IconShape.CIRCLE -> CircleShape
@@ -73,13 +75,13 @@ fun AppIconContent(app: AppInfo, shape: IconShape, iconSizeDp: Dp = 50.dp, modif
             }
             if (badgeCount > 0) {
                 if (badgeDotOnly) {
-                    Box(Modifier.align(Alignment.TopEnd).offset(x = 2.dp, y = (-1).dp).size(10.dp).clip(CircleShape).background(Color(0xFFEF5350)))
+                    Box(Modifier.align(Alignment.TopEnd).offset(x = 2.dp, y = (-1).dp).size(10.dp).clip(CircleShape).background(c.accent))
                 } else {
                     val badgeText = if (badgeCount > 99) "99+" else badgeCount.toString()
                     Box(
                         Modifier.align(Alignment.TopEnd).offset(x = 4.dp, y = (-2).dp)
                             .defaultMinSize(minWidth = 16.dp, minHeight = 16.dp)
-                            .clip(RoundedCornerShape(8.dp)).background(Color(0xFFEF5350))
+                            .clip(RoundedCornerShape(8.dp)).background(c.accent)
                             .padding(horizontal = 4.dp),
                         Alignment.Center,
                     ) { Text(badgeText, color = Color.White, fontSize = 9.sp, fontWeight = FontWeight.Bold, maxLines = 1) }
@@ -99,13 +101,13 @@ fun TappableAppIcon(app: AppInfo, shape: IconShape, iconSizeDp: Dp = 50.dp, modi
             Box(Modifier.fillMaxSize().clip(iconClip(shape)).background(c.card), Alignment.Center) { if (app.icon != null) Image(rememberDrawablePainter(app.icon), app.label, Modifier.fillMaxSize().padding((iconSizeDp.value * 0.1f).dp)) }
             if (badgeCount > 0) {
                 if (badgeDotOnly) {
-                    Box(Modifier.align(Alignment.TopEnd).offset(x = 2.dp, y = (-1).dp).size(10.dp).clip(CircleShape).background(Color(0xFFEF5350)))
+                    Box(Modifier.align(Alignment.TopEnd).offset(x = 2.dp, y = (-1).dp).size(10.dp).clip(CircleShape).background(c.accent))
                 } else {
                     val badgeText = if (badgeCount > 99) "99+" else badgeCount.toString()
                     Box(
                         Modifier.align(Alignment.TopEnd).offset(x = 4.dp, y = (-2).dp)
                             .defaultMinSize(minWidth = 16.dp, minHeight = 16.dp)
-                            .clip(RoundedCornerShape(8.dp)).background(Color(0xFFEF5350))
+                            .clip(RoundedCornerShape(8.dp)).background(c.accent)
                             .padding(horizontal = 4.dp),
                         Alignment.Center,
                     ) { Text(badgeText, color = Color.White, fontSize = 9.sp, fontWeight = FontWeight.Bold, maxLines = 1) }
@@ -609,6 +611,78 @@ fun WidgetHostViewComposable(
         update = { /* host view manages its own updates */ },
         onRelease = { (it.parent as? android.view.ViewGroup)?.removeView(it) },
     )
+}
+
+// ── Suggestion Row ────────────────────────────────────────────────────
+
+@Composable
+fun SuggestionRow(
+    apps: List<AppInfo>, shape: IconShape, iconSizeDp: Dp,
+    onAppClick: (AppInfo) -> Unit, modifier: Modifier = Modifier,
+) {
+    if (apps.isEmpty()) return
+    val c = LocalLauncherColors.current
+    Column(modifier.padding(horizontal = 20.dp, vertical = 4.dp)) {
+        Text("SUGGESTED", color = c.accent.copy(alpha = 0.5f), fontSize = 10.sp,
+            fontWeight = FontWeight.Bold, letterSpacing = 1.sp,
+            modifier = Modifier.padding(bottom = 6.dp))
+        Row(
+            Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            apps.forEach { app ->
+                TappableAppIcon(app, shape, iconSizeDp - 4.dp, showLabel = true,
+                    onClick = { onAppClick(app) },
+                    modifier = Modifier.width(62.dp))
+            }
+        }
+    }
+}
+
+// ── Search History Chips ──────────────────────────────────────────────
+
+@Composable
+fun SearchHistoryChips(
+    history: List<String>, onTap: (String) -> Unit,
+    onRemove: (String) -> Unit, onClearAll: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    if (history.isEmpty()) return
+    val c = LocalLauncherColors.current
+    Column(modifier.fillMaxWidth().padding(horizontal = 20.dp)) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text("RECENT SEARCHES", color = c.accent.copy(alpha = 0.5f), fontSize = 10.sp,
+                fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+            Spacer(Modifier.weight(1f))
+            Text("Clear", color = c.textSecondary, fontSize = 11.sp,
+                modifier = Modifier.clip(RoundedCornerShape(8.dp))
+                    .clickable { onClearAll() }
+                    .padding(horizontal = 8.dp, vertical = 4.dp))
+        }
+        Spacer(Modifier.height(6.dp))
+        Row(
+            Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            history.forEach { term ->
+                Row(
+                    Modifier.clip(RoundedCornerShape(16.dp))
+                        .background(c.card)
+                        .border(0.5.dp, c.border, RoundedCornerShape(16.dp))
+                        .clickable { onTap(term) }
+                        .padding(start = 12.dp, end = 4.dp, top = 6.dp, bottom = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(term, color = c.text, fontSize = 12.sp, maxLines = 1)
+                    Spacer(Modifier.width(2.dp))
+                    Icon(Icons.Default.Close, "Remove", tint = c.textSecondary.copy(alpha = 0.5f),
+                        modifier = Modifier.size(16.dp).clip(CircleShape)
+                            .clickable { onRemove(term) }.padding(2.dp))
+                }
+            }
+        }
+        Spacer(Modifier.height(8.dp))
+    }
 }
 
 // ── Contact Search Result ─────────────────────────────────────────────

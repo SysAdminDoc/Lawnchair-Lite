@@ -1,4 +1,4 @@
-# Lawnchair Lite v2.6.0
+# Lawnchair Lite v2.9.0
 
 Minimal, fast Android launcher with professional-grade stability.
 
@@ -38,6 +38,27 @@ Built on crash patterns identified across Lawnchair v14-v15 beta releases:
 - Wallpaper dimming (0-80%)
 - Recent apps row in drawer
 - Search by app name or package name
+
+### v2.9.0
+
+- **App Suggestions** - Smart time-aware suggestion row on home screen, predicts apps based on morning/afternoon/evening/night usage patterns
+- **Search History** - Recent search terms shown as chips in drawer, tap to re-search, individual remove, clear all
+- **Themed Notification Badges** - Badge colors now use the theme accent color instead of hardcoded red
+
+### v2.8.0
+
+- **Home Screen Widgets** - Add widgets to home screen via AppWidgetHost, picker dialog, render + remove in edit mode
+- **Contact Search** - Search drawer finds matching contacts with call buttons
+- **Staggered Drawer Animation** - Improved drawer open/close animation
+
+### v2.7.0
+
+- **Flashlight Gesture** - Toggle flashlight via gesture action
+- **Triple-Tap Gesture** - Configurable triple-tap action (400ms window)
+- **Pinch-In Gesture** - Pinch to trigger action (zoom < 0.7 threshold)
+- **Dock Handle Tap** - Configurable action on dock handle tap
+- **Wallpaper Parallax** - Subtle parallax scrolling on multi-page
+- **Drawer Animation Toggle** - Enable/disable drawer transition animation
 
 ### v2.6.0
 
