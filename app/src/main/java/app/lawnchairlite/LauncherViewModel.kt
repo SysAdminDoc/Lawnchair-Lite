@@ -6,6 +6,7 @@ import android.app.admin.DevicePolicyManager
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.hardware.camera2.CameraManager
 import android.os.Build
 import android.os.VibrationEffect
 import android.os.Vibrator
@@ -23,7 +24,7 @@ import kotlinx.coroutines.launch
 import kotlin.math.max
 
 /**
- * Lawnchair Lite v2.6.0 - ViewModel
+ * Lawnchair Lite v2.7.0 - ViewModel
  *
  * v2.3.0 additions:
  * - Drawer sort (name, most used, recently installed)
@@ -165,6 +166,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     val editMode: StateFlow<Boolean> = _editMode.asStateFlow()
 
     private var reloadJob: Job? = null
+    private var flashlightOn = false
 
     init {
         loadApps()
@@ -317,9 +319,24 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
                 GestureAction.APP_DRAWER -> openDrawer()
                 GestureAction.SETTINGS -> openSettings()
                 GestureAction.KILL_APPS -> killBackgroundApps()
+                GestureAction.FLASHLIGHT -> toggleFlashlight()
             }
         } catch (e: Exception) {
             Log.e(TAG, "Gesture execution failed: $action", e)
+        }
+    }
+
+    fun toggleFlashlight() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return
+        try {
+            val cm = ctx.getSystemService(Context.CAMERA_SERVICE) as? CameraManager ?: return
+            val cameraId = cm.cameraIdList.firstOrNull() ?: return
+            flashlightOn = !flashlightOn
+            cm.setTorchMode(cameraId, flashlightOn)
+            toast(if (flashlightOn) "Flashlight on" else "Flashlight off")
+        } catch (e: Exception) {
+            Log.e(TAG, "toggleFlashlight failed", e)
+            flashlightOn = false
         }
     }
 
@@ -592,6 +609,11 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     fun setLabelSize(s: LabelSize) = pref(LauncherPrefs.LABEL_SIZE_PREF, s.name)
     fun setFolderColumns(c: Int) = pref(LauncherPrefs.FOLDER_COLUMNS, c.coerceIn(3, 5))
     fun setDrawerSectionHeaders(v: Boolean) = pref(LauncherPrefs.DRAWER_SECTION_HEADERS, v)
+    fun setWallpaperParallax(v: Boolean) = pref(LauncherPrefs.WALLPAPER_PARALLAX, v)
+    fun setDrawerAnimation(v: Boolean) = pref(LauncherPrefs.DRAWER_ANIMATION, v)
+    fun setTripleTapAction(a: GestureAction) = pref(LauncherPrefs.TRIPLE_TAP_ACTION, a.name)
+    fun setPinchAction(a: GestureAction) = pref(LauncherPrefs.PINCH_ACTION, a.name)
+    fun setDockTapAction(a: GestureAction) = pref(LauncherPrefs.DOCK_TAP_ACTION, a.name)
 
     fun getAppVersionInfo(packageName: String): String? {
         return try {

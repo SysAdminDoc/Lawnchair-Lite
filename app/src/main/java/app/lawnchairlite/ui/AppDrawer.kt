@@ -33,7 +33,7 @@ import app.lawnchairlite.data.IconShape
 import kotlinx.coroutines.launch
 
 /**
- * Lawnchair Lite v2.5.0 - App Drawer
+ * Lawnchair Lite v2.7.0 - App Drawer
  *
  * v2.2.0: Recent apps row, notification badges, package name search
  */

@@ -14,7 +14,7 @@ import org.json.JSONObject
 import java.io.IOException
 
 /**
- * Lawnchair Lite v2.6.0 - Preferences
+ * Lawnchair Lite v2.7.0 - Preferences
  *
  * Stability improvements:
  * - ReplaceFileCorruptionHandler: if DataStore file is corrupted, reset to defaults
@@ -68,6 +68,11 @@ data class LauncherSettings(
     val labelSize: LabelSize = LabelSize.MEDIUM,
     val folderColumns: Int = 4,
     val drawerSectionHeaders: Boolean = false,
+    val wallpaperParallax: Boolean = true,
+    val drawerAnimation: Boolean = true,
+    val tripleTapAction: GestureAction = GestureAction.NONE,
+    val pinchAction: GestureAction = GestureAction.SETTINGS,
+    val dockTapAction: GestureAction = GestureAction.APP_DRAWER,
 )
 
 class LauncherPrefs(private val context: Context) {
@@ -115,6 +120,11 @@ class LauncherPrefs(private val context: Context) {
         val LABEL_SIZE_PREF = stringPreferencesKey("label_size")
         val FOLDER_COLUMNS = intPreferencesKey("folder_columns")
         val DRAWER_SECTION_HEADERS = booleanPreferencesKey("drawer_section_headers")
+        val WALLPAPER_PARALLAX = booleanPreferencesKey("wallpaper_parallax")
+        val DRAWER_ANIMATION = booleanPreferencesKey("drawer_animation")
+        val TRIPLE_TAP_ACTION = stringPreferencesKey("triple_tap_action")
+        val PINCH_ACTION = stringPreferencesKey("pinch_action")
+        val DOCK_TAP_ACTION = stringPreferencesKey("dock_tap_action")
     }
 
     // Safe data flow: catches IOException (disk errors) and emits defaults
@@ -162,6 +172,11 @@ class LauncherPrefs(private val context: Context) {
             labelSize = p[LABEL_SIZE_PREF]?.let { runCatching { LabelSize.valueOf(it) }.getOrNull() } ?: LabelSize.MEDIUM,
             folderColumns = (p[FOLDER_COLUMNS] ?: 4).coerceIn(3, 5),
             drawerSectionHeaders = p[DRAWER_SECTION_HEADERS] ?: false,
+            wallpaperParallax = p[WALLPAPER_PARALLAX] ?: true,
+            drawerAnimation = p[DRAWER_ANIMATION] ?: true,
+            tripleTapAction = p[TRIPLE_TAP_ACTION]?.let { runCatching { GestureAction.valueOf(it) }.getOrNull() } ?: GestureAction.NONE,
+            pinchAction = p[PINCH_ACTION]?.let { runCatching { GestureAction.valueOf(it) }.getOrNull() } ?: GestureAction.SETTINGS,
+            dockTapAction = p[DOCK_TAP_ACTION]?.let { runCatching { GestureAction.valueOf(it) }.getOrNull() } ?: GestureAction.APP_DRAWER,
         )
     }
 
@@ -299,6 +314,11 @@ class LauncherPrefs(private val context: Context) {
             put("label_size", p[LABEL_SIZE_PREF] ?: "MEDIUM")
             put("folder_columns", p[FOLDER_COLUMNS] ?: 4)
             put("drawer_section_headers", p[DRAWER_SECTION_HEADERS] ?: false)
+            put("wallpaper_parallax", p[WALLPAPER_PARALLAX] ?: true)
+            put("drawer_animation", p[DRAWER_ANIMATION] ?: true)
+            put("triple_tap", p[TRIPLE_TAP_ACTION] ?: "NONE")
+            put("pinch_action", p[PINCH_ACTION] ?: "SETTINGS")
+            put("dock_tap_action", p[DOCK_TAP_ACTION] ?: "APP_DRAWER")
             put("home_grid", p[HOME_GRID] ?: ""); put("dock_grid", p[DOCK_GRID] ?: "")
             put("hidden_apps", p[HIDDEN_APPS] ?: ""); put("custom_labels", p[CUSTOM_LABELS] ?: "")
         }.toString(2)
@@ -346,6 +366,11 @@ class LauncherPrefs(private val context: Context) {
             j.optString("label_size").takeIf { it.isNotBlank() && runCatching { LabelSize.valueOf(it) }.isSuccess }?.let { p[LABEL_SIZE_PREF] = it }
             if (j.has("folder_columns")) p[FOLDER_COLUMNS] = j.getInt("folder_columns").coerceIn(3, 5)
             if (j.has("drawer_section_headers")) p[DRAWER_SECTION_HEADERS] = j.getBoolean("drawer_section_headers")
+            if (j.has("wallpaper_parallax")) p[WALLPAPER_PARALLAX] = j.getBoolean("wallpaper_parallax")
+            if (j.has("drawer_animation")) p[DRAWER_ANIMATION] = j.getBoolean("drawer_animation")
+            j.optString("triple_tap").takeIf { it.isNotBlank() && runCatching { GestureAction.valueOf(it) }.isSuccess }?.let { p[TRIPLE_TAP_ACTION] = it }
+            j.optString("pinch_action").takeIf { it.isNotBlank() && runCatching { GestureAction.valueOf(it) }.isSuccess }?.let { p[PINCH_ACTION] = it }
+            j.optString("dock_tap_action").takeIf { it.isNotBlank() && runCatching { GestureAction.valueOf(it) }.isSuccess }?.let { p[DOCK_TAP_ACTION] = it }
             j.optString("home_grid").takeIf { it.isNotBlank() }?.let { p[HOME_GRID] = it }
             j.optString("dock_grid").takeIf { it.isNotBlank() }?.let { p[DOCK_GRID] = it }
             j.optString("hidden_apps").let { p[HIDDEN_APPS] = it }

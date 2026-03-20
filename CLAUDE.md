@@ -37,6 +37,7 @@
 - filteredApps uses combine() with 5 flows for sort/filter
 
 ## Version History
+- v2.7.0: Flashlight gesture, triple-tap gesture, pinch-in gesture, dock handle tap action, wallpaper parallax, drawer animation toggle
 - v2.6.0: Section headers, dock styles (solid/pill/floating/transparent), search bar styles, haptic levels, drawer opacity, label font size, folder columns, app version info
 - v2.5.0: Drawer categories (auto-categorized tabs), home screen lock, drawer column count, custom accent color, icon shadow, app categorizer
 - v2.4.0: Page transitions (cube/stack/fade), dock swipe-up actions, badge styles (count/dot/hidden), grid padding, clock tap actions, status bar hide
@@ -57,3 +58,6 @@
 - filteredApps combine() uses Array<Any?> overload for 5+ flows
 - AlarmManager.nextAlarmClock can return null (no alarm set)
 - BatteryManager.BATTERY_PROPERTY_CAPACITY can return -1 on some devices
+- Triple-tap detection: uses double-tap timing (400ms window after last double-tap = triple)
+- CameraManager.setTorchMode requires API 23+ (SDK 28 min covers this)
+- Pinch gesture threshold: zoom < 0.7 triggers action (pinch-in only, not pinch-out)
