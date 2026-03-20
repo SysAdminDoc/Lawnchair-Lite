@@ -28,7 +28,7 @@ import com.google.accompanist.drawablepainter.rememberDrawablePainter
 import kotlinx.coroutines.launch
 
 /**
- * Lawnchair Lite v2.5.0 - Settings
+ * Lawnchair Lite v2.7.0 - Settings
  */
 @Composable
 fun SettingsPanel(
@@ -210,6 +210,8 @@ fun SettingsPanel(
                 Tog("Lock Home Screen", settings.homeLocked, colors) { vm.setHomeLocked(it) }
                 Tog("Drawer Categories", settings.drawerCategories, colors) { vm.setDrawerCategories(it) }
                 Tog("Drawer Section Headers", settings.drawerSectionHeaders, colors) { vm.setDrawerSectionHeaders(it) }
+                Tog("Wallpaper Parallax", settings.wallpaperParallax, colors) { vm.setWallpaperParallax(it) }
+                Tog("Drawer Animation", settings.drawerAnimation, colors) { vm.setDrawerAnimation(it) }
 
                 // Dock Style
                 Lbl("Dock Style", colors)
@@ -259,9 +261,12 @@ fun SettingsPanel(
                 Lbl("Gestures", colors)
                 GesturePicker("Double-Tap", settings.doubleTapAction, colors) { vm.setDoubleTapAction(it) }
                 GesturePicker("Swipe Down", settings.swipeDownAction, colors) { vm.setSwipeDownAction(it) }
+                GesturePicker("Triple-Tap", settings.tripleTapAction, colors) { vm.setTripleTapAction(it) }
+                GesturePicker("Pinch In", settings.pinchAction, colors) { vm.setPinchAction(it) }
+                GesturePicker("Dock Handle Tap", settings.dockTapAction, colors) { vm.setDockTapAction(it) }
 
                 val adminEnabled = remember { mutableStateOf(vm.isDeviceAdminEnabled()) }
-                if (settings.doubleTapAction == GestureAction.LOCK_SCREEN || settings.swipeDownAction == GestureAction.LOCK_SCREEN) {
+                if (listOf(settings.doubleTapAction, settings.swipeDownAction, settings.tripleTapAction, settings.pinchAction, settings.dockTapAction).any { it == GestureAction.LOCK_SCREEN }) {
                     Spacer(Modifier.height(6.dp))
                     if (!adminEnabled.value) {
                         ActionBtn("Enable Lock Screen", "Requires Device Admin", colors) { vm.requestDeviceAdmin(); adminEnabled.value = vm.isDeviceAdminEnabled() }

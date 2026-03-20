@@ -5,7 +5,7 @@ import android.graphics.drawable.Drawable
 import android.util.Log
 
 /**
- * Lawnchair Lite v2.6.0 - Data Model
+ * Lawnchair Lite v2.7.0 - Data Model
  *
  * Stability: Deserialization never throws. Malformed data returns null.
  */
@@ -29,7 +29,8 @@ enum class IconSize(val label: String, val dp: Int) {
 }
 enum class GestureAction(val label: String) {
     NONE("None"), LOCK_SCREEN("Lock Screen"), NOTIFICATION_SHADE("Notification Shade"),
-    APP_DRAWER("App Drawer"), SETTINGS("Settings"), KILL_APPS("Kill Background Apps");
+    APP_DRAWER("App Drawer"), SETTINGS("Settings"), KILL_APPS("Kill Background Apps"),
+    FLASHLIGHT("Flashlight");
 }
 enum class DrawerSort(val label: String) {
     NAME("A-Z"), MOST_USED("Most Used"), RECENT_INSTALL("Recently Installed");

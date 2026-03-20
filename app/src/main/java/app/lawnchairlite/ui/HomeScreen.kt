@@ -7,6 +7,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.calculateZoom
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
@@ -27,6 +30,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
@@ -37,7 +41,7 @@ import app.lawnchairlite.data.*
 import kotlinx.coroutines.launch
 
 /**
- * Lawnchair Lite v2.6.0 - Home Screen
+ * Lawnchair Lite v2.7.0 - Home Screen
  *
  * Drawer transition ported from Launcher3's AbstractStateChangeTouchController
  * + AllAppsSwipeController + AllAppsTransitionController.
@@ -148,19 +152,18 @@ fun HomeScreen(vm: LauncherViewModel) {
             // Closing from drawer: commit at progress < 0.6
             val shouldOpen = flingToOpen || (!flingToClose && p > 0.4f)
             val shouldClose = flingToClose || (!flingToOpen && p < 0.6f)
+            val animated = settings.drawerAnimation
 
             if (shouldOpen && !shouldClose) {
-                // Commit open
-                drawerProgress.animateTo(1f, spring(
+                if (animated) drawerProgress.animateTo(1f, spring(
                     dampingRatio = Spring.DampingRatioNoBouncy,
                     stiffness = if (isFling) Spring.StiffnessMediumLow else Spring.StiffnessMedium,
-                ))
+                )) else drawerProgress.snapTo(1f)
             } else {
-                // Commit close (or revert from partial open)
-                drawerProgress.animateTo(0f, spring(
+                if (animated) drawerProgress.animateTo(0f, spring(
                     dampingRatio = Spring.DampingRatioLowBouncy,
                     stiffness = if (isFling) Spring.StiffnessMediumLow else Spring.StiffnessMedium,
-                ))
+                )) else drawerProgress.snapTo(0f)
                 vm.setSearch("")
             }
         }
@@ -176,10 +179,10 @@ fun HomeScreen(vm: LauncherViewModel) {
     val vmDrawerOpen by vm.drawerOpen.collectAsState()
     LaunchedEffect(vmDrawerOpen) {
         if (!vmDrawerOpen && drawerProgress.value > 0.01f) {
-            drawerProgress.animateTo(0f, spring(
+            if (settings.drawerAnimation) drawerProgress.animateTo(0f, spring(
                 dampingRatio = Spring.DampingRatioLowBouncy,
                 stiffness = Spring.StiffnessMedium,
-            ))
+            )) else drawerProgress.snapTo(0f)
         }
     }
 
@@ -205,7 +208,13 @@ fun HomeScreen(vm: LauncherViewModel) {
         // Wallpaper dim overlay
         val wallpaperDim = settings.wallpaperDim
         if (wallpaperDim > 0) {
-            Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = wallpaperDim / 100f)))
+            val parallaxOffset = if (settings.wallpaperParallax && numPages > 1) {
+                val pageOffset = pagerState.currentPage + pagerState.currentPageOffsetFraction
+                val maxOffset = 30f // dp
+                val normalized = pageOffset / (numPages - 1).coerceAtLeast(1).toFloat()
+                (normalized - 0.5f) * maxOffset * 2f
+            } else 0f
+            Box(Modifier.fillMaxSize().graphicsLayer { translationX = with(density) { parallaxOffset.dp.toPx() } }.background(Color.Black.copy(alpha = wallpaperDim / 100f)))
         }
 
         // ═════════════════════════════════════════════════════════════
@@ -261,12 +270,41 @@ fun HomeScreen(vm: LauncherViewModel) {
                         }
                     }
                 }
-                // ── Double-tap gesture ──
+                // ── Double-tap + triple-tap gesture ──
                 .pointerInput(isDragging, settingsOpen) {
                     if (!isDragging && !settingsOpen) {
+                        var lastDoubleTapTime = 0L
                         detectTapGestures(onDoubleTap = {
-                            if (!currentDrawerVisible) vm.executeGesture(settings.doubleTapAction)
+                            if (!currentDrawerVisible) {
+                                val now = System.currentTimeMillis()
+                                if (now - lastDoubleTapTime < 400L && settings.tripleTapAction != GestureAction.NONE) {
+                                    vm.executeGesture(settings.tripleTapAction)
+                                } else {
+                                    vm.executeGesture(settings.doubleTapAction)
+                                }
+                                lastDoubleTapTime = now
+                            }
                         })
+                    }
+                }
+                // ── Pinch gesture ──
+                .pointerInput(isDragging, settingsOpen) {
+                    if (!isDragging && !settingsOpen && settings.pinchAction != GestureAction.NONE) {
+                        awaitEachGesture {
+                            awaitFirstDown(pass = PointerEventPass.Initial)
+                            var zoom = 1f
+                            do {
+                                val event = awaitPointerEvent()
+                                if (event.changes.size >= 2) {
+                                    zoom *= event.calculateZoom()
+                                    if (zoom < 0.7f) {
+                                        event.changes.forEach { it.consume() }
+                                        if (!currentDrawerVisible) vm.executeGesture(settings.pinchAction)
+                                        break
+                                    }
+                                }
+                            } while (event.changes.any { it.pressed })
+                        }
                     }
                 }
         ) {
@@ -387,7 +425,13 @@ fun HomeScreen(vm: LauncherViewModel) {
                     }
                     if (!isDragging) Box(
                         Modifier.fillMaxWidth()
-                            .clickable { scope.launch { drawerProgress.animateTo(1f, spring(stiffness = Spring.StiffnessMedium)) } }
+                            .clickable {
+                                if (settings.dockTapAction == GestureAction.APP_DRAWER) {
+                                    scope.launch { drawerProgress.animateTo(1f, spring(stiffness = Spring.StiffnessMedium)) }
+                                } else {
+                                    vm.executeGesture(settings.dockTapAction)
+                                }
+                            }
                             .padding(vertical = 3.dp),
                         Alignment.Center,
                     ) { Box(Modifier.width(32.dp).height(3.dp).clip(RoundedCornerShape(2.dp)).background(colors.textSecondary.copy(alpha = 0.4f))) }
