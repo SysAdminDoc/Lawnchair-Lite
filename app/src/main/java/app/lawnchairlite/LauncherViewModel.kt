@@ -119,7 +119,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
 
     // Inline calculator: evaluates math expressions typed into search
     val calculatorResult: StateFlow<String?> = _search.map { query ->
-        tryEvaluate(query)
+        tryEvaluate(query) ?: tryConvertUnit(query)
     }.stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
     val filteredApps: StateFlow<List<AppInfo>> = combine(_allApps, _search, _hiddenApps, settings, _appUsage) { args ->
@@ -423,6 +423,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
                 GestureAction.SETTINGS -> openSettings()
                 GestureAction.KILL_APPS -> killBackgroundApps()
                 GestureAction.FLASHLIGHT -> toggleFlashlight()
+                GestureAction.EDIT_MODE -> { if (!settings.value.homeLocked) { _editMode.value = !_editMode.value } else toast("Home screen is locked") }
             }
         } catch (e: Exception) {
             Log.e(TAG, "Gesture execution failed: $action", e)
@@ -763,6 +764,43 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         return expr.substring(start, i).toDouble() to i
     }
 
+    // -- Unit Converter --
+
+    private fun tryConvertUnit(input: String): String? {
+        val cleaned = input.trim()
+        val match = Regex("""^(-?\d+\.?\d*)\s*(km|mi|lb|kg|oz|g|ft|m|cm|in|gal|L|F|C)$""", RegexOption.IGNORE_CASE)
+            .matchEntire(cleaned) ?: return null
+        val value = match.groupValues[1].toDoubleOrNull() ?: return null
+        val unit = match.groupValues[2]
+        val (result, toUnit) = when (unit.lowercase()) {
+            "km" -> (value * 0.621371) to "mi"
+            "mi" -> (value * 1.60934) to "km"
+            "m" -> (value * 3.28084) to "ft"
+            "ft" -> (value * 0.3048) to "m"
+            "cm" -> (value * 0.393701) to "in"
+            "in" -> (value * 2.54) to "cm"
+            "lb" -> (value * 0.453592) to "kg"
+            "kg" -> (value * 2.20462) to "lb"
+            "oz" -> (value * 28.3495) to "g"
+            "g" -> (value * 0.035274) to "oz"
+            "gal" -> (value * 3.78541) to "L"
+            "l" -> (value * 0.264172) to "gal"
+            "f" -> ((value - 32) * 5.0 / 9.0) to "C"
+            "c" -> (value * 9.0 / 5.0 + 32) to "F"
+            else -> return null
+        }
+        val formatted = if (result == result.toLong().toDouble()) result.toLong().toString()
+            else String.format("%.4f", result).trimEnd('0').trimEnd('.')
+        return "$formatted $toUnit"
+    }
+
+    // -- Launch Count --
+
+    fun getAppLaunchCount(appKey: String): Int {
+        return listOf("morning", "afternoon", "evening", "night")
+            .sumOf { bucket -> _suggestionUsage.value["$bucket:$appKey"] ?: 0 }
+    }
+
     // -- Time Bucket (for suggestions) --
 
     private fun currentTimeBucket(): String {
@@ -830,6 +868,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     fun setPinchAction(a: GestureAction) = pref(LauncherPrefs.PINCH_ACTION, a.name)
     fun setDockTapAction(a: GestureAction) = pref(LauncherPrefs.DOCK_TAP_ACTION, a.name)
     fun setShowSuggestions(v: Boolean) = pref(LauncherPrefs.SHOW_SUGGESTIONS, v)
+    fun setClockStyle(s: ClockStyle) = pref(LauncherPrefs.CLOCK_STYLE, s.name)
 
     fun getAppVersionInfo(packageName: String): String? {
         return try {

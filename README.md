@@ -1,4 +1,4 @@
-# Lawnchair Lite v2.10.0
+# Lawnchair Lite v2.11.0
 
 Minimal, fast Android launcher with professional-grade stability.
 
@@ -38,6 +38,14 @@ Built on crash patterns identified across Lawnchair v14-v15 beta releases:
 - Wallpaper dimming (0-80%)
 - Recent apps row in drawer
 - Search by app name or package name
+
+### v2.11.0
+
+- **Clock Styles** - Large (full At-a-Glance with date, time, battery, alarm), Compact (single-line date/time/battery), Minimal (oversized time only)
+- **Unit Converter** - Type unit conversions in drawer search: "10km" → 6.21 mi, "100F" → 37.78 C, "5lb" → 2.27 kg. Supports km/mi, m/ft, cm/in, lb/kg, oz/g, gal/L, F/C
+- **Edit Mode Gesture** - "Edit Mode" added to gesture actions, assignable to double-tap, triple-tap, pinch, or dock handle
+- **Long-Press Empty Cell** - Long-pressing an empty home grid cell enters edit mode for rearranging
+- **App Launch Count** - Context menu shows total launch count per app (e.g., "142 launches")
 
 ### v2.10.0
 

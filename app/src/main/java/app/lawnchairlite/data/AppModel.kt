@@ -31,7 +31,10 @@ enum class IconSize(val label: String, val dp: Int) {
 enum class GestureAction(val label: String) {
     NONE("None"), LOCK_SCREEN("Lock Screen"), NOTIFICATION_SHADE("Notification Shade"),
     APP_DRAWER("App Drawer"), SETTINGS("Settings"), KILL_APPS("Kill Background Apps"),
-    FLASHLIGHT("Flashlight");
+    FLASHLIGHT("Flashlight"), EDIT_MODE("Edit Mode");
+}
+enum class ClockStyle(val label: String) {
+    LARGE("Large"), COMPACT("Compact"), MINIMAL("Minimal");
 }
 enum class DrawerSort(val label: String) {
     NAME("A-Z"), MOST_USED("Most Used"), RECENT_INSTALL("Recently Installed");
