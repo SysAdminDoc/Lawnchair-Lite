@@ -74,6 +74,7 @@ data class LauncherSettings(
     val pinchAction: GestureAction = GestureAction.SETTINGS,
     val dockTapAction: GestureAction = GestureAction.APP_DRAWER,
     val showSuggestions: Boolean = true,
+    val clockStyle: ClockStyle = ClockStyle.LARGE,
 )
 
 class LauncherPrefs(private val context: Context) {
@@ -128,6 +129,7 @@ class LauncherPrefs(private val context: Context) {
         val DOCK_TAP_ACTION = stringPreferencesKey("dock_tap_action")
         val WIDGETS = stringPreferencesKey("widgets_v1")
         val SHOW_SUGGESTIONS = booleanPreferencesKey("show_suggestions")
+        val CLOCK_STYLE = stringPreferencesKey("clock_style")
         val SEARCH_HISTORY = stringPreferencesKey("search_history")
         val SUGGESTION_USAGE = stringPreferencesKey("suggestion_usage")
     }
@@ -183,6 +185,7 @@ class LauncherPrefs(private val context: Context) {
             pinchAction = p[PINCH_ACTION]?.let { runCatching { GestureAction.valueOf(it) }.getOrNull() } ?: GestureAction.SETTINGS,
             dockTapAction = p[DOCK_TAP_ACTION]?.let { runCatching { GestureAction.valueOf(it) }.getOrNull() } ?: GestureAction.APP_DRAWER,
             showSuggestions = p[SHOW_SUGGESTIONS] ?: true,
+            clockStyle = p[CLOCK_STYLE]?.let { runCatching { ClockStyle.valueOf(it) }.getOrNull() } ?: ClockStyle.LARGE,
         )
     }
 
@@ -410,6 +413,7 @@ class LauncherPrefs(private val context: Context) {
             put("pinch_action", p[PINCH_ACTION] ?: "SETTINGS")
             put("dock_tap_action", p[DOCK_TAP_ACTION] ?: "APP_DRAWER")
             put("show_suggestions", p[SHOW_SUGGESTIONS] ?: true)
+            put("clock_style", p[CLOCK_STYLE] ?: "LARGE")
             put("search_history", p[SEARCH_HISTORY] ?: "")
             put("home_grid", p[HOME_GRID] ?: ""); put("dock_grid", p[DOCK_GRID] ?: "")
             put("hidden_apps", p[HIDDEN_APPS] ?: ""); put("custom_labels", p[CUSTOM_LABELS] ?: "")
@@ -464,6 +468,7 @@ class LauncherPrefs(private val context: Context) {
             j.optString("pinch_action").takeIf { it.isNotBlank() && runCatching { GestureAction.valueOf(it) }.isSuccess }?.let { p[PINCH_ACTION] = it }
             j.optString("dock_tap_action").takeIf { it.isNotBlank() && runCatching { GestureAction.valueOf(it) }.isSuccess }?.let { p[DOCK_TAP_ACTION] = it }
             if (j.has("show_suggestions")) p[SHOW_SUGGESTIONS] = j.getBoolean("show_suggestions")
+            j.optString("clock_style").takeIf { it.isNotBlank() && runCatching { ClockStyle.valueOf(it) }.isSuccess }?.let { p[CLOCK_STYLE] = it }
             j.optString("search_history").let { p[SEARCH_HISTORY] = it }
             j.optString("home_grid").takeIf { it.isNotBlank() }?.let { p[HOME_GRID] = it }
             j.optString("dock_grid").takeIf { it.isNotBlank() }?.let { p[DOCK_GRID] = it }

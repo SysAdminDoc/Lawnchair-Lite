@@ -37,6 +37,7 @@
 - filteredApps uses combine() with 5 flows for sort/filter
 
 ## Version History
+- v2.11.0: Clock styles (Large/Compact/Minimal), unit converter in search (km/mi/F/C/lb/kg/etc.), Edit Mode gesture action, long-press empty cell enters edit mode, app launch count in context menu
 - v2.10.0: Smart fuzzy search (relevance-scored: exact>starts-with>word>contains>package>subsequence), inline calculator (math expression eval in drawer search), hexagon + diamond icon shapes, draggable fast-scroller rail
 - v2.9.0: App suggestions row (time-bucketed usage prediction), search history with chips, themed notification badges (accent-colored)
 - v2.8.0: Home screen widgets (AppWidgetHost, picker, render, remove), contact search in drawer, staggered drawer animation

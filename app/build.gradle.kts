@@ -12,8 +12,8 @@ android {
         applicationId = "app.lawnchairlite"
         minSdk = 28
         targetSdk = 34
-        versionCode = 30
-        versionName = "2.10.0"
+        versionCode = 31
+        versionName = "2.11.0"
     }
 
     buildTypes {

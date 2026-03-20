@@ -343,7 +343,7 @@ fun HomeScreen(vm: LauncherViewModel) {
                     }
                 }
 
-                if (settings.showClock && !isDragging && !editMode) AtAGlanceClock(onDateClick = { vm.openCalendarApp() }, onTimeClick = { vm.openClockApp() })
+                if (settings.showClock && !isDragging && !editMode) AtAGlanceClock(clockStyle = settings.clockStyle, onDateClick = { vm.openCalendarApp() }, onTimeClick = { vm.openClockApp() })
 
                 if (settings.showSuggestions && suggestedApps.isNotEmpty() && !isDragging && !editMode) {
                     SuggestionRow(
@@ -401,7 +401,10 @@ fun HomeScreen(vm: LauncherViewModel) {
                                         Modifier.weight(1f).aspectRatio(0.85f)
                                             .onGloballyPositioned { if (page == currentPage) homeBounds[li] = it.boundsInRoot() }
                                             .graphicsLayer(scaleX = hoverScale, scaleY = hoverScale, alpha = if (isWidgetCell) 0f else 1f)
-                                            .then(if (hoverAlpha > 0f) Modifier.clip(RoundedCornerShape(14.dp)).background(colors.accent.copy(alpha = hoverAlpha)) else Modifier),
+                                            .then(if (hoverAlpha > 0f) Modifier.clip(RoundedCornerShape(14.dp)).background(colors.accent.copy(alpha = hoverAlpha)) else Modifier)
+                                            .then(if (cell == null && !editMode && !isDragging) Modifier.pointerInput(Unit) {
+                                                detectTapGestures(onLongPress = { vm.enterEditMode() })
+                                            } else Modifier),
                                         Alignment.Center,
                                     ) {
                                         if (!isWidgetCell) {

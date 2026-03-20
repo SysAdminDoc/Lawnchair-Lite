@@ -202,6 +202,10 @@ fun SettingsPanel(
                 // Features
                 Lbl("Features", colors)
                 Tog("At-a-Glance Clock", settings.showClock, colors) { vm.setShowClock(it) }
+                if (settings.showClock) {
+                    Lbl("Clock Style", colors)
+                    Chips(ClockStyle.entries.map { it to it.label }, settings.clockStyle, colors) { vm.setClockStyle(it) }
+                }
                 Tog("Dock Search Bar", settings.showDockSearch, colors) { vm.setShowDockSearch(it) }
                 Tog("Auto-Place New Apps", settings.autoPlaceNew, colors) { vm.setAutoPlaceNew(it) }
                 Tog("Notification Badges", settings.showNotifBadges, colors) { vm.setShowNotifBadges(it) }

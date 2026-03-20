@@ -211,7 +211,7 @@ fun PageDots(pageCount: Int, currentPage: Int, modifier: Modifier = Modifier) {
 }
 
 @Composable
-fun AtAGlanceClock(modifier: Modifier = Modifier, onDateClick: () -> Unit = {}, onTimeClick: () -> Unit = {}) {
+fun AtAGlanceClock(modifier: Modifier = Modifier, clockStyle: app.lawnchairlite.data.ClockStyle = app.lawnchairlite.data.ClockStyle.LARGE, onDateClick: () -> Unit = {}, onTimeClick: () -> Unit = {}) {
     val c = LocalLauncherColors.current
     val context = androidx.compose.ui.platform.LocalContext.current
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
@@ -244,32 +244,58 @@ fun AtAGlanceClock(modifier: Modifier = Modifier, onDateClick: () -> Unit = {}, 
         } catch (_: Exception) { null }
     }
 
-    Column(modifier.padding(horizontal = 24.dp, vertical = 12.dp)) {
-        // Date + info row (tap date -> calendar)
-        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clickable { onDateClick() }) {
-            Text(dateStr, color = c.text.copy(alpha = 0.7f), fontSize = 14.sp, fontWeight = FontWeight.Medium)
+    val timeStr = if (is24h) {
+        val h = String.format("%02d", cal.get(Calendar.HOUR_OF_DAY)); val m = String.format("%02d", cal.get(Calendar.MINUTE)); "$h:$m"
+    } else {
+        val hour = cal.get(Calendar.HOUR).let { if (it == 0) 12 else it }; val min = String.format("%02d", cal.get(Calendar.MINUTE)); "$hour:$min"
+    }
+    val ampm = if (!is24h) (if (cal.get(Calendar.AM_PM) == Calendar.AM) "AM" else "PM") else null
+
+    when (clockStyle) {
+        app.lawnchairlite.data.ClockStyle.LARGE -> Column(modifier.padding(horizontal = 24.dp, vertical = 12.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clickable { onDateClick() }) {
+                Text(dateStr, color = c.text.copy(alpha = 0.7f), fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                if (batteryPct in 0..100) {
+                    Text("  |  ", color = c.textSecondary.copy(alpha = 0.4f), fontSize = 12.sp)
+                    Icon(Icons.Default.BatteryFull, null, tint = if (batteryPct <= 15) Color(0xFFEF5350) else c.accent.copy(alpha = 0.7f), modifier = Modifier.size(14.dp))
+                    Text("$batteryPct%", color = c.textSecondary, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                }
+            }
+            if (nextAlarmStr != null) {
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 1.dp)) {
+                    Icon(Icons.Default.Alarm, null, tint = c.accent.copy(alpha = 0.5f), modifier = Modifier.size(12.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text(nextAlarmStr, color = c.textSecondary.copy(alpha = 0.7f), fontSize = 11.sp)
+                }
+            }
+            Spacer(Modifier.height(2.dp))
+            Box(Modifier.clickable { onTimeClick() }) {
+                Row(verticalAlignment = Alignment.Bottom) {
+                    Text(timeStr, color = c.text, fontSize = 52.sp, fontWeight = FontWeight.Thin, lineHeight = 52.sp)
+                    if (ampm != null) { Spacer(Modifier.width(6.dp)); Text(ampm, color = c.accent, fontSize = 16.sp, fontWeight = FontWeight.Medium, modifier = Modifier.padding(bottom = 9.dp)) }
+                }
+            }
+        }
+        app.lawnchairlite.data.ClockStyle.COMPACT -> Row(
+            modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 10.dp).clickable { onTimeClick() },
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(dateStr, color = c.textSecondary, fontSize = 13.sp, fontWeight = FontWeight.Medium, modifier = Modifier.clickable { onDateClick() })
+            Text("  ·  ", color = c.textSecondary.copy(alpha = 0.4f), fontSize = 13.sp)
+            Text(timeStr, color = c.text, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+            if (ampm != null) { Spacer(Modifier.width(3.dp)); Text(ampm, color = c.accent, fontSize = 10.sp, fontWeight = FontWeight.Medium) }
             if (batteryPct in 0..100) {
-                Text("  |  ", color = c.textSecondary.copy(alpha = 0.4f), fontSize = 12.sp)
-                Icon(Icons.Default.BatteryFull, null, tint = if (batteryPct <= 15) Color(0xFFEF5350) else c.accent.copy(alpha = 0.7f), modifier = Modifier.size(14.dp))
+                Text("  ·  ", color = c.textSecondary.copy(alpha = 0.4f), fontSize = 13.sp)
                 Text("$batteryPct%", color = c.textSecondary, fontSize = 12.sp, fontWeight = FontWeight.Medium)
             }
         }
-        if (nextAlarmStr != null) {
-            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 1.dp)) {
-                Icon(Icons.Default.Alarm, null, tint = c.accent.copy(alpha = 0.5f), modifier = Modifier.size(12.dp))
-                Spacer(Modifier.width(4.dp))
-                Text(nextAlarmStr, color = c.textSecondary.copy(alpha = 0.7f), fontSize = 11.sp)
-            }
-        }
-        Spacer(Modifier.height(2.dp))
-        // Tap time -> clock app
-        Box(Modifier.clickable { onTimeClick() }) {
-            if (is24h) {
-                val h = String.format("%02d", cal.get(Calendar.HOUR_OF_DAY)); val m = String.format("%02d", cal.get(Calendar.MINUTE))
-                Text("$h:$m", color = c.text, fontSize = 52.sp, fontWeight = FontWeight.Thin, lineHeight = 52.sp)
-            } else {
-                val hour = cal.get(Calendar.HOUR).let { if (it == 0) 12 else it }; val min = String.format("%02d", cal.get(Calendar.MINUTE)); val ampm = if (cal.get(Calendar.AM_PM) == Calendar.AM) "AM" else "PM"
-                Row(verticalAlignment = Alignment.Bottom) { Text("$hour:$min", color = c.text, fontSize = 52.sp, fontWeight = FontWeight.Thin, lineHeight = 52.sp); Spacer(Modifier.width(6.dp)); Text(ampm, color = c.accent, fontSize = 16.sp, fontWeight = FontWeight.Medium, modifier = Modifier.padding(bottom = 9.dp)) }
+        app.lawnchairlite.data.ClockStyle.MINIMAL -> Box(
+            modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 8.dp).clickable { onTimeClick() },
+            Alignment.CenterStart,
+        ) {
+            Row(verticalAlignment = Alignment.Bottom) {
+                Text(timeStr, color = c.text, fontSize = 64.sp, fontWeight = FontWeight.ExtraLight, lineHeight = 64.sp)
+                if (ampm != null) { Spacer(Modifier.width(6.dp)); Text(ampm, color = c.accent, fontSize = 18.sp, fontWeight = FontWeight.Medium, modifier = Modifier.padding(bottom = 12.dp)) }
             }
         }
     }
@@ -362,7 +388,8 @@ fun HomeContextMenu(
                     Spacer(Modifier.height(6.dp))
                     Text(vm.customLabels.collectAsState().value[cell.appKey] ?: app.label, color = c.text, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
                     val verInfo = remember(app.packageName) { vm.getAppVersionInfo(app.packageName) }
-                    Text("${app.packageName}${if (verInfo != null) " $verInfo" else ""}", color = c.textSecondary, fontSize = 10.sp)
+                    val launchCount = remember(cell.appKey) { vm.getAppLaunchCount(cell.appKey) }
+                    Text("${app.packageName}${if (verInfo != null) " $verInfo" else ""}${if (launchCount > 0) " · $launchCount launches" else ""}", color = c.textSecondary, fontSize = 10.sp)
                 }
                 is GridCell.Folder -> {
                     FolderIconContent(cell, shape, { vm.resolveApp(it) }, 54.dp, showLabel = false)
