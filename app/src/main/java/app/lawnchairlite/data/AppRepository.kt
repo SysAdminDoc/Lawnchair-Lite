@@ -7,6 +7,7 @@ import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.graphics.drawable.Drawable
 import android.net.Uri
+import android.os.Build
 import android.os.DeadSystemException
 import android.provider.Settings
 import android.util.Log
@@ -14,7 +15,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 /**
- * Lawnchair Lite v2.2.0 - App Repository
+ * Lawnchair Lite v2.3.0 - App Repository
  *
  * Stability improvements:
  * - All PackageManager calls wrapped in try-catch for DeadSystemException,
@@ -36,14 +37,13 @@ class AppRepository(private val context: Context) {
      * Individual app resolution failures are logged and skipped,
      * ensuring one bad app entry doesn't prevent loading the rest.
      */
-    suspend fun loadApps(iconPackManager: IconPackManager? = null): List<AppInfo> = withContext(Dispatchers.IO) {
+    suspend fun loadApps(iconPackManager: IconPackManager? = null, useThemedIcons: Boolean = false): List<AppInfo> = withContext(Dispatchers.IO) {
         val intent = Intent(Intent.ACTION_MAIN).apply { addCategory(Intent.CATEGORY_LAUNCHER) }
         val packLoaded = iconPackManager?.isLoaded() == true
 
         val resolvedList = try {
             pm.queryIntentActivities(intent, 0)
         } catch (e: Exception) {
-            // DeadSystemException during system shutdown, SecurityException on OEM ROMs
             Log.e(TAG, "queryIntentActivities failed", e)
             return@withContext emptyList()
         }
@@ -53,21 +53,26 @@ class AppRepository(private val context: Context) {
                 val ai = ri.activityInfo ?: return@mapNotNull null
                 val appInfo = ai.applicationInfo ?: return@mapNotNull null
                 val sys = (appInfo.flags and ApplicationInfo.FLAG_SYSTEM) != 0
-                val systemIcon: Drawable? = try { ri.loadIcon(pm) } catch (_: Exception) { null }
+                val systemIcon: Drawable? = try {
+                    if (useThemedIcons && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        try { ai.loadIcon(pm) } catch (_: Exception) { ri.loadIcon(pm) }
+                    } else ri.loadIcon(pm)
+                } catch (_: Exception) { null }
                 val icon = if (packLoaded && systemIcon != null) {
                     try {
                         iconPackManager?.resolveIcon(ComponentName(ai.packageName, ai.name)) ?: systemIcon
                     } catch (_: Exception) { systemIcon }
                 } else systemIcon
+                val installTime = try { pm.getPackageInfo(ai.packageName, 0).firstInstallTime } catch (_: Exception) { 0L }
                 AppInfo(
                     label = ri.loadLabel(pm)?.toString() ?: ai.packageName,
                     packageName = ai.packageName,
                     activityName = ai.name,
                     icon = icon,
                     isSystemApp = sys,
+                    firstInstallTime = installTime,
                 )
             } catch (e: Exception) {
-                // Catches DeadSystemException, Resources.NotFoundException, etc.
                 Log.w(TAG, "Failed to resolve app: ${ri.activityInfo?.packageName}", e)
                 null
             }

@@ -44,8 +44,11 @@ import app.lawnchairlite.data.IconShape
 import com.google.accompanist.drawablepainter.rememberDrawablePainter
 import java.text.SimpleDateFormat
 import java.util.*
+import android.app.AlarmManager
+import android.content.Context
+import android.os.BatteryManager
 
-/** Lawnchair Lite v2.2.0 - UI Components */
+/** Lawnchair Lite v2.3.0 - UI Components */
 
 fun iconClip(shape: IconShape): androidx.compose.ui.graphics.Shape = when (shape) {
     IconShape.CIRCLE -> CircleShape
@@ -167,14 +170,56 @@ fun PageDots(pageCount: Int, currentPage: Int, modifier: Modifier = Modifier) {
 
 @Composable
 fun AtAGlanceClock(modifier: Modifier = Modifier) {
-    val c = LocalLauncherColors.current; var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
-    val is24h = android.text.format.DateFormat.is24HourFormat(androidx.compose.ui.platform.LocalContext.current)
+    val c = LocalLauncherColors.current
+    val context = androidx.compose.ui.platform.LocalContext.current
+    var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    val is24h = android.text.format.DateFormat.is24HourFormat(context)
     LaunchedEffect(Unit) { while (true) { now = System.currentTimeMillis(); kotlinx.coroutines.delay(1000L) } }
     val cal = remember(now) { Calendar.getInstance().apply { timeInMillis = now } }
     val dateFmt = remember { SimpleDateFormat("EEE, MMM d", Locale.getDefault()) }
     val dateStr = remember(now / 60000) { dateFmt.format(Date(now)) }
+
+    // Battery level
+    val batteryPct = remember(now / 30000) {
+        try {
+            val bm = context.getSystemService(Context.BATTERY_SERVICE) as? BatteryManager
+            bm?.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY) ?: -1
+        } catch (_: Exception) { -1 }
+    }
+
+    // Next alarm
+    val nextAlarmStr = remember(now / 60000) {
+        try {
+            val am = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager
+            val info = am?.nextAlarmClock
+            if (info != null) {
+                val alarmCal = Calendar.getInstance().apply { timeInMillis = info.triggerTime }
+                val fmt = if (android.text.format.DateFormat.is24HourFormat(context))
+                    SimpleDateFormat("EEE HH:mm", Locale.getDefault())
+                else SimpleDateFormat("EEE h:mm a", Locale.getDefault())
+                fmt.format(alarmCal.time)
+            } else null
+        } catch (_: Exception) { null }
+    }
+
     Column(modifier.padding(horizontal = 24.dp, vertical = 12.dp)) {
-        Text(dateStr, color = c.text.copy(alpha = 0.7f), fontSize = 14.sp, fontWeight = FontWeight.Medium); Spacer(Modifier.height(2.dp))
+        // Date + info row
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(dateStr, color = c.text.copy(alpha = 0.7f), fontSize = 14.sp, fontWeight = FontWeight.Medium)
+            if (batteryPct in 0..100) {
+                Text("  |  ", color = c.textSecondary.copy(alpha = 0.4f), fontSize = 12.sp)
+                Icon(Icons.Default.BatteryFull, null, tint = if (batteryPct <= 15) Color(0xFFEF5350) else c.accent.copy(alpha = 0.7f), modifier = Modifier.size(14.dp))
+                Text("$batteryPct%", color = c.textSecondary, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+            }
+        }
+        if (nextAlarmStr != null) {
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 1.dp)) {
+                Icon(Icons.Default.Alarm, null, tint = c.accent.copy(alpha = 0.5f), modifier = Modifier.size(12.dp))
+                Spacer(Modifier.width(4.dp))
+                Text(nextAlarmStr, color = c.textSecondary.copy(alpha = 0.7f), fontSize = 11.sp)
+            }
+        }
+        Spacer(Modifier.height(2.dp))
         if (is24h) {
             val h = String.format("%02d", cal.get(Calendar.HOUR_OF_DAY)); val m = String.format("%02d", cal.get(Calendar.MINUTE))
             Text("$h:$m", color = c.text, fontSize = 52.sp, fontWeight = FontWeight.Thin, lineHeight = 52.sp)

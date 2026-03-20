@@ -5,13 +5,14 @@ import android.graphics.drawable.Drawable
 import android.util.Log
 
 /**
- * Lawnchair Lite v2.2.0 - Data Model
+ * Lawnchair Lite v2.3.0 - Data Model
  *
  * Stability: Deserialization never throws. Malformed data returns null.
  */
 data class AppInfo(
     val label: String, val packageName: String, val activityName: String,
     val icon: Drawable?, val isSystemApp: Boolean = false,
+    val firstInstallTime: Long = 0L,
 ) {
     val componentName: ComponentName get() = ComponentName(packageName, activityName)
     val key: String get() = "$packageName/$activityName"
@@ -29,6 +30,12 @@ enum class IconSize(val label: String, val dp: Int) {
 enum class GestureAction(val label: String) {
     NONE("None"), LOCK_SCREEN("Lock Screen"), NOTIFICATION_SHADE("Notification Shade"),
     APP_DRAWER("App Drawer"), SETTINGS("Settings"), KILL_APPS("Kill Background Apps");
+}
+enum class DrawerSort(val label: String) {
+    NAME("A-Z"), MOST_USED("Most Used"), RECENT_INSTALL("Recently Installed");
+}
+enum class LabelStyle(val label: String) {
+    SHOWN("Shown"), HIDDEN("Hidden"), HOME_ONLY("Home Only"), DRAWER_ONLY("Drawer Only");
 }
 
 sealed class GridCell {

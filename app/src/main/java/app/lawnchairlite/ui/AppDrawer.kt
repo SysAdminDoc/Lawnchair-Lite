@@ -1,6 +1,7 @@
 package app.lawnchairlite.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -30,7 +31,7 @@ import app.lawnchairlite.data.IconShape
 import kotlinx.coroutines.launch
 
 /**
- * Lawnchair Lite v2.2.0 - App Drawer
+ * Lawnchair Lite v2.3.0 - App Drawer
  *
  * v2.2.0: Recent apps row, notification badges, package name search
  */
@@ -46,9 +47,12 @@ fun AppDrawer(
     recentApps: List<AppInfo>,
     notifCounts: Map<String, Int>,
     showBadges: Boolean,
+    showLabels: Boolean,
+    drawerSort: app.lawnchairlite.data.DrawerSort,
     onSearchChange: (String) -> Unit,
     onAppClick: (AppInfo) -> Unit,
     onAppLongClick: (AppInfo) -> Unit,
+    onSearchWeb: (String) -> Unit,
     onProgressChange: (Float) -> Unit,
     onSettle: (velocityPxPerSec: Float) -> Unit,
 ) {
@@ -146,16 +150,33 @@ fun AppDrawer(
                 }
                 DrawerSearch(searchQuery, onSearchChange, Modifier.padding(horizontal = 20.dp, vertical = 4.dp))
                 Spacer(Modifier.height(6.dp))
-                Text(
-                    "${apps.size} apps", color = colors.textSecondary, fontSize = 12.sp,
-                    fontWeight = FontWeight.Medium,
-                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp),
-                )
+                Row(Modifier.padding(horizontal = 24.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text("${apps.size} apps", color = colors.textSecondary, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                    if (drawerSort != app.lawnchairlite.data.DrawerSort.NAME) {
+                        Text("  ·  ${drawerSort.label}", color = colors.accent.copy(alpha = 0.6f), fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                    }
+                }
             }
 
             if (apps.isEmpty()) {
                 Box(Modifier.fillMaxWidth().weight(1f), Alignment.Center) {
-                    Text("No apps found", color = colors.textSecondary, fontSize = 14.sp)
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text("No apps found", color = colors.textSecondary, fontSize = 14.sp)
+                        if (searchQuery.isNotBlank()) {
+                            Spacer(Modifier.height(12.dp))
+                            Row(
+                                Modifier.clip(RoundedCornerShape(20.dp))
+                                    .background(colors.accent.copy(alpha = 0.12f))
+                                    .clickable { onSearchWeb(searchQuery) }
+                                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Text("G", color = colors.accent, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                                Spacer(Modifier.width(8.dp))
+                                Text("Search \"$searchQuery\"", color = colors.accent, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                            }
+                        }
+                    }
                 }
             } else {
                 Row(Modifier.fillMaxWidth().weight(1f)) {
@@ -201,7 +222,7 @@ fun AppDrawer(
                             val badge = if (showBadges) notifCounts[app.packageName] ?: 0 else 0
                             Box(Modifier.fillMaxWidth(), Alignment.Center) {
                                 TappableAppIcon(
-                                    app, shape, iconSizeDp, showLabel = true,
+                                    app, shape, iconSizeDp, showLabel = showLabels,
                                     badgeCount = badge,
                                     onClick = { onAppClick(app) },
                                     onLongClick = { onAppLongClick(app) },
