@@ -37,7 +37,7 @@ import app.lawnchairlite.data.*
 import kotlinx.coroutines.launch
 
 /**
- * Lawnchair Lite v2.3.0 - Home Screen
+ * Lawnchair Lite v2.4.0 - Home Screen
  *
  * Drawer transition ported from Launcher3's AbstractStateChangeTouchController
  * + AllAppsSwipeController + AllAppsTransitionController.
@@ -268,7 +268,7 @@ fun HomeScreen(vm: LauncherViewModel) {
                     }
                 }
         ) {
-            Column(Modifier.fillMaxSize().statusBarsPadding()) {
+            Column(Modifier.fillMaxSize().then(if (!settings.hideStatusBar) Modifier.statusBarsPadding() else Modifier)) {
                 // Drop zones (visible when dragging)
                 AnimatedVisibility(isDragging, enter = slideInVertically(initialOffsetY = { -it }) + fadeIn(), exit = slideOutVertically(targetOffsetY = { -it }) + fadeOut()) {
                     Row(Modifier.fillMaxWidth()) {
@@ -292,15 +292,38 @@ fun HomeScreen(vm: LauncherViewModel) {
                     }
                 }
 
-                if (settings.showClock && !isDragging && !editMode) AtAGlanceClock()
+                if (settings.showClock && !isDragging && !editMode) AtAGlanceClock(onDateClick = { vm.openCalendarApp() }, onTimeClick = { vm.openClockApp() })
 
                 val paddedGrid = remember(homeGrid, pageSize, numPages) { val t = numPages * pageSize; if (homeGrid.size >= t) homeGrid.take(t) else homeGrid + List(t - homeGrid.size) { null } }
 
+                val gridPadH = settings.gridPaddingH.dp
+                val gridPadV = settings.gridPaddingV.dp
                 HorizontalPager(state = pagerState, modifier = Modifier.fillMaxWidth().weight(1f), userScrollEnabled = !isDragging) { page ->
                     val ps = page * pageSize
                     val pageCells = paddedGrid.subList(ps.coerceAtMost(paddedGrid.size), (ps + pageSize).coerceAtMost(paddedGrid.size))
                     LaunchedEffect(page) { if (page == currentPage) homeBounds.clear() }
-                    Column(Modifier.fillMaxSize().padding(horizontal = 6.dp), verticalArrangement = Arrangement.SpaceEvenly) {
+
+                    // Page transition effect
+                    val pageOffset = pagerState.currentPageOffsetFraction + (page - pagerState.currentPage)
+                    val transitionMod = when (settings.pageTransition) {
+                        app.lawnchairlite.data.PageTransition.CUBE -> Modifier.graphicsLayer {
+                            val rot = pageOffset * -30f
+                            rotationY = rot
+                            cameraDistance = 12f * density
+                            alpha = (1f - kotlin.math.abs(pageOffset) * 0.3f).coerceIn(0f, 1f)
+                        }
+                        app.lawnchairlite.data.PageTransition.STACK -> Modifier.graphicsLayer {
+                            val scale = (1f - kotlin.math.abs(pageOffset) * 0.15f).coerceIn(0.85f, 1f)
+                            scaleX = scale; scaleY = scale
+                            alpha = (1f - kotlin.math.abs(pageOffset) * 0.5f).coerceIn(0f, 1f)
+                        }
+                        app.lawnchairlite.data.PageTransition.FADE -> Modifier.graphicsLayer {
+                            alpha = (1f - kotlin.math.abs(pageOffset) * 1.5f).coerceIn(0f, 1f)
+                        }
+                        app.lawnchairlite.data.PageTransition.SLIDE -> Modifier
+                    }
+
+                    Column(Modifier.fillMaxSize().then(transitionMod).padding(horizontal = gridPadH).padding(vertical = gridPadV), verticalArrangement = Arrangement.SpaceEvenly) {
                         for (row in 0 until rows) Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
                             for (col in 0 until cols) {
                                 val li = row * cols + col; val gi = ps + li; val cell = pageCells.getOrNull(li)
@@ -317,11 +340,11 @@ fun HomeScreen(vm: LauncherViewModel) {
                                         .then(if (hoverAlpha > 0f) Modifier.clip(RoundedCornerShape(14.dp)).background(colors.accent.copy(alpha = hoverAlpha)) else Modifier),
                                     Alignment.Center,
                                 ) {
-                                    val cellBadge = if (settings.showNotifBadges && cell is GridCell.App) notifCounts[cell.appKey.substringBefore("/")] ?: 0 else 0
+                                    val cellBadge = if (settings.showNotifBadges && settings.badgeStyle != app.lawnchairlite.data.BadgeStyle.HIDDEN && cell is GridCell.App) notifCounts[cell.appKey.substringBefore("/")] ?: 0 else 0
                                     GridCellView(
                                         cell, settings.iconShape, iconDp, { vm.resolveApp(it) }, customLabels,
                                         isDragSrc, homeLabels, editMode,
-                                        badgeCount = cellBadge,
+                                        badgeCount = cellBadge, badgeDotOnly = settings.badgeStyle == app.lawnchairlite.data.BadgeStyle.DOT,
                                         onTap = { when (cell) {
                                             is GridCell.App -> vm.resolveApp(cell.appKey)?.let { vm.launch(it) }
                                             is GridCell.Folder -> vm.openFolderView(cell, DragSource.HOME, gi)
@@ -367,11 +390,11 @@ fun HomeScreen(vm: LauncherViewModel) {
                                     .then(if (dockHoverAlpha > 0f) Modifier.clip(RoundedCornerShape(12.dp)).background(colors.accent.copy(alpha = dockHoverAlpha)) else Modifier),
                                 Alignment.Center,
                             ) {
-                                val dockBadge = if (settings.showNotifBadges && cell is GridCell.App) notifCounts[cell.appKey.substringBefore("/")] ?: 0 else 0
+                                val dockBadge = if (settings.showNotifBadges && settings.badgeStyle != app.lawnchairlite.data.BadgeStyle.HIDDEN && cell is GridCell.App) notifCounts[cell.appKey.substringBefore("/")] ?: 0 else 0
                                 GridCellView(
                                     cell, settings.iconShape, iconDp, { vm.resolveApp(it) }, customLabels,
                                     isDS, homeLabels, editMode,
-                                    badgeCount = dockBadge,
+                                    badgeCount = dockBadge, badgeDotOnly = settings.badgeStyle == app.lawnchairlite.data.BadgeStyle.DOT,
                                     onTap = { when (cell) {
                                         is GridCell.App -> vm.resolveApp(cell.appKey)?.let { vm.launch(it) }
                                         is GridCell.Folder -> vm.openFolderView(cell, DragSource.DOCK, i)
@@ -407,7 +430,8 @@ fun HomeScreen(vm: LauncherViewModel) {
                 columns = cols,
                 recentApps = recentApps,
                 notifCounts = notifCounts,
-                showBadges = settings.showNotifBadges,
+                showBadges = settings.showNotifBadges && settings.badgeStyle != app.lawnchairlite.data.BadgeStyle.HIDDEN,
+                badgeDotOnly = settings.badgeStyle == app.lawnchairlite.data.BadgeStyle.DOT,
                 showLabels = settings.labelStyle != app.lawnchairlite.data.LabelStyle.HOME_ONLY && settings.labelStyle != app.lawnchairlite.data.LabelStyle.HIDDEN,
                 drawerSort = settings.drawerSort,
                 onSearchChange = { vm.setSearch(it) },
@@ -460,7 +484,7 @@ private fun GridCellView(
     cell: GridCell?, shape: IconShape, iconSizeDp: androidx.compose.ui.unit.Dp,
     resolveApp: (String) -> AppInfo?, customLabels: Map<String, String>,
     dimmed: Boolean, showLabel: Boolean, editMode: Boolean,
-    badgeCount: Int = 0,
+    badgeCount: Int = 0, badgeDotOnly: Boolean = false,
     onTap: () -> Unit, onLongPress: () -> Unit,
     onDragStart: (Offset) -> Unit, onDrag: (Offset) -> Unit, onDragEnd: () -> Unit, onDragCancel: () -> Unit,
 ) {
@@ -507,7 +531,7 @@ private fun GridCellView(
         Alignment.Center,
     ) {
         when (cell) {
-            is GridCell.App -> resolveApp(cell.appKey)?.let { AppIconContent(it, shape, iconSizeDp, showLabel = showLabel, dimmed = dimmed, customLabel = customLabels[cell.appKey], badgeCount = badgeCount) }
+            is GridCell.App -> resolveApp(cell.appKey)?.let { AppIconContent(it, shape, iconSizeDp, showLabel = showLabel, dimmed = dimmed, customLabel = customLabels[cell.appKey], badgeCount = badgeCount, badgeDotOnly = badgeDotOnly) }
             is GridCell.Folder -> FolderIconContent(cell, shape, resolveApp, iconSizeDp, showLabel = showLabel, dimmed = dimmed)
         }
     }

@@ -28,7 +28,7 @@ import com.google.accompanist.drawablepainter.rememberDrawablePainter
 import kotlinx.coroutines.launch
 
 /**
- * Lawnchair Lite v2.3.0 - Settings
+ * Lawnchair Lite v2.4.0 - Settings
  */
 @Composable
 fun SettingsPanel(
@@ -142,12 +142,38 @@ fun SettingsPanel(
                 Lbl("Dock Icons", colors)
                 Chips((3..7).map { it to it.toString() }, settings.dockCount, colors) { vm.setDockCount(it) }
 
+                // Grid Padding
+                Lbl("Grid Padding", colors)
+                Text("Horizontal: ${settings.gridPaddingH}dp", color = colors.text, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                Slider(
+                    value = settings.gridPaddingH.toFloat(),
+                    onValueChange = { vm.setGridPaddingH(it.toInt()) },
+                    valueRange = 0f..24f, steps = 23,
+                    colors = SliderDefaults.colors(thumbColor = colors.accent, activeTrackColor = colors.accent, inactiveTrackColor = colors.card),
+                )
+                Text("Vertical: ${settings.gridPaddingV}dp", color = colors.text, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                Slider(
+                    value = settings.gridPaddingV.toFloat(),
+                    onValueChange = { vm.setGridPaddingV(it.toInt()) },
+                    valueRange = 0f..24f, steps = 23,
+                    colors = SliderDefaults.colors(thumbColor = colors.accent, activeTrackColor = colors.accent, inactiveTrackColor = colors.card),
+                )
+
+                // Page Transition
+                Lbl("Page Transition", colors)
+                Chips(PageTransition.entries.map { it to it.label }, settings.pageTransition, colors) { vm.setPageTransition(it) }
+
+                // Badge Style
+                Lbl("Badge Style", colors)
+                Chips(BadgeStyle.entries.map { it to it.label }, settings.badgeStyle, colors) { vm.setBadgeStyle(it) }
+
                 // Features
                 Lbl("Features", colors)
                 Tog("At-a-Glance Clock", settings.showClock, colors) { vm.setShowClock(it) }
                 Tog("Dock Search Bar", settings.showDockSearch, colors) { vm.setShowDockSearch(it) }
                 Tog("Auto-Place New Apps", settings.autoPlaceNew, colors) { vm.setAutoPlaceNew(it) }
                 Tog("Notification Badges", settings.showNotifBadges, colors) { vm.setShowNotifBadges(it) }
+                Tog("Hide Status Bar", settings.hideStatusBar, colors) { vm.setHideStatusBar(it) }
                 if (settings.showNotifBadges) {
                     val notifConnected = remember { mutableStateOf(vm.isNotificationAccessGranted()) }
                     if (!notifConnected.value) {

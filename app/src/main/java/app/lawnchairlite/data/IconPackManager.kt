@@ -17,7 +17,7 @@ import org.xmlpull.v1.XmlPullParser
 import org.xmlpull.v1.XmlPullParserFactory
 
 /**
- * Lawnchair Lite v2.3.0 - Icon Pack Support
+ * Lawnchair Lite v2.4.0 - Icon Pack Support
  *
  * Stability improvements:
  * - LruCache with size limit (prevents OOM on large icon packs)

@@ -1,4 +1,4 @@
-# Lawnchair Lite v2.3.0
+# Lawnchair Lite v2.4.0
 
 Minimal, fast Android launcher with professional-grade stability.
 
@@ -38,6 +38,15 @@ Built on crash patterns identified across Lawnchair v14-v15 beta releases:
 - Wallpaper dimming (0-80%)
 - Recent apps row in drawer
 - Search by app name or package name
+
+### v2.4.0
+
+- **Page transitions** - Slide, Cube, Stack, and Fade effects when swiping between home pages
+- **Dock swipe-up actions** - Assign a secondary app to each dock slot, launch on swipe up
+- **Badge style options** - Count (default), Dot Only, or Hidden
+- **Grid padding controls** - Adjustable horizontal and vertical icon spacing (0-24dp)
+- **Clock tap actions** - Tap date to open calendar, tap time to open clock app
+- **Status bar hide** - Option to hide status bar on home screen for more space
 
 ### v2.3.0
 

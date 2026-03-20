@@ -5,7 +5,7 @@ import android.graphics.drawable.Drawable
 import android.util.Log
 
 /**
- * Lawnchair Lite v2.3.0 - Data Model
+ * Lawnchair Lite v2.4.0 - Data Model
  *
  * Stability: Deserialization never throws. Malformed data returns null.
  */
@@ -36,6 +36,12 @@ enum class DrawerSort(val label: String) {
 }
 enum class LabelStyle(val label: String) {
     SHOWN("Shown"), HIDDEN("Hidden"), HOME_ONLY("Home Only"), DRAWER_ONLY("Drawer Only");
+}
+enum class PageTransition(val label: String) {
+    SLIDE("Slide"), CUBE("Cube"), STACK("Stack"), FADE("Fade");
+}
+enum class BadgeStyle(val label: String) {
+    COUNT("Count"), DOT("Dot Only"), HIDDEN("Hidden");
 }
 
 sealed class GridCell {

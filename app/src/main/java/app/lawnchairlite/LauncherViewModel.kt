@@ -23,7 +23,7 @@ import kotlinx.coroutines.launch
 import kotlin.math.max
 
 /**
- * Lawnchair Lite v2.3.0 - ViewModel
+ * Lawnchair Lite v2.4.0 - ViewModel
  *
  * v2.3.0 additions:
  * - Drawer sort (name, most used, recently installed)
@@ -565,6 +565,63 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     fun setDrawerSort(s: DrawerSort) = pref(LauncherPrefs.DRAWER_SORT, s.name)
     fun setLabelStyle(s: LabelStyle) = pref(LauncherPrefs.LABEL_STYLE, s.name)
     fun setThemedIcons(v: Boolean) { pref(LauncherPrefs.THEMED_ICONS, v); viewModelScope.launch { loadAppsInternal() } }
+    fun setPageTransition(t: PageTransition) = pref(LauncherPrefs.PAGE_TRANSITION, t.name)
+    fun setBadgeStyle(s: BadgeStyle) = pref(LauncherPrefs.BADGE_STYLE, s.name)
+    fun setGridPaddingH(v: Int) = pref(LauncherPrefs.GRID_PADDING_H, v.coerceIn(0, 24))
+    fun setGridPaddingV(v: Int) = pref(LauncherPrefs.GRID_PADDING_V, v.coerceIn(0, 24))
+    fun setHideStatusBar(v: Boolean) = pref(LauncherPrefs.HIDE_STATUS_BAR, v)
+
+    // -- Dock Swipe Actions --
+
+    fun setDockSwipeApp(dockIndex: Int, appKey: String) { viewModelScope.launch {
+        val map = settings.value.dockSwipeApps.toMutableMap()
+        if (appKey.isBlank()) map.remove(dockIndex) else map[dockIndex] = appKey
+        prefs.saveDockSwipeApps(map)
+    }}
+
+    fun clearDockSwipeApp(dockIndex: Int) { viewModelScope.launch {
+        val map = settings.value.dockSwipeApps.toMutableMap()
+        map.remove(dockIndex)
+        prefs.saveDockSwipeApps(map)
+    }}
+
+    fun launchDockSwipe(dockIndex: Int): Boolean {
+        val appKey = settings.value.dockSwipeApps[dockIndex] ?: return false
+        val app = resolveApp(appKey) ?: return false
+        launch(app)
+        return true
+    }
+
+    fun openClockApp() {
+        try {
+            val i = Intent(android.app.AlarmClock.ACTION_SHOW_ALARMS).apply { flags = Intent.FLAG_ACTIVITY_NEW_TASK }
+            ctx.startActivity(i)
+        } catch (_: Exception) {
+            try {
+                ctx.startActivity(Intent(Intent.ACTION_MAIN).apply {
+                    addCategory(Intent.CATEGORY_LAUNCHER)
+                    component = ComponentName("com.google.android.deskclock", "com.android.deskclock.DeskClock")
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                })
+            } catch (e: Exception) { Log.w(TAG, "openClockApp failed", e) }
+        }
+    }
+
+    fun openCalendarApp() {
+        try {
+            ctx.startActivity(Intent(Intent.ACTION_VIEW).apply {
+                data = android.net.Uri.parse("content://com.android.calendar/time/${System.currentTimeMillis()}")
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            })
+        } catch (_: Exception) {
+            try {
+                ctx.startActivity(Intent(Intent.ACTION_MAIN).apply {
+                    addCategory(Intent.CATEGORY_APP_CALENDAR)
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                })
+            } catch (e: Exception) { Log.w(TAG, "openCalendarApp failed", e) }
+        }
+    }
 
     fun searchWeb(query: String) {
         try {

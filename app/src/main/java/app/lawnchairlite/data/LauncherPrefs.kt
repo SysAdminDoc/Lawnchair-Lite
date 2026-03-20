@@ -14,7 +14,7 @@ import org.json.JSONObject
 import java.io.IOException
 
 /**
- * Lawnchair Lite v2.3.0 - Preferences
+ * Lawnchair Lite v2.4.0 - Preferences
  *
  * Stability improvements:
  * - ReplaceFileCorruptionHandler: if DataStore file is corrupted, reset to defaults
@@ -50,6 +50,12 @@ data class LauncherSettings(
     val drawerSort: DrawerSort = DrawerSort.NAME,
     val labelStyle: LabelStyle = LabelStyle.SHOWN,
     val themedIcons: Boolean = false,
+    val pageTransition: PageTransition = PageTransition.SLIDE,
+    val badgeStyle: BadgeStyle = BadgeStyle.COUNT,
+    val gridPaddingH: Int = 6, // dp
+    val gridPaddingV: Int = 0, // dp
+    val hideStatusBar: Boolean = false,
+    val dockSwipeApps: Map<Int, String> = emptyMap(), // dock index -> app key
 )
 
 class LauncherPrefs(private val context: Context) {
@@ -79,6 +85,12 @@ class LauncherPrefs(private val context: Context) {
         val DRAWER_SORT = stringPreferencesKey("drawer_sort")
         val LABEL_STYLE = stringPreferencesKey("label_style")
         val THEMED_ICONS = booleanPreferencesKey("themed_icons")
+        val PAGE_TRANSITION = stringPreferencesKey("page_transition")
+        val BADGE_STYLE = stringPreferencesKey("badge_style")
+        val GRID_PADDING_H = intPreferencesKey("grid_padding_h")
+        val GRID_PADDING_V = intPreferencesKey("grid_padding_v")
+        val HIDE_STATUS_BAR = booleanPreferencesKey("hide_status_bar")
+        val DOCK_SWIPE_APPS = stringPreferencesKey("dock_swipe_apps")
     }
 
     // Safe data flow: catches IOException (disk errors) and emits defaults
@@ -108,6 +120,12 @@ class LauncherPrefs(private val context: Context) {
             drawerSort = p[DRAWER_SORT]?.let { runCatching { DrawerSort.valueOf(it) }.getOrNull() } ?: DrawerSort.NAME,
             labelStyle = p[LABEL_STYLE]?.let { runCatching { LabelStyle.valueOf(it) }.getOrNull() } ?: LabelStyle.SHOWN,
             themedIcons = p[THEMED_ICONS] ?: false,
+            pageTransition = p[PAGE_TRANSITION]?.let { runCatching { PageTransition.valueOf(it) }.getOrNull() } ?: PageTransition.SLIDE,
+            badgeStyle = p[BADGE_STYLE]?.let { runCatching { BadgeStyle.valueOf(it) }.getOrNull() } ?: BadgeStyle.COUNT,
+            gridPaddingH = (p[GRID_PADDING_H] ?: 6).coerceIn(0, 24),
+            gridPaddingV = (p[GRID_PADDING_V] ?: 0).coerceIn(0, 24),
+            hideStatusBar = p[HIDE_STATUS_BAR] ?: false,
+            dockSwipeApps = p[DOCK_SWIPE_APPS]?.let { parseDockSwipeApps(it) } ?: emptyMap(),
         )
     }
 
@@ -184,6 +202,23 @@ class LauncherPrefs(private val context: Context) {
     private fun unescapeLabel(s: String): String = s
         .replace("\\e", "=").replace("\\p", "|").replace("\\b", "\\")
 
+    private fun parseDockSwipeApps(s: String): Map<Int, String> {
+        if (s.isBlank()) return emptyMap()
+        return s.split("|").mapNotNull { entry ->
+            val eq = entry.indexOf('=')
+            if (eq > 0 && eq < entry.length - 1) {
+                val idx = entry.substring(0, eq).toIntOrNull()
+                if (idx != null) idx to entry.substring(eq + 1) else null
+            } else null
+        }.toMap()
+    }
+
+    suspend fun saveDockSwipeApps(map: Map<Int, String>) {
+        runCatching {
+            context.dataStore.edit { it[DOCK_SWIPE_APPS] = map.entries.joinToString("|") { (k, v) -> "$k=$v" } }
+        }.onFailure { Log.e(TAG, "Failed to save dock swipe apps", it) }
+    }
+
     suspend fun saveAppUsage(map: Map<String, Long>) {
         runCatching {
             context.dataStore.edit { it[APP_USAGE] = map.entries.joinToString("|") { (k, v) -> "$k=$v" } }
@@ -210,6 +245,12 @@ class LauncherPrefs(private val context: Context) {
             put("drawer_sort", p[DRAWER_SORT] ?: "NAME")
             put("label_style", p[LABEL_STYLE] ?: "SHOWN")
             put("themed_icons", p[THEMED_ICONS] ?: false)
+            put("page_transition", p[PAGE_TRANSITION] ?: "SLIDE")
+            put("badge_style", p[BADGE_STYLE] ?: "COUNT")
+            put("grid_padding_h", p[GRID_PADDING_H] ?: 6)
+            put("grid_padding_v", p[GRID_PADDING_V] ?: 0)
+            put("hide_status_bar", p[HIDE_STATUS_BAR] ?: false)
+            put("dock_swipe_apps", p[DOCK_SWIPE_APPS] ?: "")
             put("home_grid", p[HOME_GRID] ?: ""); put("dock_grid", p[DOCK_GRID] ?: "")
             put("hidden_apps", p[HIDDEN_APPS] ?: ""); put("custom_labels", p[CUSTOM_LABELS] ?: "")
         }.toString(2)
@@ -239,6 +280,12 @@ class LauncherPrefs(private val context: Context) {
             j.optString("drawer_sort").takeIf { it.isNotBlank() && runCatching { DrawerSort.valueOf(it) }.isSuccess }?.let { p[DRAWER_SORT] = it }
             j.optString("label_style").takeIf { it.isNotBlank() && runCatching { LabelStyle.valueOf(it) }.isSuccess }?.let { p[LABEL_STYLE] = it }
             if (j.has("themed_icons")) p[THEMED_ICONS] = j.getBoolean("themed_icons")
+            j.optString("page_transition").takeIf { it.isNotBlank() && runCatching { PageTransition.valueOf(it) }.isSuccess }?.let { p[PAGE_TRANSITION] = it }
+            j.optString("badge_style").takeIf { it.isNotBlank() && runCatching { BadgeStyle.valueOf(it) }.isSuccess }?.let { p[BADGE_STYLE] = it }
+            if (j.has("grid_padding_h")) p[GRID_PADDING_H] = j.getInt("grid_padding_h").coerceIn(0, 24)
+            if (j.has("grid_padding_v")) p[GRID_PADDING_V] = j.getInt("grid_padding_v").coerceIn(0, 24)
+            if (j.has("hide_status_bar")) p[HIDE_STATUS_BAR] = j.getBoolean("hide_status_bar")
+            j.optString("dock_swipe_apps").takeIf { it.isNotBlank() }?.let { p[DOCK_SWIPE_APPS] = it }
             j.optString("home_grid").takeIf { it.isNotBlank() }?.let { p[HOME_GRID] = it }
             j.optString("dock_grid").takeIf { it.isNotBlank() }?.let { p[DOCK_GRID] = it }
             j.optString("hidden_apps").let { p[HIDDEN_APPS] = it }
