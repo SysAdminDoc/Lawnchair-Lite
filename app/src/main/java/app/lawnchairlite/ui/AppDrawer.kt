@@ -267,7 +267,7 @@ fun AppDrawer(
                                         Text(
                                             letter.toString(), color = colors.accent, fontSize = 13.sp,
                                             fontWeight = FontWeight.Bold,
-                                            modifier = Modifier.padding(horizontal = 16.dp, top = 12.dp, bottom = 4.dp),
+                                            modifier = Modifier.padding(start = 16.dp, end = 16.dp).padding(top = 12.dp, bottom = 4.dp),
                                         )
                                     }
                                 }
