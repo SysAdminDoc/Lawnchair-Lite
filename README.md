@@ -1,4 +1,4 @@
-# Lawnchair Lite v2.13.0
+# Lawnchair Lite v2.14.0
 
 Minimal, fast Android launcher with professional-grade stability.
 
@@ -38,6 +38,14 @@ Built on crash patterns identified across Lawnchair v14-v15 beta releases:
 - Wallpaper dimming (0-80%)
 - Recent apps row in drawer
 - Search by app name or package name
+
+### v2.14.0
+
+- **Reverse Sort (Z-A)** - Descending alphabetical ordering in drawer sort options
+- **Depth Page Transition** - 6th transition: behind-page shrinks to 0.75x with fade while front page slides over (parallax depth)
+- **Dock Handle Pulse** - Breathing accent-colored glow animation (2s cycle) on the dock handle bar
+- **Scroll-to-Top** - Tap the drawer drag handle to instantly scroll the app list to the top
+- **XL Icon Size** - Extra Large (66dp) icons for better visibility and larger touch targets
 
 ### v2.13.0
 
