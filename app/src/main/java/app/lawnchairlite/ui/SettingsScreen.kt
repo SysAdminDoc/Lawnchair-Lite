@@ -173,6 +173,18 @@ fun SettingsPanel(
 
                 // Accent Color Override
                 Lbl("Accent Color", colors)
+                // Quick presets
+                val presetColors = listOf("#F44336", "#E91E63", "#9C27B0", "#673AB7", "#3F51B5", "#2196F3", "#00BCD4", "#4CAF50", "#FF9800", "#FF5722", "#795548", "#607D8B")
+                Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    presetColors.forEach { hex ->
+                        val parsed = try { Color(android.graphics.Color.parseColor(hex)) } catch (_: Exception) { colors.accent }
+                        val isSel = settings.accentOverride.equals(hex, ignoreCase = true)
+                        Box(Modifier.size(28.dp).clip(CircleShape).background(parsed)
+                            .border(if (isSel) 2.dp else 0.dp, if (isSel) colors.text else Color.Transparent, CircleShape)
+                            .clickable { vm.setAccentOverride(hex) })
+                    }
+                }
+                Spacer(Modifier.height(10.dp))
                 var accentInput by remember { mutableStateOf(settings.accentOverride) }
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     if (settings.accentOverride.isNotBlank()) {
@@ -285,6 +297,8 @@ fun SettingsPanel(
                 ActionBtn("Kill Background Apps", "Free memory", colors) { vm.killBackgroundApps() }
                 Spacer(Modifier.height(8.dp))
                 ActionBtn("Clear Search History", "Remove saved searches", colors) { vm.clearSearchHistory() }
+                Spacer(Modifier.height(8.dp))
+                ActionBtn("Reset All Settings", "Restore defaults", colors) { vm.resetAllSettings() }
 
                 // Backup
                 Lbl("Backup & Restore", colors)

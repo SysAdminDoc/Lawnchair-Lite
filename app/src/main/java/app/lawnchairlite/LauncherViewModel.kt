@@ -883,6 +883,58 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         } catch (_: Exception) { null }
     }
 
+    fun getAppSizeInfo(packageName: String): String? {
+        return try {
+            val ai = ctx.packageManager.getApplicationInfo(packageName, 0)
+            val file = java.io.File(ai.sourceDir)
+            val bytes = file.length()
+            when {
+                bytes >= 1_000_000_000 -> String.format("%.1f GB", bytes / 1_000_000_000.0)
+                bytes >= 1_000_000 -> String.format("%.1f MB", bytes / 1_000_000.0)
+                bytes >= 1_000 -> String.format("%.0f KB", bytes / 1_000.0)
+                else -> "$bytes B"
+            }
+        } catch (_: Exception) { null }
+    }
+
+    fun resetAllSettings() {
+        viewModelScope.launch {
+            try {
+                val defaults = LauncherSettings()
+                prefs.set(LauncherPrefs.THEME, defaults.themeMode.name)
+                prefs.set(LauncherPrefs.ICON_SHAPE, defaults.iconShape.name)
+                prefs.set(LauncherPrefs.ICON_SIZE, defaults.iconSize.name)
+                prefs.set(LauncherPrefs.ICON_PACK, "")
+                prefs.set(LauncherPrefs.GRID_COLS, defaults.gridColumns)
+                prefs.set(LauncherPrefs.GRID_ROWS, defaults.gridRows)
+                prefs.set(LauncherPrefs.DOCK_COUNT, defaults.dockCount)
+                prefs.set(LauncherPrefs.SHOW_CLOCK, defaults.showClock)
+                prefs.set(LauncherPrefs.WALLPAPER_DIM, defaults.wallpaperDim)
+                prefs.set(LauncherPrefs.SHOW_NOTIF_BADGES, defaults.showNotifBadges)
+                prefs.set(LauncherPrefs.DRAWER_SORT, defaults.drawerSort.name)
+                prefs.set(LauncherPrefs.LABEL_STYLE, defaults.labelStyle.name)
+                prefs.set(LauncherPrefs.PAGE_TRANSITION, defaults.pageTransition.name)
+                prefs.set(LauncherPrefs.BADGE_STYLE, defaults.badgeStyle.name)
+                prefs.set(LauncherPrefs.ACCENT_OVERRIDE, "")
+                prefs.set(LauncherPrefs.DOCK_STYLE, defaults.dockStyle.name)
+                prefs.set(LauncherPrefs.SEARCH_BAR_STYLE, defaults.searchBarStyle.name)
+                prefs.set(LauncherPrefs.HAPTIC_LEVEL, defaults.hapticLevel.name)
+                prefs.set(LauncherPrefs.DRAWER_OPACITY, defaults.drawerOpacity)
+                prefs.set(LauncherPrefs.LABEL_SIZE_PREF, defaults.labelSize.name)
+                prefs.set(LauncherPrefs.CLOCK_STYLE, defaults.clockStyle.name)
+                prefs.set(LauncherPrefs.SHOW_SUGGESTIONS, defaults.showSuggestions)
+                prefs.set(LauncherPrefs.HIDE_STATUS_BAR, defaults.hideStatusBar)
+                prefs.set(LauncherPrefs.ICON_SHADOW, defaults.iconShadow)
+                prefs.set(LauncherPrefs.HOME_LOCKED, false)
+                iconPackManager.clearPack()
+                loadAppsInternal()
+                toast("Settings reset to defaults")
+            } catch (e: Exception) {
+                Log.e(TAG, "resetAllSettings failed", e)
+            }
+        }
+    }
+
     // -- Dock Swipe Actions --
 
     fun setDockSwipeApp(dockIndex: Int, appKey: String) { viewModelScope.launch {

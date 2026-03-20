@@ -43,7 +43,7 @@ enum class LabelStyle(val label: String) {
     SHOWN("Shown"), HIDDEN("Hidden"), HOME_ONLY("Home Only"), DRAWER_ONLY("Drawer Only");
 }
 enum class PageTransition(val label: String) {
-    SLIDE("Slide"), CUBE("Cube"), STACK("Stack"), FADE("Fade");
+    SLIDE("Slide"), CUBE("Cube"), STACK("Stack"), FADE("Fade"), CAROUSEL("Carousel");
 }
 enum class BadgeStyle(val label: String) {
     COUNT("Count"), DOT("Dot Only"), HIDDEN("Hidden");
