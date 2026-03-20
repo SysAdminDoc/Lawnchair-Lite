@@ -26,10 +26,11 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import java.util.Calendar
 import kotlin.math.max
 
 /**
- * Lawnchair Lite v2.8.0 - ViewModel
+ * Lawnchair Lite v2.9.0 - ViewModel
  *
  * v2.3.0 additions:
  * - Drawer sort (name, most used, recently installed)
@@ -106,6 +107,13 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     private val _contactResults = MutableStateFlow<List<ContactResult>>(emptyList())
     val contactResults: StateFlow<List<ContactResult>> = _contactResults.asStateFlow()
 
+    // Search history
+    private val _searchHistory = MutableStateFlow<List<String>>(emptyList())
+    val searchHistory: StateFlow<List<String>> = _searchHistory.asStateFlow()
+
+    // Suggestion usage (time-bucket:appKey -> launch count)
+    private val _suggestionUsage = MutableStateFlow<Map<String, Int>>(emptyMap())
+
     private val _search = MutableStateFlow("")
     val search: StateFlow<String> = _search.asStateFlow()
     val filteredApps: StateFlow<List<AppInfo>> = combine(_allApps, _search, _hiddenApps, settings, _appUsage) { args ->
@@ -145,6 +153,37 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
                 .take(MAX_RECENT_APPS)
                 .mapNotNull { appMap[it.key] }
         }
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    // Time-aware app suggestions
+    val suggestedApps: StateFlow<List<AppInfo>> = combine(
+        _allApps, _suggestionUsage, _hiddenApps, _homeGrid, _dockGrid
+    ) { args ->
+        @Suppress("UNCHECKED_CAST")
+        val apps = args[0] as List<AppInfo>
+        @Suppress("UNCHECKED_CAST")
+        val usage = args[1] as Map<String, Int>
+        @Suppress("UNCHECKED_CAST")
+        val hidden = args[2] as Set<String>
+        @Suppress("UNCHECKED_CAST")
+        val home = args[3] as List<GridCell?>
+        @Suppress("UNCHECKED_CAST")
+        val dock = args[4] as List<GridCell?>
+        if (usage.isEmpty()) return@combine emptyList<AppInfo>()
+        val bucket = currentTimeBucket()
+        val onScreen = (home.filterNotNull().filterIsInstance<GridCell.App>().map { it.appKey } +
+                        dock.filterNotNull().filterIsInstance<GridCell.App>().map { it.appKey }).toSet()
+        apps.filter { it.key !in hidden && it.key !in onScreen }
+            .map { app ->
+                val bucketCount = usage["$bucket:${app.key}"] ?: 0
+                val totalCount = listOf("morning", "afternoon", "evening", "night")
+                    .sumOf { b -> usage["$b:${app.key}"] ?: 0 }
+                app to (bucketCount * 3 + totalCount)
+            }
+            .filter { it.second > 0 }
+            .sortedByDescending { it.second }
+            .take(5)
+            .map { it.first }
     }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     private val _drawerOpen = MutableStateFlow(false)
@@ -196,6 +235,8 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch { prefs.customLabels.collect { _customLabels.value = it } }
         viewModelScope.launch { prefs.appUsage.collect { _appUsage.value = it } }
         viewModelScope.launch { prefs.widgets.collect { _widgets.value = it } }
+        viewModelScope.launch { prefs.searchHistory.collect { _searchHistory.value = it } }
+        viewModelScope.launch { prefs.suggestionUsage.collect { _suggestionUsage.value = it } }
         viewModelScope.launch {
             combine(_allApps, _initialized) { a, i -> a to i }.filter { it.first.isNotEmpty() && !it.second }
                 .take(1).collect { (apps, _) -> autoPopulate(apps) }
@@ -244,12 +285,33 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             val updated = _appUsage.value.toMutableMap()
             updated[app.key] = System.currentTimeMillis()
-            // Keep only most recent 50 entries
             val trimmed = if (updated.size > 50) {
                 updated.entries.sortedByDescending { it.value }.take(50).associate { it.key to it.value }
             } else updated
             _appUsage.value = trimmed
             prefs.saveAppUsage(trimmed)
+
+            // Track suggestion usage (time-bucketed)
+            val bucket = currentTimeBucket()
+            val sugKey = "$bucket:${app.key}"
+            val sugUsage = _suggestionUsage.value.toMutableMap()
+            sugUsage[sugKey] = (sugUsage[sugKey] ?: 0) + 1
+            val trimmedSug = if (sugUsage.size > 200) {
+                sugUsage.entries.sortedByDescending { it.value }.take(200).associate { it.key to it.value }
+            } else sugUsage
+            _suggestionUsage.value = trimmedSug
+            prefs.saveSuggestionUsage(trimmedSug)
+
+            // Save search term to history if user searched for something
+            val q = _search.value
+            if (q.isNotBlank() && q.length >= 2) {
+                val hist = _searchHistory.value.toMutableList()
+                hist.remove(q)
+                hist.add(0, q)
+                val trimmedHist = hist.take(10)
+                _searchHistory.value = trimmedHist
+                prefs.saveSearchHistory(trimmedHist)
+            }
         }
     }
 
@@ -602,6 +664,35 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         return when { b.any { "messaging" in it || "dialer" in it || "contacts" in it || "whatsapp" in it } -> "Social"; b.any { "camera" in it || "photos" in it || "gallery" in it } -> "Photos"; b.any { "chrome" in it || "browser" in it || "firefox" in it } -> "Internet"; b.any { "music" in it || "spotify" in it || "youtube" in it } -> "Media"; b.any { "settings" in it || "calculator" in it || "clock" in it } -> "Tools"; b.any { "game" in it } -> "Games"; else -> "Folder" }
     }
 
+    // -- Time Bucket (for suggestions) --
+
+    private fun currentTimeBucket(): String {
+        val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
+        return when {
+            hour in 6..11 -> "morning"
+            hour in 12..16 -> "afternoon"
+            hour in 17..21 -> "evening"
+            else -> "night"
+        }
+    }
+
+    // -- Search History --
+
+    fun removeSearchHistoryItem(term: String) {
+        viewModelScope.launch {
+            val list = _searchHistory.value.filter { it != term }
+            _searchHistory.value = list
+            prefs.saveSearchHistory(list)
+        }
+    }
+
+    fun clearSearchHistory() {
+        viewModelScope.launch {
+            _searchHistory.value = emptyList()
+            prefs.saveSearchHistory(emptyList())
+        }
+    }
+
     // -- Settings --
 
     fun setTheme(t: ThemeMode) = pref(LauncherPrefs.THEME, t.name)
@@ -639,6 +730,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     fun setTripleTapAction(a: GestureAction) = pref(LauncherPrefs.TRIPLE_TAP_ACTION, a.name)
     fun setPinchAction(a: GestureAction) = pref(LauncherPrefs.PINCH_ACTION, a.name)
     fun setDockTapAction(a: GestureAction) = pref(LauncherPrefs.DOCK_TAP_ACTION, a.name)
+    fun setShowSuggestions(v: Boolean) = pref(LauncherPrefs.SHOW_SUGGESTIONS, v)
 
     fun getAppVersionInfo(packageName: String): String? {
         return try {

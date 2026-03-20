@@ -14,7 +14,7 @@ import org.json.JSONObject
 import java.io.IOException
 
 /**
- * Lawnchair Lite v2.8.0 - Preferences
+ * Lawnchair Lite v2.9.0 - Preferences
  *
  * Stability improvements:
  * - ReplaceFileCorruptionHandler: if DataStore file is corrupted, reset to defaults
@@ -73,6 +73,7 @@ data class LauncherSettings(
     val tripleTapAction: GestureAction = GestureAction.NONE,
     val pinchAction: GestureAction = GestureAction.SETTINGS,
     val dockTapAction: GestureAction = GestureAction.APP_DRAWER,
+    val showSuggestions: Boolean = true,
 )
 
 class LauncherPrefs(private val context: Context) {
@@ -126,6 +127,9 @@ class LauncherPrefs(private val context: Context) {
         val PINCH_ACTION = stringPreferencesKey("pinch_action")
         val DOCK_TAP_ACTION = stringPreferencesKey("dock_tap_action")
         val WIDGETS = stringPreferencesKey("widgets_v1")
+        val SHOW_SUGGESTIONS = booleanPreferencesKey("show_suggestions")
+        val SEARCH_HISTORY = stringPreferencesKey("search_history")
+        val SUGGESTION_USAGE = stringPreferencesKey("suggestion_usage")
     }
 
     // Safe data flow: catches IOException (disk errors) and emits defaults
@@ -178,6 +182,7 @@ class LauncherPrefs(private val context: Context) {
             tripleTapAction = p[TRIPLE_TAP_ACTION]?.let { runCatching { GestureAction.valueOf(it) }.getOrNull() } ?: GestureAction.NONE,
             pinchAction = p[PINCH_ACTION]?.let { runCatching { GestureAction.valueOf(it) }.getOrNull() } ?: GestureAction.SETTINGS,
             dockTapAction = p[DOCK_TAP_ACTION]?.let { runCatching { GestureAction.valueOf(it) }.getOrNull() } ?: GestureAction.APP_DRAWER,
+            showSuggestions = p[SHOW_SUGGESTIONS] ?: true,
         )
     }
 
@@ -275,6 +280,33 @@ class LauncherPrefs(private val context: Context) {
         p[WIDGETS]?.let { parseWidgets(it) } ?: emptyList()
     }
 
+    val searchHistory: Flow<List<String>> = safeData.map { p ->
+        p[SEARCH_HISTORY]?.split("|")?.filter { it.isNotBlank() } ?: emptyList()
+    }
+
+    val suggestionUsage: Flow<Map<String, Int>> = safeData.map { p ->
+        p[SUGGESTION_USAGE]?.split("|")?.mapNotNull { entry ->
+            val eq = entry.indexOf('=')
+            if (eq > 0 && eq < entry.length - 1) {
+                val key = entry.substring(0, eq)
+                val count = entry.substring(eq + 1).toIntOrNull()
+                if (count != null) key to count else null
+            } else null
+        }?.toMap() ?: emptyMap()
+    }
+
+    suspend fun saveSearchHistory(list: List<String>) {
+        runCatching {
+            context.dataStore.edit { it[SEARCH_HISTORY] = list.joinToString("|") }
+        }.onFailure { Log.e(TAG, "Failed to save search history", it) }
+    }
+
+    suspend fun saveSuggestionUsage(map: Map<String, Int>) {
+        runCatching {
+            context.dataStore.edit { it[SUGGESTION_USAGE] = map.entries.joinToString("|") { (k, v) -> "$k=$v" } }
+        }.onFailure { Log.e(TAG, "Failed to save suggestion usage", it) }
+    }
+
     suspend fun saveWidgets(list: List<WidgetInfo>) {
         runCatching {
             context.dataStore.edit { it[WIDGETS] = serializeWidgets(list) }
@@ -351,6 +383,8 @@ class LauncherPrefs(private val context: Context) {
             put("triple_tap", p[TRIPLE_TAP_ACTION] ?: "NONE")
             put("pinch_action", p[PINCH_ACTION] ?: "SETTINGS")
             put("dock_tap_action", p[DOCK_TAP_ACTION] ?: "APP_DRAWER")
+            put("show_suggestions", p[SHOW_SUGGESTIONS] ?: true)
+            put("search_history", p[SEARCH_HISTORY] ?: "")
             put("home_grid", p[HOME_GRID] ?: ""); put("dock_grid", p[DOCK_GRID] ?: "")
             put("hidden_apps", p[HIDDEN_APPS] ?: ""); put("custom_labels", p[CUSTOM_LABELS] ?: "")
         }.toString(2)
@@ -403,6 +437,8 @@ class LauncherPrefs(private val context: Context) {
             j.optString("triple_tap").takeIf { it.isNotBlank() && runCatching { GestureAction.valueOf(it) }.isSuccess }?.let { p[TRIPLE_TAP_ACTION] = it }
             j.optString("pinch_action").takeIf { it.isNotBlank() && runCatching { GestureAction.valueOf(it) }.isSuccess }?.let { p[PINCH_ACTION] = it }
             j.optString("dock_tap_action").takeIf { it.isNotBlank() && runCatching { GestureAction.valueOf(it) }.isSuccess }?.let { p[DOCK_TAP_ACTION] = it }
+            if (j.has("show_suggestions")) p[SHOW_SUGGESTIONS] = j.getBoolean("show_suggestions")
+            j.optString("search_history").let { p[SEARCH_HISTORY] = it }
             j.optString("home_grid").takeIf { it.isNotBlank() }?.let { p[HOME_GRID] = it }
             j.optString("dock_grid").takeIf { it.isNotBlank() }?.let { p[DOCK_GRID] = it }
             j.optString("hidden_apps").let { p[HIDDEN_APPS] = it }

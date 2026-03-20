@@ -28,7 +28,7 @@ import com.google.accompanist.drawablepainter.rememberDrawablePainter
 import kotlinx.coroutines.launch
 
 /**
- * Lawnchair Lite v2.8.0 - Settings
+ * Lawnchair Lite v2.9.0 - Settings
  */
 @Composable
 fun SettingsPanel(
@@ -212,6 +212,7 @@ fun SettingsPanel(
                 Tog("Drawer Section Headers", settings.drawerSectionHeaders, colors) { vm.setDrawerSectionHeaders(it) }
                 Tog("Wallpaper Parallax", settings.wallpaperParallax, colors) { vm.setWallpaperParallax(it) }
                 Tog("Drawer Animation", settings.drawerAnimation, colors) { vm.setDrawerAnimation(it) }
+                Tog("App Suggestions", settings.showSuggestions, colors) { vm.setShowSuggestions(it) }
 
                 // Dock Style
                 Lbl("Dock Style", colors)
@@ -278,6 +279,8 @@ fun SettingsPanel(
                 // Quick actions
                 Lbl("Quick Actions", colors)
                 ActionBtn("Kill Background Apps", "Free memory", colors) { vm.killBackgroundApps() }
+                Spacer(Modifier.height(8.dp))
+                ActionBtn("Clear Search History", "Remove saved searches", colors) { vm.clearSearchHistory() }
 
                 // Backup
                 Lbl("Backup & Restore", colors)

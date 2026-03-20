@@ -37,6 +37,7 @@
 - filteredApps uses combine() with 5 flows for sort/filter
 
 ## Version History
+- v2.9.0: App suggestions row (time-bucketed usage prediction), search history with chips, themed notification badges (accent-colored)
 - v2.8.0: Home screen widgets (AppWidgetHost, picker, render, remove), contact search in drawer, staggered drawer animation
 - v2.7.0: Flashlight gesture, triple-tap gesture, pinch-in gesture, dock handle tap action, wallpaper parallax, drawer animation toggle
 - v2.6.0: Section headers, dock styles (solid/pill/floating/transparent), search bar styles, haptic levels, drawer opacity, label font size, folder columns, app version info
@@ -67,3 +68,6 @@
 - BIND_APPWIDGET is a protected permission — most widgets need user approval via bind intent
 - Widget grid cells are invisible (alpha=0) — actual widget rendered by overlay AndroidView
 - Contact search debounced at 200ms, max 5 results, requires READ_CONTACTS permission
+- Suggestion usage stores "bucket:appKey=count" format — time buckets: morning/afternoon/evening/night
+- Search history max 10 items, suggestion usage capped at 200 entries to prevent unbounded growth
+- Badge colors now use theme accent — no longer hardcoded red
