@@ -37,6 +37,7 @@
 - filteredApps uses combine() with 5 flows for sort/filter
 
 ## Version History
+- v2.15.0: Hide dock toggle, Recent App gesture action, grayscale icon mode, page line indicator, label font weight (Light/Regular/Bold)
 - v2.14.0: Reverse sort Z-A, Depth page transition (parallax), dock handle pulse animation, drawer scroll-to-top on handle tap, XL icon size (66dp)
 - v2.13.0: Accent color presets (12 quick-pick colors), drawer search clear button, Carousel page transition, app size in context menu, reset all settings
 - v2.12.0: Neon theme (hot pink cyberpunk), tap-to-copy calculator/converter results, folder notification badges, drawer entrance scale, double-tap clock cycles style

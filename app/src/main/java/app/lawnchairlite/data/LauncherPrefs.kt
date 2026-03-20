@@ -426,6 +426,10 @@ class LauncherPrefs(private val context: Context) {
             put("dock_tap_action", p[DOCK_TAP_ACTION] ?: "APP_DRAWER")
             put("show_suggestions", p[SHOW_SUGGESTIONS] ?: true)
             put("clock_style", p[CLOCK_STYLE] ?: "LARGE")
+            put("hide_dock", p[HIDE_DOCK] ?: false)
+            put("grayscale_icons", p[GRAYSCALE_ICONS] ?: false)
+            put("page_indicator_style", p[PAGE_INDICATOR_STYLE] ?: "DOTS")
+            put("label_weight", p[LABEL_WEIGHT] ?: "REGULAR")
             put("search_history", p[SEARCH_HISTORY] ?: "")
             put("home_grid", p[HOME_GRID] ?: ""); put("dock_grid", p[DOCK_GRID] ?: "")
             put("hidden_apps", p[HIDDEN_APPS] ?: ""); put("custom_labels", p[CUSTOM_LABELS] ?: "")
@@ -481,6 +485,10 @@ class LauncherPrefs(private val context: Context) {
             j.optString("dock_tap_action").takeIf { it.isNotBlank() && runCatching { GestureAction.valueOf(it) }.isSuccess }?.let { p[DOCK_TAP_ACTION] = it }
             if (j.has("show_suggestions")) p[SHOW_SUGGESTIONS] = j.getBoolean("show_suggestions")
             j.optString("clock_style").takeIf { it.isNotBlank() && runCatching { ClockStyle.valueOf(it) }.isSuccess }?.let { p[CLOCK_STYLE] = it }
+            if (j.has("hide_dock")) p[HIDE_DOCK] = j.getBoolean("hide_dock")
+            if (j.has("grayscale_icons")) p[GRAYSCALE_ICONS] = j.getBoolean("grayscale_icons")
+            j.optString("page_indicator_style").takeIf { it.isNotBlank() && runCatching { PageIndicatorStyle.valueOf(it) }.isSuccess }?.let { p[PAGE_INDICATOR_STYLE] = it }
+            j.optString("label_weight").takeIf { it.isNotBlank() && runCatching { LabelWeight.valueOf(it) }.isSuccess }?.let { p[LABEL_WEIGHT] = it }
             j.optString("search_history").let { p[SEARCH_HISTORY] = it }
             j.optString("home_grid").takeIf { it.isNotBlank() }?.let { p[HOME_GRID] = it }
             j.optString("dock_grid").takeIf { it.isNotBlank() }?.let { p[DOCK_GRID] = it }

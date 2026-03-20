@@ -1,4 +1,4 @@
-# Lawnchair Lite v2.14.0
+# Lawnchair Lite v2.15.0
 
 Minimal, fast Android launcher with professional-grade stability.
 
@@ -38,6 +38,15 @@ Built on crash patterns identified across Lawnchair v14-v15 beta releases:
 - Wallpaper dimming (0-80%)
 - Recent apps row in drawer
 - Search by app name or package name
+
+### v2.15.0
+
+- **Hide Dock** - Toggle to completely remove the dock and search bar from the home screen
+- **Recent App Gesture** - 9th gesture action: opens the most recently used app from usage history
+- **Grayscale Icon Mode** - Desaturates all app icons to monochrome via ColorMatrix for a clean aesthetic
+- **Page Line Indicator** - Animated accent-colored bar alternative to dots, shows page position proportionally
+- **Label Font Weight** - Light/Regular/Bold options for icon label text weight
+- **Page Indicator Hidden** - Option to hide page indicators entirely
 
 ### v2.14.0
 
