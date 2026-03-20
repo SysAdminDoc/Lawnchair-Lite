@@ -1,4 +1,4 @@
-# Lawnchair Lite v2.12.0
+# Lawnchair Lite v2.13.0
 
 Minimal, fast Android launcher with professional-grade stability.
 
@@ -38,6 +38,14 @@ Built on crash patterns identified across Lawnchair v14-v15 beta releases:
 - Wallpaper dimming (0-80%)
 - Recent apps row in drawer
 - Search by app name or package name
+
+### v2.13.0
+
+- **Accent Color Presets** - 12 popular colors as tappable circles for quick accent selection (Red, Pink, Purple, Indigo, Blue, Cyan, Green, Orange, and more)
+- **Search Clear Button** - X icon in drawer search field to instantly clear text (appears when search is non-empty)
+- **Carousel Page Transition** - New 3D rotating carousel effect for home screen pages (5th transition option)
+- **App Size in Context Menu** - Shows installed APK size alongside version and launch count (e.g., "Chrome v125 · 45.2 MB · 142 launches")
+- **Reset All Settings** - One-tap button in Quick Actions to restore all preferences to factory defaults
 
 ### v2.12.0
 
