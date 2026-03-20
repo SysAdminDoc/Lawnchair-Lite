@@ -20,8 +20,9 @@ val GlassColors = LauncherColors(Color(0xFF1A1A2E),Color(0xFF16213E),Color(0x0FF
 val OledColors = LauncherColors(Color(0xFF000000),Color(0xFF000000),Color(0xFA0C0C0C),Color(0xFA161616),Color(0xF2080808),Color(0xFF00E676),Color(0x3300E676),Color(0xFFE0E0E0),Color(0xFF666666),Color(0x0FFFFFFF),Color(0xFA060606),Color(0xE6121212),Color(0xE60A0A0A))
 val MochaColors = LauncherColors(Color(0xFF1E1E2E),Color(0xFF181825),Color(0xF21E1E2E),Color(0xF2313244),Color(0xE6181825),Color(0xFFCBA6F7),Color(0x33CBA6F7),Color(0xFFCDD6F4),Color(0xFF6C7086),Color(0x1ACBA6F7),Color(0xF511111B),Color(0x99313244),Color(0xCC1E1E2E))
 val AuroraColors = LauncherColors(Color(0xFF0A0E1A),Color(0xFF0D1B2A),Color(0xE60F192D),Color(0xEB14233C),Color(0xD90C1426),Color(0xFF64FFDA),Color(0x2664FFDA),Color(0xFFE0F7FA),Color(0xFF5E8A9A),Color(0x1A64FFDA),Color(0xF2080E1C),Color(0x99142337),Color(0xB30F192D))
+val NeonColors = LauncherColors(Color(0xFF0D0D0D),Color(0xFF121212),Color(0xEB141414),Color(0xF21C1C1C),Color(0xE0111111),Color(0xFFFF0080),Color(0x40FF0080),Color(0xFFFFFFFF),Color(0xFF999999),Color(0x1FFF0080),Color(0xF00A0A0A),Color(0xB3181818),Color(0xBF121212))
 
-fun themeColors(mode: ThemeMode): LauncherColors = when (mode) { ThemeMode.MIDNIGHT -> MidnightColors; ThemeMode.GLASS -> GlassColors; ThemeMode.OLED -> OledColors; ThemeMode.MOCHA -> MochaColors; ThemeMode.AURORA -> AuroraColors }
+fun themeColors(mode: ThemeMode): LauncherColors = when (mode) { ThemeMode.MIDNIGHT -> MidnightColors; ThemeMode.GLASS -> GlassColors; ThemeMode.OLED -> OledColors; ThemeMode.MOCHA -> MochaColors; ThemeMode.AURORA -> AuroraColors; ThemeMode.NEON -> NeonColors }
 
 fun themeColorsWithAccent(mode: ThemeMode, accentOverride: String): LauncherColors {
     val base = themeColors(mode)

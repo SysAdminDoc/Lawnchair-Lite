@@ -1,4 +1,4 @@
-# Lawnchair Lite v2.11.0
+# Lawnchair Lite v2.12.0
 
 Minimal, fast Android launcher with professional-grade stability.
 
@@ -38,6 +38,14 @@ Built on crash patterns identified across Lawnchair v14-v15 beta releases:
 - Wallpaper dimming (0-80%)
 - Recent apps row in drawer
 - Search by app name or package name
+
+### v2.12.0
+
+- **Neon Theme** - Hot pink/magenta cyberpunk dark theme with pure white text and deep black background
+- **Tap-to-Copy Results** - Tap calculator or unit converter results to copy to clipboard with toast confirmation
+- **Folder Notification Badges** - Folders show total notification count from all apps inside (uses accent color)
+- **Drawer Entrance Scale** - Subtle 0.95x to 1.0x scale-up effect as the drawer opens for a premium feel
+- **Double-Tap Clock Cycling** - Double-tap the clock time to cycle through Large/Compact/Minimal styles with haptic feedback
 
 ### v2.11.0
 

@@ -23,7 +23,7 @@ enum class IconShape(val label: String) {
     HEXAGON("Hexagon"), DIAMOND("Diamond");
 }
 enum class ThemeMode(val label: String) {
-    MIDNIGHT("Midnight"), GLASS("Glass"), OLED("OLED"), MOCHA("Mocha"), AURORA("Aurora");
+    MIDNIGHT("Midnight"), GLASS("Glass"), OLED("OLED"), MOCHA("Mocha"), AURORA("Aurora"), NEON("Neon");
 }
 enum class IconSize(val label: String, val dp: Int) {
     SMALL("Small", 42), MEDIUM("Medium", 50), LARGE("Large", 58);

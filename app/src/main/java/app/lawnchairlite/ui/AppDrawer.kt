@@ -162,6 +162,8 @@ fun AppDrawer(
             .graphicsLayer {
                 this.translationY = translationY
                 alpha = if (progress < 0.01f) 0f else 1f
+                val entranceScale = 0.95f + progress.coerceIn(0f, 1f) * 0.05f
+                scaleX = entranceScale; scaleY = entranceScale
             }
             .background(colors.background.copy(alpha = drawerOpacity / 100f))
             .statusBarsPadding()
