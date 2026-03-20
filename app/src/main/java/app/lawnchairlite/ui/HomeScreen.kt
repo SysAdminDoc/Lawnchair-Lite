@@ -436,8 +436,17 @@ fun HomeScreen(vm: LauncherViewModel) {
                             val hostView = remember(wi.appWidgetId) {
                                 try {
                                     val info = vm.widgetManager.getAppWidgetInfo(wi.appWidgetId)
-                                    if (info != null) vm.widgetHost.createView(context, wi.appWidgetId, info) else null
-                                } catch (e: Exception) { null }
+                                    if (info != null) {
+                                        vm.widgetHost.createView(context, wi.appWidgetId, info)
+                                    } else {
+                                        // Widget provider uninstalled — clean up stale entry
+                                        vm.removeWidget(wi.appWidgetId)
+                                        null
+                                    }
+                                } catch (e: Exception) {
+                                    android.util.Log.w("HomeScreen", "Widget create failed: ${wi.appWidgetId}", e)
+                                    null
+                                }
                             }
                             if (hostView != null) {
                                 Box(

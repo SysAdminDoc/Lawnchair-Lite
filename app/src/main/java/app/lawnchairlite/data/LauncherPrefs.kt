@@ -259,6 +259,12 @@ class LauncherPrefs(private val context: Context) {
     private fun unescapeLabel(s: String): String = s
         .replace("\\e", "=").replace("\\p", "|").replace("\\b", "\\")
 
+    /** Escape search terms for pipe-delimited storage. */
+    private fun escapeSearchTerm(s: String): String = s
+        .replace("\\", "\\b").replace("|", "\\p")
+    private fun unescapeSearchTerm(s: String): String = s
+        .replace("\\p", "|").replace("\\b", "\\")
+
     private fun parseDockSwipeApps(s: String): Map<Int, String> {
         if (s.isBlank()) return emptyMap()
         return s.split("|").mapNotNull { entry ->
@@ -281,7 +287,7 @@ class LauncherPrefs(private val context: Context) {
     }
 
     val searchHistory: Flow<List<String>> = safeData.map { p ->
-        p[SEARCH_HISTORY]?.split("|")?.filter { it.isNotBlank() } ?: emptyList()
+        p[SEARCH_HISTORY]?.split("|")?.filter { it.isNotBlank() }?.map { unescapeSearchTerm(it) } ?: emptyList()
     }
 
     val suggestionUsage: Flow<Map<String, Int>> = safeData.map { p ->
@@ -297,7 +303,7 @@ class LauncherPrefs(private val context: Context) {
 
     suspend fun saveSearchHistory(list: List<String>) {
         runCatching {
-            context.dataStore.edit { it[SEARCH_HISTORY] = list.joinToString("|") }
+            context.dataStore.edit { it[SEARCH_HISTORY] = list.joinToString("|") { term -> escapeSearchTerm(term) } }
         }.onFailure { Log.e(TAG, "Failed to save search history", it) }
     }
 
@@ -305,6 +311,26 @@ class LauncherPrefs(private val context: Context) {
         runCatching {
             context.dataStore.edit { it[SUGGESTION_USAGE] = map.entries.joinToString("|") { (k, v) -> "$k=$v" } }
         }.onFailure { Log.e(TAG, "Failed to save suggestion usage", it) }
+    }
+
+    /**
+     * Batched save for launch tracking: writes usage, suggestion, and optionally
+     * search history in a single DataStore transaction. Reduces 3 disk writes to 1.
+     */
+    suspend fun saveLaunchTracking(
+        appUsage: Map<String, Long>,
+        suggestionUsage: Map<String, Int>,
+        searchHistory: List<String>?,
+    ) {
+        runCatching {
+            context.dataStore.edit { prefs ->
+                prefs[APP_USAGE] = appUsage.entries.joinToString("|") { (k, v) -> "$k=$v" }
+                prefs[SUGGESTION_USAGE] = suggestionUsage.entries.joinToString("|") { (k, v) -> "$k=$v" }
+                if (searchHistory != null) {
+                    prefs[SEARCH_HISTORY] = searchHistory.joinToString("|") { term -> escapeSearchTerm(term) }
+                }
+            }
+        }.onFailure { Log.e(TAG, "Failed to save launch tracking", it) }
     }
 
     suspend fun saveWidgets(list: List<WidgetInfo>) {

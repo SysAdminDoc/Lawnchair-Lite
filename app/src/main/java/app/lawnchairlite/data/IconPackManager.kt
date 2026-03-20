@@ -42,10 +42,10 @@ class IconPackManager(private val context: Context) {
 
     private val pm: PackageManager = context.packageManager
     private val mutex = Mutex()
-    private var loadedPack: String? = null
-    private var filterMap: Map<String, String> = emptyMap()
-    private var packResources: Resources? = null
-    private var packPackageName: String? = null
+    @Volatile private var loadedPack: String? = null
+    @Volatile private var filterMap: Map<String, String> = emptyMap()
+    @Volatile private var packResources: Resources? = null
+    @Volatile private var packPackageName: String? = null
     private val iconCache = LruCache<String, Drawable?>(MAX_CACHE_SIZE)
     // Track keys we've already attempted to resolve (including misses).
     // Without this, LruCache can't distinguish "never looked up" from "looked up, got null".
@@ -114,15 +114,24 @@ class IconPackManager(private val context: Context) {
     }
 
     fun resolveIcon(component: ComponentName): Drawable? {
-        val res = packResources ?: return null; val pkg = packPackageName ?: return null
+        // Capture volatile references to prevent races with loadPack/clearPack
+        val res = packResources ?: return null
+        val pkg = packPackageName ?: return null
+        val map = filterMap
         val key = "${component.packageName}/${component.className}"
         // Fast path: already resolved (hit or miss)
         if (key in attemptedKeys) return iconCache.get(key)
-        val drawableName = filterMap[key] ?: run { attemptedKeys.add(key); return null }
-        val icon = loadDrawable(res, pkg, drawableName)
-        iconCache.put(key, icon)
-        attemptedKeys.add(key)
-        return icon
+        val drawableName = map[key] ?: run { attemptedKeys.add(key); return null }
+        return try {
+            val icon = loadDrawable(res, pkg, drawableName)
+            iconCache.put(key, icon)
+            attemptedKeys.add(key)
+            icon
+        } catch (e: Exception) {
+            Log.w(TAG, "resolveIcon failed for $key", e)
+            attemptedKeys.add(key)
+            null
+        }
     }
 
     fun resolveIcon(appKey: String): Drawable? {
