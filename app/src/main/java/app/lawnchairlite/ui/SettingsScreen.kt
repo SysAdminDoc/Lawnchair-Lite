@@ -28,7 +28,7 @@ import com.google.accompanist.drawablepainter.rememberDrawablePainter
 import kotlinx.coroutines.launch
 
 /**
- * Lawnchair Lite v2.1.0 - Settings
+ * Lawnchair Lite v2.2.0 - Settings
  */
 @Composable
 fun SettingsPanel(
@@ -94,6 +94,20 @@ fun SettingsPanel(
                 // Wallpaper
                 Lbl("Wallpaper", colors)
                 ActionBtn("Change Wallpaper", "System Picker", colors) { vm.openWallpaperPicker() }
+                Spacer(Modifier.height(10.dp))
+                Text("Wallpaper Dim: ${settings.wallpaperDim}%", color = colors.text, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                Spacer(Modifier.height(4.dp))
+                Slider(
+                    value = settings.wallpaperDim.toFloat(),
+                    onValueChange = { vm.setWallpaperDim(it.toInt()) },
+                    valueRange = 0f..80f,
+                    steps = 15,
+                    colors = SliderDefaults.colors(
+                        thumbColor = colors.accent,
+                        activeTrackColor = colors.accent,
+                        inactiveTrackColor = colors.card,
+                    ),
+                )
 
                 // Icon
                 Lbl("Icon Shape", colors)
@@ -108,19 +122,34 @@ fun SettingsPanel(
 
                 // Grid
                 Lbl("Grid Columns", colors)
-                Chips(listOf(4 to "4", 5 to "5"), settings.gridColumns, colors) { vm.setGridCols(it) }
+                Chips((3..8).map { it to it.toString() }, settings.gridColumns, colors) { vm.setGridCols(it) }
                 Spacer(Modifier.height(10.dp))
                 Lbl("Grid Rows", colors)
-                Chips(listOf(4 to "4", 5 to "5", 6 to "6"), settings.gridRows, colors) { vm.setGridRows(it) }
+                Chips((3..10).map { it to it.toString() }, settings.gridRows, colors) { vm.setGridRows(it) }
                 Spacer(Modifier.height(10.dp))
                 Lbl("Dock Icons", colors)
-                Chips(listOf(3 to "3", 4 to "4", 5 to "5", 6 to "6"), settings.dockCount, colors) { vm.setDockCount(it) }
+                Chips((3..7).map { it to it.toString() }, settings.dockCount, colors) { vm.setDockCount(it) }
 
                 // Features
                 Lbl("Features", colors)
                 Tog("At-a-Glance Clock", settings.showClock, colors) { vm.setShowClock(it) }
                 Tog("Dock Search Bar", settings.showDockSearch, colors) { vm.setShowDockSearch(it) }
                 Tog("Auto-Place New Apps", settings.autoPlaceNew, colors) { vm.setAutoPlaceNew(it) }
+                Tog("Notification Badges", settings.showNotifBadges, colors) { vm.setShowNotifBadges(it) }
+                if (settings.showNotifBadges) {
+                    val notifConnected = remember { mutableStateOf(vm.isNotificationAccessGranted()) }
+                    if (!notifConnected.value) {
+                        Spacer(Modifier.height(4.dp))
+                        ActionBtn("Grant Notification Access", "Required for badges", colors) {
+                            vm.openNotificationAccess()
+                            notifConnected.value = vm.isNotificationAccessGranted()
+                        }
+                    } else {
+                        Spacer(Modifier.height(4.dp))
+                        Text("Notification Access: Granted", color = colors.accent, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                    }
+                    Spacer(Modifier.height(4.dp))
+                }
 
                 // Gestures
                 Lbl("Gestures", colors)

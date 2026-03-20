@@ -2,10 +2,13 @@ package app.lawnchairlite.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
@@ -27,19 +30,9 @@ import app.lawnchairlite.data.IconShape
 import kotlinx.coroutines.launch
 
 /**
- * Lawnchair Lite v2.1.0 - App Drawer
+ * Lawnchair Lite v2.2.0 - App Drawer
  *
- * Launcher3 dismiss architecture:
- *   The grid ALWAYS has scroll enabled. The transition controller sits
- *   in the NestedScroll chain and intercepts events:
- *
- *   - Grid at top + downward pull: onPostScroll converts to progress
- *   - Sheet displaced (progress < 1): onPreScroll intercepts ALL scroll
- *     (both up and down) so the grid never moves during transition
- *   - On fling: onPreFling triggers settle in the parent
- *
- *   NEVER set userScrollEnabled=false. That kills the grid's gesture
- *   detector, NestedScrollConnection stops receiving events, user stuck.
+ * v2.2.0: Recent apps row, notification badges, package name search
  */
 @Composable
 fun AppDrawer(
@@ -50,6 +43,9 @@ fun AppDrawer(
     shape: IconShape,
     iconSizeDp: Dp,
     columns: Int,
+    recentApps: List<AppInfo>,
+    notifCounts: Map<String, Int>,
+    showBadges: Boolean,
     onSearchChange: (String) -> Unit,
     onAppClick: (AppInfo) -> Unit,
     onAppLongClick: (AppInfo) -> Unit,
@@ -88,7 +84,6 @@ fun AppDrawer(
     val nestedScrollConnection = remember {
         object : NestedScrollConnection {
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-                // Sheet displaced → intercept ALL scroll to drive progress
                 if (displaced && currentProgress < 0.99f) {
                     val delta = -available.y / currentScreenHeight
                     val newP = (currentProgress + delta).coerceIn(0f, 1f)
@@ -100,7 +95,6 @@ fun AppDrawer(
             }
 
             override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset {
-                // Grid at top + downward leftover → start dismiss
                 if (available.y > 0f && atTop && currentProgress > 0.5f) {
                     val delta = -available.y / currentScreenHeight
                     val newP = (currentProgress + delta).coerceIn(0f, 1f)
@@ -132,6 +126,7 @@ fun AppDrawer(
     }
 
     val translationY = (1f - progress) * screenHeightPx
+    val showRecent = searchQuery.isBlank() && recentApps.isNotEmpty()
 
     Box(
         Modifier
@@ -172,10 +167,42 @@ fun AppDrawer(
                         verticalArrangement = Arrangement.spacedBy(16.dp),
                         horizontalArrangement = Arrangement.SpaceEvenly,
                     ) {
+                        // Recent apps row
+                        if (showRecent) {
+                            item(span = { GridItemSpan(columns) }, key = "__recent__") {
+                                Column(Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
+                                    Text(
+                                        "RECENT", color = colors.accent, fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold, letterSpacing = 1.sp,
+                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                                    )
+                                    LazyRow(
+                                        contentPadding = PaddingValues(horizontal = 4.dp),
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    ) {
+                                        items(recentApps, key = { "recent_${it.key}" }) { app ->
+                                            val badge = if (showBadges) notifCounts[app.packageName] ?: 0 else 0
+                                            TappableAppIcon(
+                                                app, shape, iconSizeDp, showLabel = true,
+                                                badgeCount = badge,
+                                                onClick = { onAppClick(app) },
+                                                onLongClick = { onAppLongClick(app) },
+                                                modifier = Modifier.width(70.dp),
+                                            )
+                                        }
+                                    }
+                                    Spacer(Modifier.height(8.dp))
+                                    Box(Modifier.fillMaxWidth().height(0.5.dp).padding(horizontal = 20.dp).background(colors.border.copy(alpha = 0.3f)))
+                                }
+                            }
+                        }
+
                         items(apps, key = { it.key }) { app ->
+                            val badge = if (showBadges) notifCounts[app.packageName] ?: 0 else 0
                             Box(Modifier.fillMaxWidth(), Alignment.Center) {
                                 TappableAppIcon(
                                     app, shape, iconSizeDp, showLabel = true,
+                                    badgeCount = badge,
                                     onClick = { onAppClick(app) },
                                     onLongClick = { onAppLongClick(app) },
                                     modifier = Modifier.width(70.dp),
@@ -186,7 +213,7 @@ fun AppDrawer(
                     if (letters.size > 3 && searchQuery.isBlank()) {
                         FastScrollerRail(letters = letters, onLetterSelected = { ch ->
                             letterIndex[ch]?.let { idx ->
-                                scope.launch { gridState.animateScrollToItem(idx / columns * columns) }
+                                scope.launch { gridState.animateScrollToItem(idx / columns * columns + (if (showRecent) 1 else 0)) }
                             }
                         })
                     }
