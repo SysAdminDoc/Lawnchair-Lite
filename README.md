@@ -1,4 +1,4 @@
-# Lawnchair Lite v2.5.0
+# Lawnchair Lite v2.6.0
 
 Minimal, fast Android launcher with professional-grade stability.
 
@@ -38,6 +38,17 @@ Built on crash patterns identified across Lawnchair v14-v15 beta releases:
 - Wallpaper dimming (0-80%)
 - Recent apps row in drawer
 - Search by app name or package name
+
+### v2.6.0
+
+- **Alphabetic section headers** - Letter dividers in drawer grid (A, B, C...)
+- **Dock styles** - Solid, Pill, Floating, Transparent dock backgrounds
+- **Search bar styles** - Pill, Bar, Minimal (icon only), Hidden
+- **Haptic feedback intensity** - Off, Light, Medium, Strong
+- **Drawer background opacity** - Adjustable 50-100% opacity
+- **Icon label font size** - Small (9sp), Medium (11sp), Large (13sp)
+- **Folder grid columns** - Configurable 3-5 columns per folder
+- **App version in context menu** - Shows version info on long-press
 
 ### v2.5.0
 

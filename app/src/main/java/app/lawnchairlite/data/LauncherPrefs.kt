@@ -14,7 +14,7 @@ import org.json.JSONObject
 import java.io.IOException
 
 /**
- * Lawnchair Lite v2.5.0 - Preferences
+ * Lawnchair Lite v2.6.0 - Preferences
  *
  * Stability improvements:
  * - ReplaceFileCorruptionHandler: if DataStore file is corrupted, reset to defaults
@@ -61,6 +61,13 @@ data class LauncherSettings(
     val iconShadow: Boolean = false,
     val accentOverride: String = "", // hex color or empty for theme default
     val drawerCategories: Boolean = false,
+    val dockStyle: DockStyle = DockStyle.SOLID,
+    val searchBarStyle: SearchBarStyle = SearchBarStyle.PILL,
+    val hapticLevel: HapticLevel = HapticLevel.MEDIUM,
+    val drawerOpacity: Int = 97, // 0-100
+    val labelSize: LabelSize = LabelSize.MEDIUM,
+    val folderColumns: Int = 4,
+    val drawerSectionHeaders: Boolean = false,
 )
 
 class LauncherPrefs(private val context: Context) {
@@ -101,6 +108,13 @@ class LauncherPrefs(private val context: Context) {
         val ICON_SHADOW = booleanPreferencesKey("icon_shadow")
         val ACCENT_OVERRIDE = stringPreferencesKey("accent_override")
         val DRAWER_CATEGORIES = booleanPreferencesKey("drawer_categories")
+        val DOCK_STYLE = stringPreferencesKey("dock_style")
+        val SEARCH_BAR_STYLE = stringPreferencesKey("search_bar_style")
+        val HAPTIC_LEVEL = stringPreferencesKey("haptic_level")
+        val DRAWER_OPACITY = intPreferencesKey("drawer_opacity")
+        val LABEL_SIZE_PREF = stringPreferencesKey("label_size")
+        val FOLDER_COLUMNS = intPreferencesKey("folder_columns")
+        val DRAWER_SECTION_HEADERS = booleanPreferencesKey("drawer_section_headers")
     }
 
     // Safe data flow: catches IOException (disk errors) and emits defaults
@@ -141,6 +155,13 @@ class LauncherPrefs(private val context: Context) {
             iconShadow = p[ICON_SHADOW] ?: false,
             accentOverride = p[ACCENT_OVERRIDE] ?: "",
             drawerCategories = p[DRAWER_CATEGORIES] ?: false,
+            dockStyle = p[DOCK_STYLE]?.let { runCatching { DockStyle.valueOf(it) }.getOrNull() } ?: DockStyle.SOLID,
+            searchBarStyle = p[SEARCH_BAR_STYLE]?.let { runCatching { SearchBarStyle.valueOf(it) }.getOrNull() } ?: SearchBarStyle.PILL,
+            hapticLevel = p[HAPTIC_LEVEL]?.let { runCatching { HapticLevel.valueOf(it) }.getOrNull() } ?: HapticLevel.MEDIUM,
+            drawerOpacity = (p[DRAWER_OPACITY] ?: 97).coerceIn(0, 100),
+            labelSize = p[LABEL_SIZE_PREF]?.let { runCatching { LabelSize.valueOf(it) }.getOrNull() } ?: LabelSize.MEDIUM,
+            folderColumns = (p[FOLDER_COLUMNS] ?: 4).coerceIn(3, 5),
+            drawerSectionHeaders = p[DRAWER_SECTION_HEADERS] ?: false,
         )
     }
 
@@ -271,6 +292,13 @@ class LauncherPrefs(private val context: Context) {
             put("icon_shadow", p[ICON_SHADOW] ?: false)
             put("accent_override", p[ACCENT_OVERRIDE] ?: "")
             put("drawer_categories", p[DRAWER_CATEGORIES] ?: false)
+            put("dock_style", p[DOCK_STYLE] ?: "SOLID")
+            put("search_bar_style", p[SEARCH_BAR_STYLE] ?: "PILL")
+            put("haptic_level", p[HAPTIC_LEVEL] ?: "MEDIUM")
+            put("drawer_opacity", p[DRAWER_OPACITY] ?: 97)
+            put("label_size", p[LABEL_SIZE_PREF] ?: "MEDIUM")
+            put("folder_columns", p[FOLDER_COLUMNS] ?: 4)
+            put("drawer_section_headers", p[DRAWER_SECTION_HEADERS] ?: false)
             put("home_grid", p[HOME_GRID] ?: ""); put("dock_grid", p[DOCK_GRID] ?: "")
             put("hidden_apps", p[HIDDEN_APPS] ?: ""); put("custom_labels", p[CUSTOM_LABELS] ?: "")
         }.toString(2)
@@ -311,6 +339,13 @@ class LauncherPrefs(private val context: Context) {
             if (j.has("icon_shadow")) p[ICON_SHADOW] = j.getBoolean("icon_shadow")
             j.optString("accent_override").let { p[ACCENT_OVERRIDE] = it }
             if (j.has("drawer_categories")) p[DRAWER_CATEGORIES] = j.getBoolean("drawer_categories")
+            j.optString("dock_style").takeIf { it.isNotBlank() && runCatching { DockStyle.valueOf(it) }.isSuccess }?.let { p[DOCK_STYLE] = it }
+            j.optString("search_bar_style").takeIf { it.isNotBlank() && runCatching { SearchBarStyle.valueOf(it) }.isSuccess }?.let { p[SEARCH_BAR_STYLE] = it }
+            j.optString("haptic_level").takeIf { it.isNotBlank() && runCatching { HapticLevel.valueOf(it) }.isSuccess }?.let { p[HAPTIC_LEVEL] = it }
+            if (j.has("drawer_opacity")) p[DRAWER_OPACITY] = j.getInt("drawer_opacity").coerceIn(0, 100)
+            j.optString("label_size").takeIf { it.isNotBlank() && runCatching { LabelSize.valueOf(it) }.isSuccess }?.let { p[LABEL_SIZE_PREF] = it }
+            if (j.has("folder_columns")) p[FOLDER_COLUMNS] = j.getInt("folder_columns").coerceIn(3, 5)
+            if (j.has("drawer_section_headers")) p[DRAWER_SECTION_HEADERS] = j.getBoolean("drawer_section_headers")
             j.optString("home_grid").takeIf { it.isNotBlank() }?.let { p[HOME_GRID] = it }
             j.optString("dock_grid").takeIf { it.isNotBlank() }?.let { p[DOCK_GRID] = it }
             j.optString("hidden_apps").let { p[HIDDEN_APPS] = it }

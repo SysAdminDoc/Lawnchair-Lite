@@ -18,7 +18,7 @@ import app.lawnchairlite.ui.HomeScreen
 import app.lawnchairlite.ui.LauncherTheme
 
 /**
- * Lawnchair Lite v2.5.0
+ * Lawnchair Lite v2.6.0
  *
  * Stability improvements:
  * - Debounced package receiver: bulk install/uninstall events coalesced

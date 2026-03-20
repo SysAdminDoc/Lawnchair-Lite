@@ -48,7 +48,7 @@ import android.app.AlarmManager
 import android.content.Context
 import android.os.BatteryManager
 
-/** Lawnchair Lite v2.5.0 - UI Components */
+/** Lawnchair Lite v2.6.0 - UI Components */
 
 fun iconClip(shape: IconShape): androidx.compose.ui.graphics.Shape = when (shape) {
     IconShape.CIRCLE -> CircleShape
@@ -58,7 +58,7 @@ fun iconClip(shape: IconShape): androidx.compose.ui.graphics.Shape = when (shape
 }
 
 @Composable
-fun AppIconContent(app: AppInfo, shape: IconShape, iconSizeDp: Dp = 50.dp, modifier: Modifier = Modifier, showLabel: Boolean = true, dimmed: Boolean = false, customLabel: String? = null, badgeCount: Int = 0, badgeDotOnly: Boolean = false, iconShadow: Boolean = false) {
+fun AppIconContent(app: AppInfo, shape: IconShape, iconSizeDp: Dp = 50.dp, modifier: Modifier = Modifier, showLabel: Boolean = true, dimmed: Boolean = false, customLabel: String? = null, badgeCount: Int = 0, badgeDotOnly: Boolean = false, iconShadow: Boolean = false, labelSizeSp: Int = 11) {
     val c = LocalLauncherColors.current
     Column(modifier.graphicsLayer(alpha = if (dimmed) 0.25f else 1f), horizontalAlignment = Alignment.CenterHorizontally) {
         Box(Modifier.size(iconSizeDp).then(if (iconShadow) Modifier.shadow(6.dp, iconClip(shape)) else Modifier)) {
@@ -80,12 +80,12 @@ fun AppIconContent(app: AppInfo, shape: IconShape, iconSizeDp: Dp = 50.dp, modif
                 }
             }
         }
-        if (showLabel) { Spacer(Modifier.height(3.dp)); Text(customLabel ?: app.label, color = c.text, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, modifier = Modifier.widthIn(max = 68.dp)) }
+        if (showLabel) { Spacer(Modifier.height(3.dp)); Text(customLabel ?: app.label, color = c.text, fontSize = labelSizeSp.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, modifier = Modifier.widthIn(max = 68.dp)) }
     }
 }
 
 @Composable
-fun TappableAppIcon(app: AppInfo, shape: IconShape, iconSizeDp: Dp = 50.dp, modifier: Modifier = Modifier, showLabel: Boolean = true, customLabel: String? = null, badgeCount: Int = 0, badgeDotOnly: Boolean = false, onClick: () -> Unit = {}, onLongClick: () -> Unit = {}) {
+fun TappableAppIcon(app: AppInfo, shape: IconShape, iconSizeDp: Dp = 50.dp, modifier: Modifier = Modifier, showLabel: Boolean = true, customLabel: String? = null, badgeCount: Int = 0, badgeDotOnly: Boolean = false, labelSizeSp: Int = 11, onClick: () -> Unit = {}, onLongClick: () -> Unit = {}) {
     val c = LocalLauncherColors.current; var pressed by remember { mutableStateOf(false) }
     val scale by animateFloatAsState(if (pressed) 0.9f else 1f, spring(dampingRatio = 0.6f, stiffness = 500f), label = "s")
     Column(modifier.graphicsLayer(scaleX = scale, scaleY = scale).pointerInput(app.key) { detectTapGestures(onPress = { pressed = true; tryAwaitRelease(); pressed = false }, onTap = { onClick() }, onLongPress = { onLongClick() }) }, horizontalAlignment = Alignment.CenterHorizontally) {
@@ -106,7 +106,7 @@ fun TappableAppIcon(app: AppInfo, shape: IconShape, iconSizeDp: Dp = 50.dp, modi
                 }
             }
         }
-        if (showLabel) { Spacer(Modifier.height(3.dp)); Text(customLabel ?: app.label, color = c.text, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, modifier = Modifier.widthIn(max = 68.dp)) }
+        if (showLabel) { Spacer(Modifier.height(3.dp)); Text(customLabel ?: app.label, color = c.text, fontSize = labelSizeSp.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, modifier = Modifier.widthIn(max = 68.dp)) }
     }
 }
 
@@ -303,7 +303,8 @@ fun HomeContextMenu(
                     }
                     Spacer(Modifier.height(6.dp))
                     Text(vm.customLabels.collectAsState().value[cell.appKey] ?: app.label, color = c.text, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
-                    Text(app.packageName, color = c.textSecondary, fontSize = 10.sp)
+                    val verInfo = remember(app.packageName) { vm.getAppVersionInfo(app.packageName) }
+                    Text("${app.packageName}${if (verInfo != null) " $verInfo" else ""}", color = c.textSecondary, fontSize = 10.sp)
                 }
                 is GridCell.Folder -> {
                     FolderIconContent(cell, shape, { vm.resolveApp(it) }, 54.dp, showLabel = false)

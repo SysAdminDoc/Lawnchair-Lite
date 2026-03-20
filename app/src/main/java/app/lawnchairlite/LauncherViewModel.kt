@@ -23,7 +23,7 @@ import kotlinx.coroutines.launch
 import kotlin.math.max
 
 /**
- * Lawnchair Lite v2.5.0 - ViewModel
+ * Lawnchair Lite v2.6.0 - ViewModel
  *
  * v2.3.0 additions:
  * - Drawer sort (name, most used, recently installed)
@@ -585,6 +585,20 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     fun setIconShadow(v: Boolean) = pref(LauncherPrefs.ICON_SHADOW, v)
     fun setAccentOverride(hex: String) = pref(LauncherPrefs.ACCENT_OVERRIDE, hex)
     fun setDrawerCategories(v: Boolean) = pref(LauncherPrefs.DRAWER_CATEGORIES, v)
+    fun setDockStyle(s: DockStyle) = pref(LauncherPrefs.DOCK_STYLE, s.name)
+    fun setSearchBarStyle(s: SearchBarStyle) = pref(LauncherPrefs.SEARCH_BAR_STYLE, s.name)
+    fun setHapticLevel(l: HapticLevel) = pref(LauncherPrefs.HAPTIC_LEVEL, l.name)
+    fun setDrawerOpacity(v: Int) = pref(LauncherPrefs.DRAWER_OPACITY, v.coerceIn(0, 100))
+    fun setLabelSize(s: LabelSize) = pref(LauncherPrefs.LABEL_SIZE_PREF, s.name)
+    fun setFolderColumns(c: Int) = pref(LauncherPrefs.FOLDER_COLUMNS, c.coerceIn(3, 5))
+    fun setDrawerSectionHeaders(v: Boolean) = pref(LauncherPrefs.DRAWER_SECTION_HEADERS, v)
+
+    fun getAppVersionInfo(packageName: String): String? {
+        return try {
+            val pi = ctx.packageManager.getPackageInfo(packageName, 0)
+            "v${pi.versionName ?: "?"}"
+        } catch (_: Exception) { null }
+    }
 
     // -- Dock Swipe Actions --
 
@@ -684,9 +698,11 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
 
     fun vibrate() {
         try {
+            val ms = settings.value.hapticLevel.ms
+            if (ms <= 0) return
             val v = ctx.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator ?: return
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) v.vibrate(VibrationEffect.createOneShot(30, VibrationEffect.DEFAULT_AMPLITUDE))
-            else @Suppress("DEPRECATION") v.vibrate(30)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) v.vibrate(VibrationEffect.createOneShot(ms, VibrationEffect.DEFAULT_AMPLITUDE))
+            else @Suppress("DEPRECATION") v.vibrate(ms)
         } catch (e: Exception) {
             Log.w(TAG, "Vibration failed", e)
         }

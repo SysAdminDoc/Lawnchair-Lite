@@ -209,6 +209,37 @@ fun SettingsPanel(
                 Tog("Icon Shadow", settings.iconShadow, colors) { vm.setIconShadow(it) }
                 Tog("Lock Home Screen", settings.homeLocked, colors) { vm.setHomeLocked(it) }
                 Tog("Drawer Categories", settings.drawerCategories, colors) { vm.setDrawerCategories(it) }
+                Tog("Drawer Section Headers", settings.drawerSectionHeaders, colors) { vm.setDrawerSectionHeaders(it) }
+
+                // Dock Style
+                Lbl("Dock Style", colors)
+                Chips(DockStyle.entries.map { it to it.label }, settings.dockStyle, colors) { vm.setDockStyle(it) }
+
+                // Search Bar Style
+                Lbl("Search Bar", colors)
+                Chips(SearchBarStyle.entries.map { it to it.label }, settings.searchBarStyle, colors) { vm.setSearchBarStyle(it) }
+
+                // Haptic Feedback
+                Lbl("Haptic Feedback", colors)
+                Chips(HapticLevel.entries.map { it to it.label }, settings.hapticLevel, colors) { vm.setHapticLevel(it) }
+
+                // Label Size
+                Lbl("Label Size", colors)
+                Chips(LabelSize.entries.map { it to it.label }, settings.labelSize, colors) { vm.setLabelSize(it) }
+
+                // Folder Columns
+                Lbl("Folder Columns", colors)
+                Chips((3..5).map { it to it.toString() }, settings.folderColumns, colors) { vm.setFolderColumns(it) }
+
+                // Drawer Opacity
+                Lbl("Drawer Background", colors)
+                Text("Opacity: ${settings.drawerOpacity}%", color = colors.text, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                Slider(
+                    value = settings.drawerOpacity.toFloat(),
+                    onValueChange = { vm.setDrawerOpacity(it.toInt()) },
+                    valueRange = 50f..100f, steps = 49,
+                    colors = SliderDefaults.colors(thumbColor = colors.accent, activeTrackColor = colors.accent, inactiveTrackColor = colors.card),
+                )
                 if (settings.showNotifBadges) {
                     val notifConnected = remember { mutableStateOf(vm.isNotificationAccessGranted()) }
                     if (!notifConnected.value) {
