@@ -30,7 +30,7 @@ import java.util.Calendar
 import kotlin.math.max
 
 /**
- * Lawnchair Lite v2.9.0 - ViewModel
+ * Lawnchair Lite v2.10.0 - ViewModel
  *
  * v2.3.0 additions:
  * - Drawer sort (name, most used, recently installed)
@@ -116,6 +116,12 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
 
     private val _search = MutableStateFlow("")
     val search: StateFlow<String> = _search.asStateFlow()
+
+    // Inline calculator: evaluates math expressions typed into search
+    val calculatorResult: StateFlow<String?> = _search.map { query ->
+        tryEvaluate(query)
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
     val filteredApps: StateFlow<List<AppInfo>> = combine(_allApps, _search, _hiddenApps, settings, _appUsage) { args ->
         @Suppress("UNCHECKED_CAST")
         val apps = args[0] as List<AppInfo>
@@ -124,12 +130,18 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         val s = args[3] as LauncherSettings
         val usage = args[4] as Map<String, Long>
         val visible = apps.filter { it.key !in hidden }
-        val filtered = if (q.isBlank()) visible
-            else visible.filter { it.label.contains(q, ignoreCase = true) || it.packageName.contains(q, ignoreCase = true) }
-        when (s.drawerSort) {
-            DrawerSort.NAME -> filtered.sortedBy { it.label.lowercase() }
-            DrawerSort.MOST_USED -> filtered.sortedByDescending { usage[it.key] ?: 0L }
-            DrawerSort.RECENT_INSTALL -> filtered.sortedByDescending { it.firstInstallTime }
+        if (q.isBlank()) {
+            when (s.drawerSort) {
+                DrawerSort.NAME -> visible.sortedBy { it.label.lowercase() }
+                DrawerSort.MOST_USED -> visible.sortedByDescending { usage[it.key] ?: 0L }
+                DrawerSort.RECENT_INSTALL -> visible.sortedByDescending { it.firstInstallTime }
+            }
+        } else {
+            // Fuzzy search with relevance scoring
+            visible.mapNotNull { app ->
+                val score = searchScore(app.label, app.packageName, q)
+                if (score > 0) app to score else null
+            }.sortedByDescending { it.second }.map { it.first }
         }
     }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
@@ -671,6 +683,84 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     private fun suggestFolderName(k1: String, k2: String): String {
         val b = listOf(k1.substringBefore("/"), k2.substringBefore("/"))
         return when { b.any { "messaging" in it || "dialer" in it || "contacts" in it || "whatsapp" in it } -> "Social"; b.any { "camera" in it || "photos" in it || "gallery" in it } -> "Photos"; b.any { "chrome" in it || "browser" in it || "firefox" in it } -> "Internet"; b.any { "music" in it || "spotify" in it || "youtube" in it } -> "Media"; b.any { "settings" in it || "calculator" in it || "clock" in it } -> "Tools"; b.any { "game" in it } -> "Games"; else -> "Folder" }
+    }
+
+    // -- Fuzzy Search --
+
+    private fun searchScore(label: String, packageName: String, query: String): Int {
+        val q = query.lowercase()
+        val l = label.lowercase()
+        val p = packageName.lowercase()
+        return when {
+            l == q -> 100
+            l.startsWith(q) -> 90
+            l.split(" ").any { it.startsWith(q) } -> 80
+            l.contains(q) -> 70
+            p.contains(q) -> 60
+            isSubsequence(q, l) -> 50
+            else -> 0
+        }
+    }
+
+    private fun isSubsequence(query: String, text: String): Boolean {
+        var qi = 0
+        for (ch in text) {
+            if (qi < query.length && ch == query[qi]) qi++
+        }
+        return qi == query.length
+    }
+
+    // -- Inline Calculator --
+
+    private fun tryEvaluate(expr: String): String? {
+        val cleaned = expr.replace(" ", "").replace("x", "*").replace("X", "*")
+        if (cleaned.length < 3) return null
+        if (!cleaned.any { it in "+-*/%" } || !cleaned.any { it.isDigit() }) return null
+        return try {
+            val (value, consumed) = evalExpression(cleaned, 0)
+            if (consumed != cleaned.length) return null
+            if (value.isNaN() || value.isInfinite()) return null
+            if (value == value.toLong().toDouble()) value.toLong().toString()
+            else String.format("%.8f", value).trimEnd('0').trimEnd('.')
+        } catch (_: Exception) { null }
+    }
+
+    private fun evalExpression(expr: String, pos: Int): Pair<Double, Int> {
+        var (left, i) = evalTerm(expr, pos)
+        while (i < expr.length && expr[i] in "+-") {
+            val op = expr[i]; i++
+            val (right, ni) = evalTerm(expr, i)
+            left = if (op == '+') left + right else left - right
+            i = ni
+        }
+        return left to i
+    }
+
+    private fun evalTerm(expr: String, pos: Int): Pair<Double, Int> {
+        var (left, i) = evalFactor(expr, pos)
+        while (i < expr.length && expr[i] in "*/%") {
+            val op = expr[i]; i++
+            val (right, ni) = evalFactor(expr, i)
+            left = when (op) { '*' -> left * right; '%' -> left % right; else -> if (right != 0.0) left / right else Double.NaN }
+            i = ni
+        }
+        return left to i
+    }
+
+    private fun evalFactor(expr: String, pos: Int): Pair<Double, Int> {
+        var i = pos
+        if (i < expr.length && expr[i] == '(') {
+            i++
+            val (result, ni) = evalExpression(expr, i)
+            i = ni
+            if (i < expr.length && expr[i] == ')') i++
+            return result to i
+        }
+        val start = i
+        if (i < expr.length && expr[i] == '-') i++
+        while (i < expr.length && (expr[i].isDigit() || expr[i] == '.')) i++
+        if (i == start) return 0.0 to i
+        return expr.substring(start, i).toDouble() to i
     }
 
     // -- Time Bucket (for suggestions) --

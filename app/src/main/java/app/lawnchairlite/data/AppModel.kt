@@ -5,7 +5,7 @@ import android.graphics.drawable.Drawable
 import android.util.Log
 
 /**
- * Lawnchair Lite v2.9.0 - Data Model
+ * Lawnchair Lite v2.10.0 - Data Model
  *
  * Stability: Deserialization never throws. Malformed data returns null.
  */
@@ -19,7 +19,8 @@ data class AppInfo(
 }
 
 enum class IconShape(val label: String) {
-    SQUIRCLE("Squircle"), CIRCLE("Circle"), SQUARE("Square"), TEARDROP("Teardrop");
+    SQUIRCLE("Squircle"), CIRCLE("Circle"), SQUARE("Square"), TEARDROP("Teardrop"),
+    HEXAGON("Hexagon"), DIAMOND("Diamond");
 }
 enum class ThemeMode(val label: String) {
     MIDNIGHT("Midnight"), GLASS("Glass"), OLED("OLED"), MOCHA("Mocha"), AURORA("Aurora");

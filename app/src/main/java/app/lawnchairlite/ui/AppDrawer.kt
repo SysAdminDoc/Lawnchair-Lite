@@ -35,7 +35,7 @@ import app.lawnchairlite.data.IconShape
 import kotlinx.coroutines.launch
 
 /**
- * Lawnchair Lite v2.9.0 - App Drawer
+ * Lawnchair Lite v2.10.0 - App Drawer
  *
  * v2.2.0: Recent apps row, notification badges, package name search
  */
@@ -68,6 +68,7 @@ fun AppDrawer(
     onContactTap: (String) -> Unit = {},
     onContactCall: (String) -> Unit = {},
     onSearchWeb: (String) -> Unit,
+    calculatorResult: String? = null,
     searchHistory: List<String> = emptyList(),
     onSearchHistoryTap: (String) -> Unit = {},
     onSearchHistoryRemove: (String) -> Unit = {},
@@ -212,6 +213,11 @@ fun AppDrawer(
                         Text("  ·  ${drawerSort.label}", color = colors.accent.copy(alpha = 0.6f), fontSize = 11.sp, fontWeight = FontWeight.Medium)
                     }
                 }
+            }
+
+            // Calculator result
+            if (calculatorResult != null && searchQuery.isNotBlank()) {
+                CalculatorResultRow(result = calculatorResult)
             }
 
             // Contact search results

@@ -1,4 +1,4 @@
-# Lawnchair Lite v2.9.0
+# Lawnchair Lite v2.10.0
 
 Minimal, fast Android launcher with professional-grade stability.
 
@@ -38,6 +38,13 @@ Built on crash patterns identified across Lawnchair v14-v15 beta releases:
 - Wallpaper dimming (0-80%)
 - Recent apps row in drawer
 - Search by app name or package name
+
+### v2.10.0
+
+- **Smart Fuzzy Search** - Relevance-scored search: exact match > starts with > word match > contains > package name > subsequence (fuzzy). Typing "chr" finds Chrome, "sett" finds Settings
+- **Inline Calculator** - Type math expressions in drawer search (e.g., "2+3", "15*4.5", "(100-20)/3") and see the result instantly. Supports +, -, *, /, %, parentheses
+- **New Icon Shapes** - Hexagon and Diamond shapes added to the existing 4 (Squircle, Circle, Square, Teardrop)
+- **Draggable Fast-Scroller** - Drag along the letter rail in the drawer to rapidly scroll through the alphabet (previously tap-only)
 
 ### v2.9.0
 

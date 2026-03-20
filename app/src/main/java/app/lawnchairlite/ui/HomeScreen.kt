@@ -43,7 +43,7 @@ import app.lawnchairlite.data.*
 import kotlinx.coroutines.launch
 
 /**
- * Lawnchair Lite v2.9.0 - Home Screen
+ * Lawnchair Lite v2.10.0 - Home Screen
  *
  * Drawer transition ported from Launcher3's AbstractStateChangeTouchController
  * + AllAppsSwipeController + AllAppsTransitionController.
@@ -590,6 +590,7 @@ fun HomeScreen(vm: LauncherViewModel) {
                 onContactTap = { uri -> vm.openContact(uri); scope.launch { drawerProgress.animateTo(0f, tween(200)) }; vm.setSearch("") },
                 onContactCall = { number -> vm.callContact(number); scope.launch { drawerProgress.animateTo(0f, tween(200)) }; vm.setSearch("") },
                 onSearchWeb = { vm.searchWeb(it) },
+                calculatorResult = vm.calculatorResult.collectAsState().value,
                 searchHistory = vm.searchHistory.collectAsState().value,
                 onSearchHistoryTap = { vm.setSearch(it) },
                 onSearchHistoryRemove = { vm.removeSearchHistoryItem(it) },
