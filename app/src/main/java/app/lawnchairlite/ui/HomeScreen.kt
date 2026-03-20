@@ -110,6 +110,7 @@ fun HomeScreen(vm: LauncherViewModel) {
     val dockCount = settings.dockCount
     val homeLabels = settings.labelStyle != app.lawnchairlite.data.LabelStyle.HIDDEN && settings.labelStyle != app.lawnchairlite.data.LabelStyle.DRAWER_ONLY
     val cols = settings.gridColumns; val rows = settings.gridRows; val pageSize = cols * rows
+    val resolvedLabelWeight = when (settings.labelWeight) { app.lawnchairlite.data.LabelWeight.LIGHT -> FontWeight.Light; app.lawnchairlite.data.LabelWeight.BOLD -> FontWeight.Bold; else -> FontWeight.Normal }
     val numPages = vm.numPages()
     val homeBounds = remember { mutableStateMapOf<Int, Rect>() }
     val dockBounds = remember { mutableStateMapOf<Int, Rect>() }
@@ -435,7 +436,7 @@ fun HomeScreen(vm: LauncherViewModel) {
                                             GridCellView(
                                                 cell, settings.iconShape, iconDp, { vm.resolveApp(it) }, customLabels,
                                                 isDragSrc, homeLabels, editMode,
-                                                badgeCount = cellBadge, badgeDotOnly = settings.badgeStyle == app.lawnchairlite.data.BadgeStyle.DOT, iconShadow = settings.iconShadow, labelSizeSp = settings.labelSize.sp, folderBadgeCount = folderBadge,
+                                                badgeCount = cellBadge, badgeDotOnly = settings.badgeStyle == app.lawnchairlite.data.BadgeStyle.DOT, iconShadow = settings.iconShadow, labelSizeSp = settings.labelSize.sp, folderBadgeCount = folderBadge, grayscale = settings.grayscaleIcons, labelWeight = resolvedLabelWeight,
                                                 onTap = { when (cell) {
                                                     is GridCell.App -> vm.resolveApp(cell.appKey)?.let { vm.launch(it) }
                                                     is GridCell.Folder -> vm.openFolderView(cell, DragSource.HOME, gi)
@@ -498,10 +499,14 @@ fun HomeScreen(vm: LauncherViewModel) {
                         }
                     }
                 }
-                if (!isDragging) PageDots(numPages, currentPage, Modifier.padding(vertical = 6.dp))
+                if (!isDragging) when (settings.pageIndicatorStyle) {
+                    app.lawnchairlite.data.PageIndicatorStyle.DOTS -> PageDots(numPages, currentPage, Modifier.padding(vertical = 6.dp))
+                    app.lawnchairlite.data.PageIndicatorStyle.LINE -> PageLineIndicator(numPages, currentPage, Modifier.padding(vertical = 6.dp))
+                    app.lawnchairlite.data.PageIndicatorStyle.HIDDEN -> Spacer(Modifier.height(6.dp))
+                }
 
                 // Dock
-                Column(Modifier.fillMaxWidth()) {
+                if (!settings.hideDock) Column(Modifier.fillMaxWidth()) {
                     if (settings.showDockSearch && settings.searchBarStyle != app.lawnchairlite.data.SearchBarStyle.HIDDEN && !isDragging) {
                         when (settings.searchBarStyle) {
                             app.lawnchairlite.data.SearchBarStyle.PILL -> SearchPill(
@@ -565,7 +570,7 @@ fun HomeScreen(vm: LauncherViewModel) {
                                 GridCellView(
                                     cell, settings.iconShape, iconDp, { vm.resolveApp(it) }, customLabels,
                                     isDS, homeLabels, editMode,
-                                    badgeCount = dockBadge, badgeDotOnly = settings.badgeStyle == app.lawnchairlite.data.BadgeStyle.DOT, iconShadow = settings.iconShadow, labelSizeSp = settings.labelSize.sp, folderBadgeCount = dockFolderBadge,
+                                    badgeCount = dockBadge, badgeDotOnly = settings.badgeStyle == app.lawnchairlite.data.BadgeStyle.DOT, iconShadow = settings.iconShadow, labelSizeSp = settings.labelSize.sp, folderBadgeCount = dockFolderBadge, grayscale = settings.grayscaleIcons, labelWeight = resolvedLabelWeight,
                                     onTap = { when (cell) {
                                         is GridCell.App -> vm.resolveApp(cell.appKey)?.let { vm.launch(it) }
                                         is GridCell.Folder -> vm.openFolderView(cell, DragSource.DOCK, i)
@@ -698,7 +703,7 @@ private fun GridCellView(
     cell: GridCell?, shape: IconShape, iconSizeDp: androidx.compose.ui.unit.Dp,
     resolveApp: (String) -> AppInfo?, customLabels: Map<String, String>,
     dimmed: Boolean, showLabel: Boolean, editMode: Boolean,
-    badgeCount: Int = 0, badgeDotOnly: Boolean = false, iconShadow: Boolean = false, labelSizeSp: Int = 11, folderBadgeCount: Int = 0,
+    badgeCount: Int = 0, badgeDotOnly: Boolean = false, iconShadow: Boolean = false, labelSizeSp: Int = 11, folderBadgeCount: Int = 0, grayscale: Boolean = false, labelWeight: FontWeight = FontWeight.Normal,
     onTap: () -> Unit, onLongPress: () -> Unit,
     onDragStart: (Offset) -> Unit, onDrag: (Offset) -> Unit, onDragEnd: () -> Unit, onDragCancel: () -> Unit,
 ) {
@@ -745,7 +750,7 @@ private fun GridCellView(
         Alignment.Center,
     ) {
         when (cell) {
-            is GridCell.App -> resolveApp(cell.appKey)?.let { AppIconContent(it, shape, iconSizeDp, showLabel = showLabel, dimmed = dimmed, customLabel = customLabels[cell.appKey], badgeCount = badgeCount, badgeDotOnly = badgeDotOnly, iconShadow = iconShadow, labelSizeSp = labelSizeSp) }
+            is GridCell.App -> resolveApp(cell.appKey)?.let { AppIconContent(it, shape, iconSizeDp, showLabel = showLabel, dimmed = dimmed, customLabel = customLabels[cell.appKey], badgeCount = badgeCount, badgeDotOnly = badgeDotOnly, iconShadow = iconShadow, labelSizeSp = labelSizeSp, grayscale = grayscale, labelWeight = labelWeight) }
             is GridCell.Folder -> FolderIconContent(cell, shape, resolveApp, iconSizeDp, showLabel = showLabel, dimmed = dimmed, badgeCount = folderBadgeCount)
             is GridCell.Widget -> { /* Rendered by overlay, skip */ }
         }

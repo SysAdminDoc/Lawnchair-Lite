@@ -75,6 +75,10 @@ data class LauncherSettings(
     val dockTapAction: GestureAction = GestureAction.APP_DRAWER,
     val showSuggestions: Boolean = true,
     val clockStyle: ClockStyle = ClockStyle.LARGE,
+    val hideDock: Boolean = false,
+    val grayscaleIcons: Boolean = false,
+    val pageIndicatorStyle: PageIndicatorStyle = PageIndicatorStyle.DOTS,
+    val labelWeight: LabelWeight = LabelWeight.REGULAR,
 )
 
 class LauncherPrefs(private val context: Context) {
@@ -130,6 +134,10 @@ class LauncherPrefs(private val context: Context) {
         val WIDGETS = stringPreferencesKey("widgets_v1")
         val SHOW_SUGGESTIONS = booleanPreferencesKey("show_suggestions")
         val CLOCK_STYLE = stringPreferencesKey("clock_style")
+        val HIDE_DOCK = booleanPreferencesKey("hide_dock")
+        val GRAYSCALE_ICONS = booleanPreferencesKey("grayscale_icons")
+        val PAGE_INDICATOR_STYLE = stringPreferencesKey("page_indicator_style")
+        val LABEL_WEIGHT = stringPreferencesKey("label_weight")
         val SEARCH_HISTORY = stringPreferencesKey("search_history")
         val SUGGESTION_USAGE = stringPreferencesKey("suggestion_usage")
     }
@@ -186,6 +194,10 @@ class LauncherPrefs(private val context: Context) {
             dockTapAction = p[DOCK_TAP_ACTION]?.let { runCatching { GestureAction.valueOf(it) }.getOrNull() } ?: GestureAction.APP_DRAWER,
             showSuggestions = p[SHOW_SUGGESTIONS] ?: true,
             clockStyle = p[CLOCK_STYLE]?.let { runCatching { ClockStyle.valueOf(it) }.getOrNull() } ?: ClockStyle.LARGE,
+            hideDock = p[HIDE_DOCK] ?: false,
+            grayscaleIcons = p[GRAYSCALE_ICONS] ?: false,
+            pageIndicatorStyle = p[PAGE_INDICATOR_STYLE]?.let { runCatching { PageIndicatorStyle.valueOf(it) }.getOrNull() } ?: PageIndicatorStyle.DOTS,
+            labelWeight = p[LABEL_WEIGHT]?.let { runCatching { LabelWeight.valueOf(it) }.getOrNull() } ?: LabelWeight.REGULAR,
         )
     }
 
