@@ -37,7 +37,7 @@ import app.lawnchairlite.data.*
 import kotlinx.coroutines.launch
 
 /**
- * Lawnchair Lite v2.2.0 - Home Screen
+ * Lawnchair Lite v2.3.0 - Home Screen
  *
  * Drawer transition ported from Launcher3's AbstractStateChangeTouchController
  * + AllAppsSwipeController + AllAppsTransitionController.
@@ -97,6 +97,7 @@ fun HomeScreen(vm: LauncherViewModel) {
     val isDragging = drag != null
     val iconDp = settings.iconSize.dp.dp
     val dockCount = settings.dockCount
+    val homeLabels = settings.labelStyle != app.lawnchairlite.data.LabelStyle.HIDDEN && settings.labelStyle != app.lawnchairlite.data.LabelStyle.DRAWER_ONLY
     val cols = settings.gridColumns; val rows = settings.gridRows; val pageSize = cols * rows
     val numPages = vm.numPages()
     val homeBounds = remember { mutableStateMapOf<Int, Rect>() }
@@ -319,7 +320,7 @@ fun HomeScreen(vm: LauncherViewModel) {
                                     val cellBadge = if (settings.showNotifBadges && cell is GridCell.App) notifCounts[cell.appKey.substringBefore("/")] ?: 0 else 0
                                     GridCellView(
                                         cell, settings.iconShape, iconDp, { vm.resolveApp(it) }, customLabels,
-                                        isDragSrc, true, editMode,
+                                        isDragSrc, homeLabels, editMode,
                                         badgeCount = cellBadge,
                                         onTap = { when (cell) {
                                             is GridCell.App -> vm.resolveApp(cell.appKey)?.let { vm.launch(it) }
@@ -369,7 +370,7 @@ fun HomeScreen(vm: LauncherViewModel) {
                                 val dockBadge = if (settings.showNotifBadges && cell is GridCell.App) notifCounts[cell.appKey.substringBefore("/")] ?: 0 else 0
                                 GridCellView(
                                     cell, settings.iconShape, iconDp, { vm.resolveApp(it) }, customLabels,
-                                    isDS, false, editMode,
+                                    isDS, homeLabels, editMode,
                                     badgeCount = dockBadge,
                                     onTap = { when (cell) {
                                         is GridCell.App -> vm.resolveApp(cell.appKey)?.let { vm.launch(it) }
@@ -407,6 +408,8 @@ fun HomeScreen(vm: LauncherViewModel) {
                 recentApps = recentApps,
                 notifCounts = notifCounts,
                 showBadges = settings.showNotifBadges,
+                showLabels = settings.labelStyle != app.lawnchairlite.data.LabelStyle.HOME_ONLY && settings.labelStyle != app.lawnchairlite.data.LabelStyle.HIDDEN,
+                drawerSort = settings.drawerSort,
                 onSearchChange = { vm.setSearch(it) },
                 onAppClick = { app ->
                     vm.launch(app)
@@ -414,6 +417,7 @@ fun HomeScreen(vm: LauncherViewModel) {
                     vm.setSearch("")
                 },
                 onAppLongClick = { vm.showDrawerMenu(it) },
+                onSearchWeb = { vm.searchWeb(it) },
                 onProgressChange = { newP ->
                     scope.launch { drawerProgress.snapTo(newP) }
                 },

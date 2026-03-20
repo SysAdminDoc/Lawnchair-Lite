@@ -23,7 +23,15 @@ import kotlinx.coroutines.launch
 import kotlin.math.max
 
 /**
- * Lawnchair Lite v2.2.0 - ViewModel
+ * Lawnchair Lite v2.3.0 - ViewModel
+ *
+ * v2.3.0 additions:
+ * - Drawer sort (name, most used, recently installed)
+ * - Label style (shown, hidden, home only, drawer only)
+ * - Themed icons (Android 13+)
+ * - At-a-Glance battery + next alarm
+ * - Search web fallback
+ * - App launch animation support
  *
  * v2.2.0 additions:
  * - Notification badge counts via NotificationListener companion StateFlow
@@ -80,10 +88,20 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
 
     private val _search = MutableStateFlow("")
     val search: StateFlow<String> = _search.asStateFlow()
-    val filteredApps: StateFlow<List<AppInfo>> = combine(_allApps, _search, _hiddenApps) { apps, q, hidden ->
-        apps.filter { it.key !in hidden }.let { v ->
-            if (q.isBlank()) v
-            else v.filter { it.label.contains(q, ignoreCase = true) || it.packageName.contains(q, ignoreCase = true) }
+    val filteredApps: StateFlow<List<AppInfo>> = combine(_allApps, _search, _hiddenApps, settings, _appUsage) { args ->
+        @Suppress("UNCHECKED_CAST")
+        val apps = args[0] as List<AppInfo>
+        val q = args[1] as String
+        val hidden = args[2] as Set<String>
+        val s = args[3] as LauncherSettings
+        val usage = args[4] as Map<String, Long>
+        val visible = apps.filter { it.key !in hidden }
+        val filtered = if (q.isBlank()) visible
+            else visible.filter { it.label.contains(q, ignoreCase = true) || it.packageName.contains(q, ignoreCase = true) }
+        when (s.drawerSort) {
+            DrawerSort.NAME -> filtered.sortedBy { it.label.lowercase() }
+            DrawerSort.MOST_USED -> filtered.sortedByDescending { usage[it.key] ?: 0L }
+            DrawerSort.RECENT_INSTALL -> filtered.sortedByDescending { it.firstInstallTime }
         }
     }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
@@ -165,7 +183,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
 
     private suspend fun loadAppsInternal() {
         val apps = try {
-            repo.loadApps(iconPackManager)
+            repo.loadApps(iconPackManager, useThemedIcons = settings.value.themedIcons)
         } catch (e: Exception) {
             Log.e(TAG, "loadApps failed", e)
             emptyList()
@@ -544,6 +562,20 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     fun setSwipeDownAction(a: GestureAction) = pref(LauncherPrefs.SWIPE_DOWN_ACTION, a.name)
     fun setWallpaperDim(v: Int) = pref(LauncherPrefs.WALLPAPER_DIM, v.coerceIn(0, 100))
     fun setShowNotifBadges(v: Boolean) = pref(LauncherPrefs.SHOW_NOTIF_BADGES, v)
+    fun setDrawerSort(s: DrawerSort) = pref(LauncherPrefs.DRAWER_SORT, s.name)
+    fun setLabelStyle(s: LabelStyle) = pref(LauncherPrefs.LABEL_STYLE, s.name)
+    fun setThemedIcons(v: Boolean) { pref(LauncherPrefs.THEMED_ICONS, v); viewModelScope.launch { loadAppsInternal() } }
+
+    fun searchWeb(query: String) {
+        try {
+            val encoded = android.net.Uri.encode(query)
+            ctx.startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse("https://www.google.com/search?q=$encoded")).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            })
+        } catch (e: Exception) {
+            Log.e(TAG, "searchWeb failed", e)
+        }
+    }
 
     fun setGridCols(c: Int) { viewModelScope.launch { val old = settings.value.gridColumns; prefs.set(LauncherPrefs.GRID_COLS, c); if (c != old) reflowGrid(c, settings.value.gridRows) } }
     fun setGridRows(r: Int) { viewModelScope.launch { val old = settings.value.gridRows; prefs.set(LauncherPrefs.GRID_ROWS, r); if (r != old) reflowGrid(settings.value.gridColumns, r) } }

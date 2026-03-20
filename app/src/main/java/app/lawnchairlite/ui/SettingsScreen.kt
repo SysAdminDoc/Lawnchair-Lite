@@ -28,7 +28,7 @@ import com.google.accompanist.drawablepainter.rememberDrawablePainter
 import kotlinx.coroutines.launch
 
 /**
- * Lawnchair Lite v2.2.0 - Settings
+ * Lawnchair Lite v2.3.0 - Settings
  */
 @Composable
 fun SettingsPanel(
@@ -119,6 +119,18 @@ fun SettingsPanel(
                 // Icon Pack
                 Lbl("Icon Pack", colors)
                 IconPackSection(settings, availablePacks, iconPackLoading, colors, vm)
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                    Spacer(Modifier.height(6.dp))
+                    Tog("Themed Icons (Android 13+)", settings.themedIcons, colors) { vm.setThemedIcons(it) }
+                }
+
+                // Labels
+                Lbl("Icon Labels", colors)
+                Chips(LabelStyle.entries.map { it to it.label }, settings.labelStyle, colors) { vm.setLabelStyle(it) }
+
+                // Drawer Sort
+                Lbl("Drawer Sort", colors)
+                Chips(DrawerSort.entries.map { it to it.label }, settings.drawerSort, colors) { vm.setDrawerSort(it) }
 
                 // Grid
                 Lbl("Grid Columns", colors)

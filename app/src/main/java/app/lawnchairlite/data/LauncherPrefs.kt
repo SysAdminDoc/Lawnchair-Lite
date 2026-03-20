@@ -14,7 +14,7 @@ import org.json.JSONObject
 import java.io.IOException
 
 /**
- * Lawnchair Lite v2.2.0 - Preferences
+ * Lawnchair Lite v2.3.0 - Preferences
  *
  * Stability improvements:
  * - ReplaceFileCorruptionHandler: if DataStore file is corrupted, reset to defaults
@@ -47,6 +47,9 @@ data class LauncherSettings(
     val autoPlaceNew: Boolean = true,
     val wallpaperDim: Int = 0, // 0-100
     val showNotifBadges: Boolean = true,
+    val drawerSort: DrawerSort = DrawerSort.NAME,
+    val labelStyle: LabelStyle = LabelStyle.SHOWN,
+    val themedIcons: Boolean = false,
 )
 
 class LauncherPrefs(private val context: Context) {
@@ -73,6 +76,9 @@ class LauncherPrefs(private val context: Context) {
         val WALLPAPER_DIM = intPreferencesKey("wallpaper_dim")
         val SHOW_NOTIF_BADGES = booleanPreferencesKey("show_notif_badges")
         val APP_USAGE = stringPreferencesKey("app_usage")
+        val DRAWER_SORT = stringPreferencesKey("drawer_sort")
+        val LABEL_STYLE = stringPreferencesKey("label_style")
+        val THEMED_ICONS = booleanPreferencesKey("themed_icons")
     }
 
     // Safe data flow: catches IOException (disk errors) and emits defaults
@@ -99,6 +105,9 @@ class LauncherPrefs(private val context: Context) {
             autoPlaceNew = p[AUTO_PLACE_NEW] ?: true,
             wallpaperDim = (p[WALLPAPER_DIM] ?: 0).coerceIn(0, 100),
             showNotifBadges = p[SHOW_NOTIF_BADGES] ?: true,
+            drawerSort = p[DRAWER_SORT]?.let { runCatching { DrawerSort.valueOf(it) }.getOrNull() } ?: DrawerSort.NAME,
+            labelStyle = p[LABEL_STYLE]?.let { runCatching { LabelStyle.valueOf(it) }.getOrNull() } ?: LabelStyle.SHOWN,
+            themedIcons = p[THEMED_ICONS] ?: false,
         )
     }
 
@@ -198,6 +207,9 @@ class LauncherPrefs(private val context: Context) {
             put("auto_place_new", p[AUTO_PLACE_NEW] ?: true)
             put("wallpaper_dim", p[WALLPAPER_DIM] ?: 0)
             put("show_notif_badges", p[SHOW_NOTIF_BADGES] ?: true)
+            put("drawer_sort", p[DRAWER_SORT] ?: "NAME")
+            put("label_style", p[LABEL_STYLE] ?: "SHOWN")
+            put("themed_icons", p[THEMED_ICONS] ?: false)
             put("home_grid", p[HOME_GRID] ?: ""); put("dock_grid", p[DOCK_GRID] ?: "")
             put("hidden_apps", p[HIDDEN_APPS] ?: ""); put("custom_labels", p[CUSTOM_LABELS] ?: "")
         }.toString(2)
@@ -224,6 +236,9 @@ class LauncherPrefs(private val context: Context) {
             if (j.has("auto_place_new")) p[AUTO_PLACE_NEW] = j.getBoolean("auto_place_new")
             if (j.has("wallpaper_dim")) p[WALLPAPER_DIM] = j.getInt("wallpaper_dim").coerceIn(0, 100)
             if (j.has("show_notif_badges")) p[SHOW_NOTIF_BADGES] = j.getBoolean("show_notif_badges")
+            j.optString("drawer_sort").takeIf { it.isNotBlank() && runCatching { DrawerSort.valueOf(it) }.isSuccess }?.let { p[DRAWER_SORT] = it }
+            j.optString("label_style").takeIf { it.isNotBlank() && runCatching { LabelStyle.valueOf(it) }.isSuccess }?.let { p[LABEL_STYLE] = it }
+            if (j.has("themed_icons")) p[THEMED_ICONS] = j.getBoolean("themed_icons")
             j.optString("home_grid").takeIf { it.isNotBlank() }?.let { p[HOME_GRID] = it }
             j.optString("dock_grid").takeIf { it.isNotBlank() }?.let { p[DOCK_GRID] = it }
             j.optString("hidden_apps").let { p[HIDDEN_APPS] = it }

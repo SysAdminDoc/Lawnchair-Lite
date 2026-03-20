@@ -1,4 +1,4 @@
-# Lawnchair Lite v2.2.0
+# Lawnchair Lite v2.3.0
 
 Minimal, fast Android launcher with professional-grade stability.
 
@@ -33,15 +33,25 @@ Built on crash patterns identified across Lawnchair v14-v15 beta releases:
 - Device admin for screen lock gesture
 - Context menu on home/dock icons (rename, rearrange, remove, uninstall, app info)
 - Edit mode with wiggle animation for rearranging
+- Notification badge dots with count
+- App shortcuts in long-press menus (LauncherApps API)
+- Wallpaper dimming (0-80%)
+- Recent apps row in drawer
+- Search by app name or package name
+
+### v2.3.0
+
+- **Themed icons** - Android 13+ Material You monochrome icon support
+- **Drawer sort options** - Sort by name (A-Z), most used, or recently installed
+- **Icon label styles** - Shown, Hidden, Home Only, or Drawer Only
+- **At-a-Glance battery + alarm** - Battery percentage and next alarm in clock widget
+- **Search web fallback** - "Search Google" button when no apps match in drawer
+- **Install date tracking** - Apps track first install time for sort-by-recent
 
 ### v2.2.0
 
-- **Notification badge dots** - Red badge with count on app icons (requires notification access)
-- **App shortcuts** - Long-press context menu shows dynamic/static shortcuts (via LauncherApps API)
-- **Wallpaper dimming** - Adjustable 0-80% dim overlay in settings
-- **Recent apps** - Horizontal scrollable row at top of app drawer showing recently launched apps
-- **Search by package name** - Drawer search matches both app label and package name
-- **App usage tracking** - Tracks recently used apps for the Recent section
+- Notification badge dots, app shortcuts, wallpaper dimming
+- Recent apps row, search by package name, app usage tracking
 
 ## Architecture
 
@@ -50,11 +60,11 @@ LauncherApplication    - Global crash handler + notification reporter
 MainActivity           - Lifecycle, debounced package receiver
 LauncherViewModel      - State management, debounced operations, package validation
 LauncherPrefs          - DataStore with corruption handler, atomic writes
-AppRepository          - Hardened PM calls, package existence checks
+AppRepository          - Hardened PM calls, package existence checks, themed icons
 IconPackManager        - LruCache, defensive XML parsing
 ShortcutRepository     - LauncherApps shortcut queries + launching
 NotificationListener   - NotificationListenerService for badge counts
-AppModel               - Safe deserialization, data types
+AppModel               - Safe deserialization, data types, enums
 UI (Compose)           - HomeScreen, AppDrawer, Components, Settings, Theme
 ```
 
