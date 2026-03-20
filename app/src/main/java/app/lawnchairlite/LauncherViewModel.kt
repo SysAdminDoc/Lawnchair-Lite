@@ -281,36 +281,42 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
             return
         }
         repo.launchApp(app)
-        // Track usage
+        // Track all usage in a single coroutine with batched DataStore write
         viewModelScope.launch {
-            val updated = _appUsage.value.toMutableMap()
-            updated[app.key] = System.currentTimeMillis()
-            val trimmed = if (updated.size > 50) {
-                updated.entries.sortedByDescending { it.value }.take(50).associate { it.key to it.value }
-            } else updated
-            _appUsage.value = trimmed
-            prefs.saveAppUsage(trimmed)
+            try {
+                // App usage tracking
+                val updated = _appUsage.value.toMutableMap()
+                updated[app.key] = System.currentTimeMillis()
+                val trimmed = if (updated.size > 50) {
+                    updated.entries.sortedByDescending { it.value }.take(50).associate { it.key to it.value }
+                } else updated
+                _appUsage.value = trimmed
 
-            // Track suggestion usage (time-bucketed)
-            val bucket = currentTimeBucket()
-            val sugKey = "$bucket:${app.key}"
-            val sugUsage = _suggestionUsage.value.toMutableMap()
-            sugUsage[sugKey] = (sugUsage[sugKey] ?: 0) + 1
-            val trimmedSug = if (sugUsage.size > 200) {
-                sugUsage.entries.sortedByDescending { it.value }.take(200).associate { it.key to it.value }
-            } else sugUsage
-            _suggestionUsage.value = trimmedSug
-            prefs.saveSuggestionUsage(trimmedSug)
+                // Suggestion usage (time-bucketed)
+                val bucket = currentTimeBucket()
+                val sugKey = "$bucket:${app.key}"
+                val sugUsage = _suggestionUsage.value.toMutableMap()
+                sugUsage[sugKey] = (sugUsage[sugKey] ?: 0) + 1
+                val trimmedSug = if (sugUsage.size > 200) {
+                    sugUsage.entries.sortedByDescending { it.value }.take(200).associate { it.key to it.value }
+                } else sugUsage
+                _suggestionUsage.value = trimmedSug
 
-            // Save search term to history if user searched for something
-            val q = _search.value
-            if (q.isNotBlank() && q.length >= 2) {
-                val hist = _searchHistory.value.toMutableList()
-                hist.remove(q)
-                hist.add(0, q)
-                val trimmedHist = hist.take(10)
-                _searchHistory.value = trimmedHist
-                prefs.saveSearchHistory(trimmedHist)
+                // Search history (if user searched for something)
+                val q = _search.value
+                val histToSave = if (q.isNotBlank() && q.length >= 2) {
+                    val hist = _searchHistory.value.toMutableList()
+                    hist.remove(q)
+                    hist.add(0, q)
+                    val trimmedHist = hist.take(10)
+                    _searchHistory.value = trimmedHist
+                    trimmedHist
+                } else null
+
+                // Single DataStore transaction for all tracking data
+                prefs.saveLaunchTracking(trimmed, trimmedSug, histToSave)
+            } catch (e: Exception) {
+                Log.e(TAG, "Launch tracking failed", e)
             }
         }
     }
@@ -633,6 +639,9 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     private suspend fun dropOnGrid(drag: DragState, ti: Int, target: DragSource) {
+        // Cap target index to prevent unbounded list growth from stale hover indices
+        val maxAllowed = if (target == DragSource.DOCK) settings.value.dockCount else (numPages() + 1) * pageSize()
+        if (ti < 0 || ti >= maxAllowed) return
         val tg = gridForSource(target).toMutableList(); while (tg.size <= ti) tg.add(null)
         val ex = tg.getOrNull(ti); val same = drag.source == target
 
@@ -942,6 +951,11 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         contactSearchJob?.cancel()
         contactSearchJob = viewModelScope.launch {
             delay(200) // debounce
+            // Check READ_CONTACTS permission before querying to avoid SecurityException spam
+            if (ctx.checkSelfPermission(android.Manifest.permission.READ_CONTACTS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                _contactResults.value = emptyList()
+                return@launch
+            }
             val results = mutableListOf<ContactResult>()
             try {
                 val uri = ContactsContract.Contacts.CONTENT_URI

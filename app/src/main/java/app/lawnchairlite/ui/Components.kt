@@ -609,7 +609,7 @@ fun WidgetHostViewComposable(
         factory = { hostView },
         modifier = modifier,
         update = { /* host view manages its own updates */ },
-        onRelease = { (it.parent as? android.view.ViewGroup)?.removeView(it) },
+        onRelease = { try { (it.parent as? android.view.ViewGroup)?.removeView(it) } catch (_: Exception) {} },
     )
 }
 
