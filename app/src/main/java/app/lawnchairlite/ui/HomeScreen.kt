@@ -37,7 +37,7 @@ import app.lawnchairlite.data.*
 import kotlinx.coroutines.launch
 
 /**
- * Lawnchair Lite v2.5.0 - Home Screen
+ * Lawnchair Lite v2.6.0 - Home Screen
  *
  * Drawer transition ported from Launcher3's AbstractStateChangeTouchController
  * + AllAppsSwipeController + AllAppsTransitionController.
@@ -346,7 +346,7 @@ fun HomeScreen(vm: LauncherViewModel) {
                                     GridCellView(
                                         cell, settings.iconShape, iconDp, { vm.resolveApp(it) }, customLabels,
                                         isDragSrc, homeLabels, editMode,
-                                        badgeCount = cellBadge, badgeDotOnly = settings.badgeStyle == app.lawnchairlite.data.BadgeStyle.DOT, iconShadow = settings.iconShadow,
+                                        badgeCount = cellBadge, badgeDotOnly = settings.badgeStyle == app.lawnchairlite.data.BadgeStyle.DOT, iconShadow = settings.iconShadow, labelSizeSp = settings.labelSize.sp,
                                         onTap = { when (cell) {
                                             is GridCell.App -> vm.resolveApp(cell.appKey)?.let { vm.launch(it) }
                                             is GridCell.Folder -> vm.openFolderView(cell, DragSource.HOME, gi)
@@ -367,17 +367,37 @@ fun HomeScreen(vm: LauncherViewModel) {
 
                 // Dock
                 Column(Modifier.fillMaxWidth()) {
-                    if (settings.showDockSearch && !isDragging) SearchPill(
-                        onClick = { scope.launch { drawerProgress.animateTo(1f, spring(stiffness = Spring.StiffnessMedium)) } },
-                        modifier = Modifier.padding(horizontal = 18.dp, vertical = 5.dp),
-                    )
+                    if (settings.showDockSearch && settings.searchBarStyle != app.lawnchairlite.data.SearchBarStyle.HIDDEN && !isDragging) {
+                        when (settings.searchBarStyle) {
+                            app.lawnchairlite.data.SearchBarStyle.PILL -> SearchPill(
+                                onClick = { scope.launch { drawerProgress.animateTo(1f, spring(stiffness = Spring.StiffnessMedium)) } },
+                                modifier = Modifier.padding(horizontal = 18.dp, vertical = 5.dp),
+                            )
+                            app.lawnchairlite.data.SearchBarStyle.BAR -> SearchPill(
+                                onClick = { scope.launch { drawerProgress.animateTo(1f, spring(stiffness = Spring.StiffnessMedium)) } },
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 5.dp),
+                            )
+                            app.lawnchairlite.data.SearchBarStyle.MINIMAL -> Box(
+                                Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 5.dp)
+                                    .clickable { scope.launch { drawerProgress.animateTo(1f, spring(stiffness = Spring.StiffnessMedium)) } },
+                                Alignment.CenterEnd,
+                            ) { Icon(Icons.Default.Search, null, tint = colors.textSecondary, modifier = Modifier.size(22.dp)) }
+                            else -> {}
+                        }
+                    }
                     if (!isDragging) Box(
                         Modifier.fillMaxWidth()
                             .clickable { scope.launch { drawerProgress.animateTo(1f, spring(stiffness = Spring.StiffnessMedium)) } }
                             .padding(vertical = 3.dp),
                         Alignment.Center,
                     ) { Box(Modifier.width(32.dp).height(3.dp).clip(RoundedCornerShape(2.dp)).background(colors.textSecondary.copy(alpha = 0.4f))) }
-                    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)).background(colors.dock).padding(horizontal = 8.dp, vertical = 10.dp), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
+                    val dockMod = when (settings.dockStyle) {
+                        app.lawnchairlite.data.DockStyle.SOLID -> Modifier.fillMaxWidth().clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)).background(colors.dock)
+                        app.lawnchairlite.data.DockStyle.PILL -> Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp).clip(RoundedCornerShape(24.dp)).background(colors.dock)
+                        app.lawnchairlite.data.DockStyle.FLOATING -> Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 6.dp).clip(RoundedCornerShape(20.dp)).background(colors.surface)
+                        app.lawnchairlite.data.DockStyle.TRANSPARENT -> Modifier.fillMaxWidth()
+                    }
+                    Row(dockMod.padding(horizontal = 8.dp, vertical = 10.dp), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
                         for (i in 0 until dockCount) {
                             val cell = dockGrid.getOrNull(i)
                             val isH = hoverDock && hoverIdx == i && isDragging
@@ -396,7 +416,7 @@ fun HomeScreen(vm: LauncherViewModel) {
                                 GridCellView(
                                     cell, settings.iconShape, iconDp, { vm.resolveApp(it) }, customLabels,
                                     isDS, homeLabels, editMode,
-                                    badgeCount = dockBadge, badgeDotOnly = settings.badgeStyle == app.lawnchairlite.data.BadgeStyle.DOT, iconShadow = settings.iconShadow,
+                                    badgeCount = dockBadge, badgeDotOnly = settings.badgeStyle == app.lawnchairlite.data.BadgeStyle.DOT, iconShadow = settings.iconShadow, labelSizeSp = settings.labelSize.sp,
                                     onTap = { when (cell) {
                                         is GridCell.App -> vm.resolveApp(cell.appKey)?.let { vm.launch(it) }
                                         is GridCell.Folder -> vm.openFolderView(cell, DragSource.DOCK, i)
@@ -440,6 +460,9 @@ fun HomeScreen(vm: LauncherViewModel) {
                 badgeDotOnly = settings.badgeStyle == app.lawnchairlite.data.BadgeStyle.DOT,
                 showLabels = settings.labelStyle != app.lawnchairlite.data.LabelStyle.HOME_ONLY && settings.labelStyle != app.lawnchairlite.data.LabelStyle.HIDDEN,
                 drawerSort = settings.drawerSort,
+                drawerOpacity = settings.drawerOpacity,
+                showSectionHeaders = settings.drawerSectionHeaders,
+                labelSizeSp = settings.labelSize.sp,
                 onSearchChange = { vm.setSearch(it) },
                 onAppClick = { app ->
                     vm.launch(app)
@@ -490,7 +513,7 @@ private fun GridCellView(
     cell: GridCell?, shape: IconShape, iconSizeDp: androidx.compose.ui.unit.Dp,
     resolveApp: (String) -> AppInfo?, customLabels: Map<String, String>,
     dimmed: Boolean, showLabel: Boolean, editMode: Boolean,
-    badgeCount: Int = 0, badgeDotOnly: Boolean = false, iconShadow: Boolean = false,
+    badgeCount: Int = 0, badgeDotOnly: Boolean = false, iconShadow: Boolean = false, labelSizeSp: Int = 11,
     onTap: () -> Unit, onLongPress: () -> Unit,
     onDragStart: (Offset) -> Unit, onDrag: (Offset) -> Unit, onDragEnd: () -> Unit, onDragCancel: () -> Unit,
 ) {
@@ -537,7 +560,7 @@ private fun GridCellView(
         Alignment.Center,
     ) {
         when (cell) {
-            is GridCell.App -> resolveApp(cell.appKey)?.let { AppIconContent(it, shape, iconSizeDp, showLabel = showLabel, dimmed = dimmed, customLabel = customLabels[cell.appKey], badgeCount = badgeCount, badgeDotOnly = badgeDotOnly, iconShadow = iconShadow) }
+            is GridCell.App -> resolveApp(cell.appKey)?.let { AppIconContent(it, shape, iconSizeDp, showLabel = showLabel, dimmed = dimmed, customLabel = customLabels[cell.appKey], badgeCount = badgeCount, badgeDotOnly = badgeDotOnly, iconShadow = iconShadow, labelSizeSp = labelSizeSp) }
             is GridCell.Folder -> FolderIconContent(cell, shape, resolveApp, iconSizeDp, showLabel = showLabel, dimmed = dimmed)
         }
     }

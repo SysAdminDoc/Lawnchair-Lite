@@ -55,6 +55,9 @@ fun AppDrawer(
     showBadges: Boolean,
     badgeDotOnly: Boolean,
     showLabels: Boolean,
+    drawerOpacity: Int,
+    showSectionHeaders: Boolean,
+    labelSizeSp: Int,
     drawerSort: app.lawnchairlite.data.DrawerSort,
     onSearchChange: (String) -> Unit,
     onAppClick: (AppInfo) -> Unit,
@@ -150,7 +153,7 @@ fun AppDrawer(
                 this.translationY = translationY
                 alpha = if (progress < 0.01f) 0f else 1f
             }
-            .background(colors.background)
+            .background(colors.background.copy(alpha = drawerOpacity / 100f))
             .statusBarsPadding()
     ) {
         Column(Modifier.fillMaxSize()) {
@@ -253,16 +256,46 @@ fun AppDrawer(
                             }
                         }
 
-                        items(displayApps, key = { it.key }) { app ->
-                            val badge = if (showBadges) notifCounts[app.packageName] ?: 0 else 0
-                            Box(Modifier.fillMaxWidth(), Alignment.Center) {
-                                TappableAppIcon(
-                                    app, shape, iconSizeDp, showLabel = showLabels,
-                                    badgeCount = badge, badgeDotOnly = badgeDotOnly,
-                                    onClick = { onAppClick(app) },
-                                    onLongClick = { onAppLongClick(app) },
-                                    modifier = Modifier.width(70.dp),
-                                )
+                        if (showSectionHeaders && searchQuery.isBlank() && !showCategories) {
+                            // Group apps by first letter and add section headers
+                            var lastLetter: Char? = null
+                            displayApps.forEach { app ->
+                                val letter = app.label.firstOrNull()?.uppercaseChar() ?: '#'
+                                if (letter != lastLetter) {
+                                    lastLetter = letter
+                                    item(span = { GridItemSpan(columns) }, key = "__header_$letter") {
+                                        Text(
+                                            letter.toString(), color = colors.accent, fontSize = 13.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            modifier = Modifier.padding(horizontal = 16.dp, top = 12.dp, bottom = 4.dp),
+                                        )
+                                    }
+                                }
+                                item(key = app.key) {
+                                    val badge = if (showBadges) notifCounts[app.packageName] ?: 0 else 0
+                                    Box(Modifier.fillMaxWidth(), Alignment.Center) {
+                                        TappableAppIcon(
+                                            app, shape, iconSizeDp, showLabel = showLabels,
+                                            badgeCount = badge, badgeDotOnly = badgeDotOnly, labelSizeSp = labelSizeSp,
+                                            onClick = { onAppClick(app) },
+                                            onLongClick = { onAppLongClick(app) },
+                                            modifier = Modifier.width(70.dp),
+                                        )
+                                    }
+                                }
+                            }
+                        } else {
+                            items(displayApps, key = { it.key }) { app ->
+                                val badge = if (showBadges) notifCounts[app.packageName] ?: 0 else 0
+                                Box(Modifier.fillMaxWidth(), Alignment.Center) {
+                                    TappableAppIcon(
+                                        app, shape, iconSizeDp, showLabel = showLabels,
+                                        badgeCount = badge, badgeDotOnly = badgeDotOnly, labelSizeSp = labelSizeSp,
+                                        onClick = { onAppClick(app) },
+                                        onLongClick = { onAppLongClick(app) },
+                                        modifier = Modifier.width(70.dp),
+                                    )
+                                }
                             }
                         }
                     }
