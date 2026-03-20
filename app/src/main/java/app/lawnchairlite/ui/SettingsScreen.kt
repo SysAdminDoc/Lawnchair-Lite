@@ -229,6 +229,16 @@ fun SettingsPanel(
                 Tog("Wallpaper Parallax", settings.wallpaperParallax, colors) { vm.setWallpaperParallax(it) }
                 Tog("Drawer Animation", settings.drawerAnimation, colors) { vm.setDrawerAnimation(it) }
                 Tog("App Suggestions", settings.showSuggestions, colors) { vm.setShowSuggestions(it) }
+                Tog("Hide Dock", settings.hideDock, colors) { vm.setHideDock(it) }
+                Tog("Grayscale Icons", settings.grayscaleIcons, colors) { vm.setGrayscaleIcons(it) }
+
+                // Page Indicator
+                Lbl("Page Indicator", colors)
+                Chips(PageIndicatorStyle.entries.map { it to it.label }, settings.pageIndicatorStyle, colors) { vm.setPageIndicatorStyle(it) }
+
+                // Label Weight
+                Lbl("Label Weight", colors)
+                Chips(LabelWeight.entries.map { it to it.label }, settings.labelWeight, colors) { vm.setLabelWeight(it) }
 
                 // Dock Style
                 Lbl("Dock Style", colors)

@@ -425,6 +425,10 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
                 GestureAction.KILL_APPS -> killBackgroundApps()
                 GestureAction.FLASHLIGHT -> toggleFlashlight()
                 GestureAction.EDIT_MODE -> { if (!settings.value.homeLocked) { _editMode.value = !_editMode.value } else toast("Home screen is locked") }
+                GestureAction.RECENT_APP -> {
+                    val lastUsed = _appUsage.value.entries.maxByOrNull { it.value }
+                    lastUsed?.let { resolveApp(it.key)?.let { app -> launch(app) } }
+                }
             }
         } catch (e: Exception) {
             Log.e(TAG, "Gesture execution failed: $action", e)
@@ -870,6 +874,10 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     fun setDockTapAction(a: GestureAction) = pref(LauncherPrefs.DOCK_TAP_ACTION, a.name)
     fun setShowSuggestions(v: Boolean) = pref(LauncherPrefs.SHOW_SUGGESTIONS, v)
     fun setClockStyle(s: ClockStyle) = pref(LauncherPrefs.CLOCK_STYLE, s.name)
+    fun setHideDock(v: Boolean) = pref(LauncherPrefs.HIDE_DOCK, v)
+    fun setGrayscaleIcons(v: Boolean) = pref(LauncherPrefs.GRAYSCALE_ICONS, v)
+    fun setPageIndicatorStyle(s: PageIndicatorStyle) = pref(LauncherPrefs.PAGE_INDICATOR_STYLE, s.name)
+    fun setLabelWeight(w: LabelWeight) = pref(LauncherPrefs.LABEL_WEIGHT, w.name)
     fun cycleClockStyle() {
         val styles = ClockStyle.entries
         val next = styles[(styles.indexOf(settings.value.clockStyle) + 1) % styles.size]

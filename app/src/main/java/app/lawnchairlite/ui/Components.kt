@@ -91,12 +91,13 @@ fun iconClip(shape: IconShape): androidx.compose.ui.graphics.Shape = when (shape
 }
 
 @Composable
-fun AppIconContent(app: AppInfo, shape: IconShape, iconSizeDp: Dp = 50.dp, modifier: Modifier = Modifier, showLabel: Boolean = true, dimmed: Boolean = false, customLabel: String? = null, badgeCount: Int = 0, badgeDotOnly: Boolean = false, iconShadow: Boolean = false, labelSizeSp: Int = 11) {
+fun AppIconContent(app: AppInfo, shape: IconShape, iconSizeDp: Dp = 50.dp, modifier: Modifier = Modifier, showLabel: Boolean = true, dimmed: Boolean = false, customLabel: String? = null, badgeCount: Int = 0, badgeDotOnly: Boolean = false, iconShadow: Boolean = false, labelSizeSp: Int = 11, grayscale: Boolean = false, labelWeight: FontWeight = FontWeight.Normal) {
     val c = LocalLauncherColors.current
     Column(modifier.graphicsLayer(alpha = if (dimmed) 0.25f else 1f), horizontalAlignment = Alignment.CenterHorizontally) {
         Box(Modifier.size(iconSizeDp).then(if (iconShadow) Modifier.shadow(6.dp, iconClip(shape)) else Modifier)) {
             Box(Modifier.fillMaxSize().clip(iconClip(shape)).background(c.card), Alignment.Center) {
-                if (app.icon != null) Image(rememberDrawablePainter(app.icon), app.label, Modifier.fillMaxSize().padding((iconSizeDp.value * 0.1f).dp))
+                if (app.icon != null) Image(rememberDrawablePainter(app.icon), app.label, Modifier.fillMaxSize().padding((iconSizeDp.value * 0.1f).dp),
+                    colorFilter = if (grayscale) androidx.compose.ui.graphics.ColorFilter.colorMatrix(android.graphics.ColorMatrix().apply { setSaturation(0f) }.let { androidx.compose.ui.graphics.ColorMatrix(it.array) }) else null)
             }
             if (badgeCount > 0) {
                 if (badgeDotOnly) {
@@ -113,7 +114,7 @@ fun AppIconContent(app: AppInfo, shape: IconShape, iconSizeDp: Dp = 50.dp, modif
                 }
             }
         }
-        if (showLabel) { Spacer(Modifier.height(3.dp)); Text(customLabel ?: app.label, color = c.text, fontSize = labelSizeSp.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, modifier = Modifier.widthIn(max = 68.dp)) }
+        if (showLabel) { Spacer(Modifier.height(3.dp)); Text(customLabel ?: app.label, color = c.text, fontSize = labelSizeSp.sp, fontWeight = labelWeight, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, modifier = Modifier.widthIn(max = 68.dp)) }
     }
 }
 
@@ -219,6 +220,17 @@ fun PageDots(pageCount: Int, currentPage: Int, modifier: Modifier = Modifier) {
             val a = i == currentPage; val s by animateFloatAsState(if (a) 8f else 5f, label = "ds$i"); val al by animateFloatAsState(if (a) 1f else 0.4f, label = "da$i")
             Box(Modifier.padding(horizontal = 3.dp).size(s.dp).clip(CircleShape).graphicsLayer(alpha = al).background(if (a) c.accent else c.textSecondary))
         }
+    }
+}
+
+@Composable
+fun PageLineIndicator(pageCount: Int, currentPage: Int, modifier: Modifier = Modifier) {
+    if (pageCount <= 1) return; val c = LocalLauncherColors.current
+    val fraction by animateFloatAsState(if (pageCount > 1) currentPage.toFloat() / (pageCount - 1) else 0f, label = "plf")
+    Box(modifier.fillMaxWidth().padding(horizontal = 60.dp).height(3.dp).clip(RoundedCornerShape(2.dp)).background(c.textSecondary.copy(alpha = 0.12f))) {
+        Box(Modifier.fillMaxWidth(1f / pageCount.coerceAtLeast(1)).fillMaxHeight()
+            .graphicsLayer { translationX = fraction * size.width * (pageCount - 1).coerceAtLeast(1) / pageCount.coerceAtLeast(1) }
+            .clip(RoundedCornerShape(2.dp)).background(c.accent))
     }
 }
 
