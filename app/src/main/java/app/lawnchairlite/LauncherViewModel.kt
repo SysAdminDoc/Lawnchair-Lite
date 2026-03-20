@@ -645,7 +645,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
 
     fun openClockApp() {
         try {
-            val i = Intent(android.app.AlarmClock.ACTION_SHOW_ALARMS).apply { flags = Intent.FLAG_ACTIVITY_NEW_TASK }
+            val i = Intent("android.intent.action.SHOW_ALARMS").apply { flags = Intent.FLAG_ACTIVITY_NEW_TASK }
             ctx.startActivity(i)
         } catch (_: Exception) {
             try {

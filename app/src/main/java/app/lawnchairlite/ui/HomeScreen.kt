@@ -15,6 +15,7 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -349,7 +350,7 @@ fun HomeScreen(vm: LauncherViewModel) {
                         app.lawnchairlite.data.PageTransition.CUBE -> Modifier.graphicsLayer {
                             val rot = pageOffset * -30f
                             rotationY = rot
-                            cameraDistance = 12f * density
+                            cameraDistance = 12f * this.density
                             alpha = (1f - kotlin.math.abs(pageOffset) * 0.3f).coerceIn(0f, 1f)
                         }
                         app.lawnchairlite.data.PageTransition.STACK -> Modifier.graphicsLayer {

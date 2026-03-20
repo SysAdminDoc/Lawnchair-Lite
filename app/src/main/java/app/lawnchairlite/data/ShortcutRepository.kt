@@ -68,7 +68,7 @@ class ShortcutRepository(private val context: Context) {
     fun launchShortcut(shortcut: AppShortcut): Boolean {
         val la = launcherApps ?: return false
         return try {
-            la.startShortcutActivity(shortcut.packageName, shortcut.id, null, null, Process.myUserHandle())
+            la.startShortcut(shortcut.packageName, shortcut.id, null, null, Process.myUserHandle())
             true
         } catch (e: Exception) {
             Log.e(TAG, "launchShortcut failed: ${shortcut.id}", e)
