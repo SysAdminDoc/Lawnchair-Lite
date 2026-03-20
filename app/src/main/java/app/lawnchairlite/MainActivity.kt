@@ -18,7 +18,7 @@ import app.lawnchairlite.ui.HomeScreen
 import app.lawnchairlite.ui.LauncherTheme
 
 /**
- * Lawnchair Lite v2.4.0
+ * Lawnchair Lite v2.5.0
  *
  * Stability improvements:
  * - Debounced package receiver: bulk install/uninstall events coalesced
@@ -53,7 +53,7 @@ class MainActivity : ComponentActivity() {
             val vm: LauncherViewModel = viewModel()
             LaunchedEffect(vm) { vmRef = vm }
             val settings by vm.settings.collectAsState()
-            LauncherTheme(themeMode = settings.themeMode) { HomeScreen(vm = vm) }
+            LauncherTheme(themeMode = settings.themeMode, accentOverride = settings.accentOverride) { HomeScreen(vm = vm) }
             DisposableEffect(Unit) { registerPkgReceiver(vm); onDispose { unregisterPkgReceiver() } }
         }
     }

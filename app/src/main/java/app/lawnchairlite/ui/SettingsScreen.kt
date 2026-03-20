@@ -28,7 +28,7 @@ import com.google.accompanist.drawablepainter.rememberDrawablePainter
 import kotlinx.coroutines.launch
 
 /**
- * Lawnchair Lite v2.4.0 - Settings
+ * Lawnchair Lite v2.5.0 - Settings
  */
 @Composable
 fun SettingsPanel(
@@ -159,6 +159,10 @@ fun SettingsPanel(
                     colors = SliderDefaults.colors(thumbColor = colors.accent, activeTrackColor = colors.accent, inactiveTrackColor = colors.card),
                 )
 
+                // Drawer Columns
+                Lbl("Drawer Columns", colors)
+                Chips((0..6).map { it to if (it == 0) "Auto" else it.toString() }, settings.drawerColumns, colors) { vm.setDrawerColumns(it) }
+
                 // Page Transition
                 Lbl("Page Transition", colors)
                 Chips(PageTransition.entries.map { it to it.label }, settings.pageTransition, colors) { vm.setPageTransition(it) }
@@ -167,6 +171,34 @@ fun SettingsPanel(
                 Lbl("Badge Style", colors)
                 Chips(BadgeStyle.entries.map { it to it.label }, settings.badgeStyle, colors) { vm.setBadgeStyle(it) }
 
+                // Accent Color Override
+                Lbl("Accent Color", colors)
+                var accentInput by remember { mutableStateOf(settings.accentOverride) }
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    if (settings.accentOverride.isNotBlank()) {
+                        val parsed = try { Color(android.graphics.Color.parseColor(settings.accentOverride)) } catch (_: Exception) { colors.accent }
+                        Box(Modifier.size(28.dp).clip(CircleShape).background(parsed).border(1.dp, colors.border, CircleShape))
+                        Spacer(Modifier.width(10.dp))
+                    }
+                    TextField(
+                        value = accentInput, onValueChange = { accentInput = it.take(7) },
+                        modifier = Modifier.weight(1f).height(48.dp).clip(RoundedCornerShape(10.dp)),
+                        placeholder = { Text("#FF5722", color = colors.textSecondary, fontSize = 13.sp) },
+                        colors = TextFieldDefaults.colors(focusedTextColor = colors.text, unfocusedTextColor = colors.text, cursorColor = colors.accent, focusedContainerColor = colors.card, unfocusedContainerColor = colors.card, focusedIndicatorColor = Color.Transparent, unfocusedIndicatorColor = Color.Transparent),
+                        singleLine = true, textStyle = androidx.compose.ui.text.TextStyle(fontSize = 13.sp),
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text("Apply", color = colors.accent, fontSize = 12.sp, fontWeight = FontWeight.Medium,
+                        modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(colors.accent.copy(alpha = 0.12f))
+                            .clickable { vm.setAccentOverride(accentInput.trim()) }.padding(horizontal = 10.dp, vertical = 6.dp))
+                    if (settings.accentOverride.isNotBlank()) {
+                        Spacer(Modifier.width(6.dp))
+                        Text("Reset", color = Color(0xFFEF5350), fontSize = 12.sp, fontWeight = FontWeight.Medium,
+                            modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(Color(0xFFEF5350).copy(alpha = 0.1f))
+                                .clickable { accentInput = ""; vm.setAccentOverride("") }.padding(horizontal = 10.dp, vertical = 6.dp))
+                    }
+                }
+
                 // Features
                 Lbl("Features", colors)
                 Tog("At-a-Glance Clock", settings.showClock, colors) { vm.setShowClock(it) }
@@ -174,6 +206,9 @@ fun SettingsPanel(
                 Tog("Auto-Place New Apps", settings.autoPlaceNew, colors) { vm.setAutoPlaceNew(it) }
                 Tog("Notification Badges", settings.showNotifBadges, colors) { vm.setShowNotifBadges(it) }
                 Tog("Hide Status Bar", settings.hideStatusBar, colors) { vm.setHideStatusBar(it) }
+                Tog("Icon Shadow", settings.iconShadow, colors) { vm.setIconShadow(it) }
+                Tog("Lock Home Screen", settings.homeLocked, colors) { vm.setHomeLocked(it) }
+                Tog("Drawer Categories", settings.drawerCategories, colors) { vm.setDrawerCategories(it) }
                 if (settings.showNotifBadges) {
                     val notifConnected = remember { mutableStateOf(vm.isNotificationAccessGranted()) }
                     if (!notifConnected.value) {

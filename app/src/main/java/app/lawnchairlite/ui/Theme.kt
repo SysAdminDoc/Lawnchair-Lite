@@ -6,7 +6,7 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import app.lawnchairlite.data.ThemeMode
 
-/** Lawnchair Lite v2.4.0 - Theme Engine */
+/** Lawnchair Lite v2.5.0 - Theme Engine */
 data class LauncherColors(
     val background: Color, val backgroundSecondary: Color, val surface: Color, val surfaceHover: Color,
     val card: Color, val accent: Color, val accentGlow: Color, val text: Color, val textSecondary: Color,
@@ -23,7 +23,16 @@ val AuroraColors = LauncherColors(Color(0xFF0A0E1A),Color(0xFF0D1B2A),Color(0xE6
 
 fun themeColors(mode: ThemeMode): LauncherColors = when (mode) { ThemeMode.MIDNIGHT -> MidnightColors; ThemeMode.GLASS -> GlassColors; ThemeMode.OLED -> OledColors; ThemeMode.MOCHA -> MochaColors; ThemeMode.AURORA -> AuroraColors }
 
+fun themeColorsWithAccent(mode: ThemeMode, accentOverride: String): LauncherColors {
+    val base = themeColors(mode)
+    if (accentOverride.isBlank()) return base
+    val accent = try { Color(android.graphics.Color.parseColor(accentOverride)) } catch (_: Exception) { return base }
+    val glow = accent.copy(alpha = 0.25f)
+    val border = accent.copy(alpha = 0.12f)
+    return base.copy(accent = accent, accentGlow = glow, border = border)
+}
+
 @Composable
-fun LauncherTheme(themeMode: ThemeMode = ThemeMode.GLASS, content: @Composable () -> Unit) {
-    CompositionLocalProvider(LocalLauncherColors provides themeColors(themeMode)) { content() }
+fun LauncherTheme(themeMode: ThemeMode = ThemeMode.GLASS, accentOverride: String = "", content: @Composable () -> Unit) {
+    CompositionLocalProvider(LocalLauncherColors provides themeColorsWithAccent(themeMode, accentOverride)) { content() }
 }
