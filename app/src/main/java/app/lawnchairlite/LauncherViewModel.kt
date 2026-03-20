@@ -30,7 +30,7 @@ import java.util.Calendar
 import kotlin.math.max
 
 /**
- * Lawnchair Lite v2.10.0 - ViewModel
+ * Lawnchair Lite v2.12.0 - ViewModel
  *
  * v2.3.0 additions:
  * - Drawer sort (name, most used, recently installed)

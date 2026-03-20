@@ -28,7 +28,7 @@ import com.google.accompanist.drawablepainter.rememberDrawablePainter
 import kotlinx.coroutines.launch
 
 /**
- * Lawnchair Lite v2.9.0 - Settings
+ * Lawnchair Lite v2.12.0 - Settings
  */
 @Composable
 fun SettingsPanel(
@@ -70,13 +70,13 @@ fun SettingsPanel(
                 // Theme
                 Lbl("Theme", colors)
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     ThemeMode.entries.forEach { mode ->
                         val tc = themeColors(mode); val sel = settings.themeMode == mode
                         Column(
-                            Modifier.weight(1f).clip(RoundedCornerShape(12.dp))
+                            Modifier.width(64.dp).clip(RoundedCornerShape(12.dp))
                                 .background(if (sel) tc.accent.copy(alpha = 0.12f) else colors.card)
                                 .border(if (sel) 2.dp else 0.5.dp, if (sel) tc.accent else colors.border, RoundedCornerShape(12.dp))
                                 .clickable { vm.setTheme(mode) }.padding(vertical = 10.dp),

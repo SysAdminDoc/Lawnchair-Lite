@@ -59,7 +59,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.ui.viewinterop.AndroidView
 
-/** Lawnchair Lite v2.10.0 - UI Components */
+/** Lawnchair Lite v2.12.0 - UI Components */
 
 private val HexagonShape = GenericShape { size, _ ->
     val w = size.width; val h = size.height
@@ -263,6 +263,15 @@ fun AtAGlanceClock(modifier: Modifier = Modifier, clockStyle: app.lawnchairlite.
     }
     val ampm = if (!is24h) (if (cal.get(Calendar.AM_PM) == Calendar.AM) "AM" else "PM") else null
 
+    // Manual double-tap detection avoids the 300ms onTap delay that
+    // detectTapGestures(onDoubleTap) introduces for single-tap disambiguation
+    var lastClockTap by remember { mutableLongStateOf(0L) }
+    val clockTapHandler: () -> Unit = {
+        val now = System.currentTimeMillis()
+        if (now - lastClockTap < 350L) { onCycleStyle(); lastClockTap = 0L }
+        else { onTimeClick(); lastClockTap = now }
+    }
+
     when (clockStyle) {
         app.lawnchairlite.data.ClockStyle.LARGE -> Column(modifier.padding(horizontal = 24.dp, vertical = 12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clickable { onDateClick() }) {
@@ -281,7 +290,7 @@ fun AtAGlanceClock(modifier: Modifier = Modifier, clockStyle: app.lawnchairlite.
                 }
             }
             Spacer(Modifier.height(2.dp))
-            Box(Modifier.pointerInput(Unit) { detectTapGestures(onTap = { onTimeClick() }, onDoubleTap = { onCycleStyle() }) }) {
+            Box(Modifier.clickable { clockTapHandler() }) {
                 Row(verticalAlignment = Alignment.Bottom) {
                     Text(timeStr, color = c.text, fontSize = 52.sp, fontWeight = FontWeight.Thin, lineHeight = 52.sp)
                     if (ampm != null) { Spacer(Modifier.width(6.dp)); Text(ampm, color = c.accent, fontSize = 16.sp, fontWeight = FontWeight.Medium, modifier = Modifier.padding(bottom = 9.dp)) }
@@ -289,7 +298,7 @@ fun AtAGlanceClock(modifier: Modifier = Modifier, clockStyle: app.lawnchairlite.
             }
         }
         app.lawnchairlite.data.ClockStyle.COMPACT -> Row(
-            modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 10.dp).pointerInput(Unit) { detectTapGestures(onTap = { onTimeClick() }, onDoubleTap = { onCycleStyle() }) },
+            modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 10.dp).clickable { clockTapHandler() },
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(dateStr, color = c.textSecondary, fontSize = 13.sp, fontWeight = FontWeight.Medium, modifier = Modifier.clickable { onDateClick() })
@@ -302,7 +311,7 @@ fun AtAGlanceClock(modifier: Modifier = Modifier, clockStyle: app.lawnchairlite.
             }
         }
         app.lawnchairlite.data.ClockStyle.MINIMAL -> Box(
-            modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 8.dp).pointerInput(Unit) { detectTapGestures(onTap = { onTimeClick() }, onDoubleTap = { onCycleStyle() }) },
+            modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 8.dp).clickable { clockTapHandler() },
             Alignment.CenterStart,
         ) {
             Row(verticalAlignment = Alignment.Bottom) {
