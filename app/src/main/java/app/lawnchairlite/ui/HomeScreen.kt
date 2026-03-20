@@ -21,6 +21,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
@@ -36,7 +37,7 @@ import app.lawnchairlite.data.*
 import kotlinx.coroutines.launch
 
 /**
- * Lawnchair Lite v2.1.0 - Home Screen
+ * Lawnchair Lite v2.2.0 - Home Screen
  *
  * Drawer transition ported from Launcher3's AbstractStateChangeTouchController
  * + AllAppsSwipeController + AllAppsTransitionController.
@@ -89,6 +90,9 @@ fun HomeScreen(vm: LauncherViewModel) {
     val homeMenu by vm.homeMenu.collectAsState()
     val editMode by vm.editMode.collectAsState()
     val settingsOpen by vm.settingsOpen.collectAsState()
+    val notifCounts by vm.notifCounts.collectAsState()
+    val appShortcuts by vm.shortcuts.collectAsState()
+    val recentApps by vm.recentApps.collectAsState()
     val colors = LocalLauncherColors.current
     val isDragging = drag != null
     val iconDp = settings.iconSize.dp.dp
@@ -195,6 +199,12 @@ fun HomeScreen(vm: LauncherViewModel) {
     val homeScale = 1f - (dpVal * 0.05f).coerceIn(0f, 0.05f) // Subtle shrink
 
     Box(Modifier.fillMaxSize()) {
+        // Wallpaper dim overlay
+        val wallpaperDim = settings.wallpaperDim
+        if (wallpaperDim > 0) {
+            Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = wallpaperDim / 100f)))
+        }
+
         // ═════════════════════════════════════════════════════════════
         // HOME LAYER
         // ═════════════════════════════════════════════════════════════
@@ -306,9 +316,11 @@ fun HomeScreen(vm: LauncherViewModel) {
                                         .then(if (hoverAlpha > 0f) Modifier.clip(RoundedCornerShape(14.dp)).background(colors.accent.copy(alpha = hoverAlpha)) else Modifier),
                                     Alignment.Center,
                                 ) {
+                                    val cellBadge = if (settings.showNotifBadges && cell is GridCell.App) notifCounts[cell.appKey.substringBefore("/")] ?: 0 else 0
                                     GridCellView(
                                         cell, settings.iconShape, iconDp, { vm.resolveApp(it) }, customLabels,
                                         isDragSrc, true, editMode,
+                                        badgeCount = cellBadge,
                                         onTap = { when (cell) {
                                             is GridCell.App -> vm.resolveApp(cell.appKey)?.let { vm.launch(it) }
                                             is GridCell.Folder -> vm.openFolderView(cell, DragSource.HOME, gi)
@@ -354,9 +366,11 @@ fun HomeScreen(vm: LauncherViewModel) {
                                     .then(if (dockHoverAlpha > 0f) Modifier.clip(RoundedCornerShape(12.dp)).background(colors.accent.copy(alpha = dockHoverAlpha)) else Modifier),
                                 Alignment.Center,
                             ) {
+                                val dockBadge = if (settings.showNotifBadges && cell is GridCell.App) notifCounts[cell.appKey.substringBefore("/")] ?: 0 else 0
                                 GridCellView(
                                     cell, settings.iconShape, iconDp, { vm.resolveApp(it) }, customLabels,
                                     isDS, false, editMode,
+                                    badgeCount = dockBadge,
                                     onTap = { when (cell) {
                                         is GridCell.App -> vm.resolveApp(cell.appKey)?.let { vm.launch(it) }
                                         is GridCell.Folder -> vm.openFolderView(cell, DragSource.DOCK, i)
@@ -390,6 +404,9 @@ fun HomeScreen(vm: LauncherViewModel) {
                 shape = settings.iconShape,
                 iconSizeDp = iconDp,
                 columns = cols,
+                recentApps = recentApps,
+                notifCounts = notifCounts,
+                showBadges = settings.showNotifBadges,
                 onSearchChange = { vm.setSearch(it) },
                 onAppClick = { app ->
                     vm.launch(app)
@@ -414,7 +431,7 @@ fun HomeScreen(vm: LauncherViewModel) {
         SettingsPanel(visible = settingsOpen, settings = settings, vm = vm, onClose = { vm.closeSettings() })
 
         val menu = homeMenu
-        if (menu != null) HomeContextMenu(menuState = menu, shape = settings.iconShape, vm = vm, onDismiss = { vm.dismissHomeMenu() })
+        if (menu != null) HomeContextMenu(menuState = menu, shape = settings.iconShape, vm = vm, shortcuts = appShortcuts, onDismiss = { vm.dismissHomeMenu() })
 
         val fState = openFolder
         if (fState != null) { val (folder, src, fi) = fState
@@ -427,7 +444,7 @@ fun HomeScreen(vm: LauncherViewModel) {
         if (le != null) RenameDialog(le.current, "Rename Shortcut", onConfirm = { vm.saveCustomLabel(le.appKey, it) }, onDismiss = { vm.dismissLabelEdit() })
 
         val menuApp = drawerMenuApp
-        if (menuApp != null) DrawerContextMenu(menuApp, settings.iconShape, onPinHome = { vm.pinToHome(menuApp); scope.launch { drawerProgress.animateTo(0f, tween(200)) }; vm.setSearch("") }, onPinDock = { vm.pinToDock(menuApp); scope.launch { drawerProgress.animateTo(0f, tween(200)) }; vm.setSearch("") }, onHide = { vm.hideApp(menuApp.key) }, onAppInfo = { vm.appInfo(menuApp); vm.dismissDrawerMenu() }, onUninstall = { vm.uninstall(menuApp); vm.dismissDrawerMenu() }, onDismiss = { vm.dismissDrawerMenu() })
+        if (menuApp != null) DrawerContextMenu(menuApp, settings.iconShape, shortcuts = appShortcuts, onShortcutClick = { vm.launchShortcut(it); scope.launch { drawerProgress.animateTo(0f, tween(200)) }; vm.setSearch("") }, onPinHome = { vm.pinToHome(menuApp); scope.launch { drawerProgress.animateTo(0f, tween(200)) }; vm.setSearch("") }, onPinDock = { vm.pinToDock(menuApp); scope.launch { drawerProgress.animateTo(0f, tween(200)) }; vm.setSearch("") }, onHide = { vm.hideApp(menuApp.key) }, onAppInfo = { vm.appInfo(menuApp); vm.dismissDrawerMenu() }, onUninstall = { vm.uninstall(menuApp); vm.dismissDrawerMenu() }, onDismiss = { vm.dismissDrawerMenu() })
     }
 }
 
@@ -439,6 +456,7 @@ private fun GridCellView(
     cell: GridCell?, shape: IconShape, iconSizeDp: androidx.compose.ui.unit.Dp,
     resolveApp: (String) -> AppInfo?, customLabels: Map<String, String>,
     dimmed: Boolean, showLabel: Boolean, editMode: Boolean,
+    badgeCount: Int = 0,
     onTap: () -> Unit, onLongPress: () -> Unit,
     onDragStart: (Offset) -> Unit, onDrag: (Offset) -> Unit, onDragEnd: () -> Unit, onDragCancel: () -> Unit,
 ) {
@@ -485,7 +503,7 @@ private fun GridCellView(
         Alignment.Center,
     ) {
         when (cell) {
-            is GridCell.App -> resolveApp(cell.appKey)?.let { AppIconContent(it, shape, iconSizeDp, showLabel = showLabel, dimmed = dimmed, customLabel = customLabels[cell.appKey]) }
+            is GridCell.App -> resolveApp(cell.appKey)?.let { AppIconContent(it, shape, iconSizeDp, showLabel = showLabel, dimmed = dimmed, customLabel = customLabels[cell.appKey], badgeCount = badgeCount) }
             is GridCell.Folder -> FolderIconContent(cell, shape, resolveApp, iconSizeDp, showLabel = showLabel, dimmed = dimmed)
         }
     }

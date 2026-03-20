@@ -14,7 +14,7 @@ import org.json.JSONObject
 import java.io.IOException
 
 /**
- * Lawnchair Lite v2.1.0 - Preferences
+ * Lawnchair Lite v2.2.0 - Preferences
  *
  * Stability improvements:
  * - ReplaceFileCorruptionHandler: if DataStore file is corrupted, reset to defaults
@@ -45,6 +45,8 @@ data class LauncherSettings(
     val doubleTapAction: GestureAction = GestureAction.LOCK_SCREEN,
     val swipeDownAction: GestureAction = GestureAction.NOTIFICATION_SHADE,
     val autoPlaceNew: Boolean = true,
+    val wallpaperDim: Int = 0, // 0-100
+    val showNotifBadges: Boolean = true,
 )
 
 class LauncherPrefs(private val context: Context) {
@@ -68,6 +70,9 @@ class LauncherPrefs(private val context: Context) {
         val HIDDEN_APPS = stringPreferencesKey("hidden_apps")
         val CUSTOM_LABELS = stringPreferencesKey("custom_labels")
         val AUTO_PLACE_NEW = booleanPreferencesKey("auto_place_new")
+        val WALLPAPER_DIM = intPreferencesKey("wallpaper_dim")
+        val SHOW_NOTIF_BADGES = booleanPreferencesKey("show_notif_badges")
+        val APP_USAGE = stringPreferencesKey("app_usage")
     }
 
     // Safe data flow: catches IOException (disk errors) and emits defaults
@@ -92,6 +97,8 @@ class LauncherPrefs(private val context: Context) {
             doubleTapAction = p[DOUBLE_TAP_ACTION]?.let { runCatching { GestureAction.valueOf(it) }.getOrNull() } ?: GestureAction.LOCK_SCREEN,
             swipeDownAction = p[SWIPE_DOWN_ACTION]?.let { runCatching { GestureAction.valueOf(it) }.getOrNull() } ?: GestureAction.NOTIFICATION_SHADE,
             autoPlaceNew = p[AUTO_PLACE_NEW] ?: true,
+            wallpaperDim = (p[WALLPAPER_DIM] ?: 0).coerceIn(0, 100),
+            showNotifBadges = p[SHOW_NOTIF_BADGES] ?: true,
         )
     }
 
@@ -105,6 +112,16 @@ class LauncherPrefs(private val context: Context) {
         p[CUSTOM_LABELS]?.split("|")?.mapNotNull { entry ->
             val eq = entry.indexOf('=')
             if (eq > 0 && eq < entry.length - 1) entry.substring(0, eq) to unescapeLabel(entry.substring(eq + 1)) else null
+        }?.toMap() ?: emptyMap()
+    }
+    val appUsage: Flow<Map<String, Long>> = safeData.map { p ->
+        p[APP_USAGE]?.split("|")?.mapNotNull { entry ->
+            val eq = entry.indexOf('=')
+            if (eq > 0 && eq < entry.length - 1) {
+                val key = entry.substring(0, eq)
+                val ts = entry.substring(eq + 1).toLongOrNull()
+                if (ts != null) key to ts else null
+            } else null
         }?.toMap() ?: emptyMap()
     }
 
@@ -158,6 +175,12 @@ class LauncherPrefs(private val context: Context) {
     private fun unescapeLabel(s: String): String = s
         .replace("\\e", "=").replace("\\p", "|").replace("\\b", "\\")
 
+    suspend fun saveAppUsage(map: Map<String, Long>) {
+        runCatching {
+            context.dataStore.edit { it[APP_USAGE] = map.entries.joinToString("|") { (k, v) -> "$k=$v" } }
+        }.onFailure { Log.e(TAG, "Failed to save app usage", it) }
+    }
+
     suspend fun markInitialized() {
         runCatching { context.dataStore.edit { it[INITIALIZED] = true } }
             .onFailure { Log.e(TAG, "Failed to mark initialized", it) }
@@ -173,6 +196,8 @@ class LauncherPrefs(private val context: Context) {
             put("show_clock", p[SHOW_CLOCK] ?: true); put("show_dock_search", p[SHOW_DOCK_SEARCH] ?: true)
             put("double_tap", p[DOUBLE_TAP_ACTION] ?: "LOCK_SCREEN"); put("swipe_down", p[SWIPE_DOWN_ACTION] ?: "NOTIFICATION_SHADE")
             put("auto_place_new", p[AUTO_PLACE_NEW] ?: true)
+            put("wallpaper_dim", p[WALLPAPER_DIM] ?: 0)
+            put("show_notif_badges", p[SHOW_NOTIF_BADGES] ?: true)
             put("home_grid", p[HOME_GRID] ?: ""); put("dock_grid", p[DOCK_GRID] ?: "")
             put("hidden_apps", p[HIDDEN_APPS] ?: ""); put("custom_labels", p[CUSTOM_LABELS] ?: "")
         }.toString(2)
@@ -197,6 +222,8 @@ class LauncherPrefs(private val context: Context) {
             j.optString("double_tap").takeIf { it.isNotBlank() && runCatching { GestureAction.valueOf(it) }.isSuccess }?.let { p[DOUBLE_TAP_ACTION] = it }
             j.optString("swipe_down").takeIf { it.isNotBlank() && runCatching { GestureAction.valueOf(it) }.isSuccess }?.let { p[SWIPE_DOWN_ACTION] = it }
             if (j.has("auto_place_new")) p[AUTO_PLACE_NEW] = j.getBoolean("auto_place_new")
+            if (j.has("wallpaper_dim")) p[WALLPAPER_DIM] = j.getInt("wallpaper_dim").coerceIn(0, 100)
+            if (j.has("show_notif_badges")) p[SHOW_NOTIF_BADGES] = j.getBoolean("show_notif_badges")
             j.optString("home_grid").takeIf { it.isNotBlank() }?.let { p[HOME_GRID] = it }
             j.optString("dock_grid").takeIf { it.isNotBlank() }?.let { p[DOCK_GRID] = it }
             j.optString("hidden_apps").let { p[HIDDEN_APPS] = it }

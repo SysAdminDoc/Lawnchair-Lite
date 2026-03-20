@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import app.lawnchairlite.LauncherViewModel
 import app.lawnchairlite.data.AppInfo
+import app.lawnchairlite.data.AppShortcut
 import app.lawnchairlite.data.DragSource
 import app.lawnchairlite.data.GridCell
 import app.lawnchairlite.data.IconShape
@@ -44,7 +45,7 @@ import com.google.accompanist.drawablepainter.rememberDrawablePainter
 import java.text.SimpleDateFormat
 import java.util.*
 
-/** Lawnchair Lite v2.1.0 - UI Components */
+/** Lawnchair Lite v2.2.0 - UI Components */
 
 fun iconClip(shape: IconShape): androidx.compose.ui.graphics.Shape = when (shape) {
     IconShape.CIRCLE -> CircleShape
@@ -54,22 +55,46 @@ fun iconClip(shape: IconShape): androidx.compose.ui.graphics.Shape = when (shape
 }
 
 @Composable
-fun AppIconContent(app: AppInfo, shape: IconShape, iconSizeDp: Dp = 50.dp, modifier: Modifier = Modifier, showLabel: Boolean = true, dimmed: Boolean = false, customLabel: String? = null) {
+fun AppIconContent(app: AppInfo, shape: IconShape, iconSizeDp: Dp = 50.dp, modifier: Modifier = Modifier, showLabel: Boolean = true, dimmed: Boolean = false, customLabel: String? = null, badgeCount: Int = 0) {
     val c = LocalLauncherColors.current
     Column(modifier.graphicsLayer(alpha = if (dimmed) 0.25f else 1f), horizontalAlignment = Alignment.CenterHorizontally) {
-        Box(Modifier.size(iconSizeDp).clip(iconClip(shape)).background(c.card), Alignment.Center) {
-            if (app.icon != null) Image(rememberDrawablePainter(app.icon), app.label, Modifier.fillMaxSize().padding((iconSizeDp.value * 0.1f).dp))
+        Box(Modifier.size(iconSizeDp)) {
+            Box(Modifier.fillMaxSize().clip(iconClip(shape)).background(c.card), Alignment.Center) {
+                if (app.icon != null) Image(rememberDrawablePainter(app.icon), app.label, Modifier.fillMaxSize().padding((iconSizeDp.value * 0.1f).dp))
+            }
+            if (badgeCount > 0) {
+                val badgeText = if (badgeCount > 99) "99+" else badgeCount.toString()
+                Box(
+                    Modifier.align(Alignment.TopEnd).offset(x = 4.dp, y = (-2).dp)
+                        .defaultMinSize(minWidth = 16.dp, minHeight = 16.dp)
+                        .clip(RoundedCornerShape(8.dp)).background(Color(0xFFEF5350))
+                        .padding(horizontal = 4.dp),
+                    Alignment.Center,
+                ) { Text(badgeText, color = Color.White, fontSize = 9.sp, fontWeight = FontWeight.Bold, maxLines = 1) }
+            }
         }
         if (showLabel) { Spacer(Modifier.height(3.dp)); Text(customLabel ?: app.label, color = c.text, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, modifier = Modifier.widthIn(max = 68.dp)) }
     }
 }
 
 @Composable
-fun TappableAppIcon(app: AppInfo, shape: IconShape, iconSizeDp: Dp = 50.dp, modifier: Modifier = Modifier, showLabel: Boolean = true, customLabel: String? = null, onClick: () -> Unit = {}, onLongClick: () -> Unit = {}) {
+fun TappableAppIcon(app: AppInfo, shape: IconShape, iconSizeDp: Dp = 50.dp, modifier: Modifier = Modifier, showLabel: Boolean = true, customLabel: String? = null, badgeCount: Int = 0, onClick: () -> Unit = {}, onLongClick: () -> Unit = {}) {
     val c = LocalLauncherColors.current; var pressed by remember { mutableStateOf(false) }
     val scale by animateFloatAsState(if (pressed) 0.9f else 1f, spring(dampingRatio = 0.6f, stiffness = 500f), label = "s")
     Column(modifier.graphicsLayer(scaleX = scale, scaleY = scale).pointerInput(app.key) { detectTapGestures(onPress = { pressed = true; tryAwaitRelease(); pressed = false }, onTap = { onClick() }, onLongPress = { onLongClick() }) }, horizontalAlignment = Alignment.CenterHorizontally) {
-        Box(Modifier.size(iconSizeDp).clip(iconClip(shape)).background(c.card), Alignment.Center) { if (app.icon != null) Image(rememberDrawablePainter(app.icon), app.label, Modifier.fillMaxSize().padding((iconSizeDp.value * 0.1f).dp)) }
+        Box(Modifier.size(iconSizeDp)) {
+            Box(Modifier.fillMaxSize().clip(iconClip(shape)).background(c.card), Alignment.Center) { if (app.icon != null) Image(rememberDrawablePainter(app.icon), app.label, Modifier.fillMaxSize().padding((iconSizeDp.value * 0.1f).dp)) }
+            if (badgeCount > 0) {
+                val badgeText = if (badgeCount > 99) "99+" else badgeCount.toString()
+                Box(
+                    Modifier.align(Alignment.TopEnd).offset(x = 4.dp, y = (-2).dp)
+                        .defaultMinSize(minWidth = 16.dp, minHeight = 16.dp)
+                        .clip(RoundedCornerShape(8.dp)).background(Color(0xFFEF5350))
+                        .padding(horizontal = 4.dp),
+                    Alignment.Center,
+                ) { Text(badgeText, color = Color.White, fontSize = 9.sp, fontWeight = FontWeight.Bold, maxLines = 1) }
+            }
+        }
         if (showLabel) { Spacer(Modifier.height(3.dp)); Text(customLabel ?: app.label, color = c.text, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, modifier = Modifier.widthIn(max = 68.dp)) }
     }
 }
@@ -197,6 +222,7 @@ fun HomeContextMenu(
     menuState: LauncherViewModel.HomeMenuState,
     shape: IconShape,
     vm: LauncherViewModel,
+    shortcuts: List<AppShortcut>,
     onDismiss: () -> Unit,
 ) {
     val c = LocalLauncherColors.current
@@ -214,7 +240,6 @@ fun HomeContextMenu(
         ) {
             Spacer(Modifier.height(8.dp))
 
-            // Icon preview
             when (cell) {
                 is GridCell.App -> if (app != null) {
                     Box(Modifier.size(54.dp).clip(iconClip(shape)).background(c.card), Alignment.Center) {
@@ -232,10 +257,18 @@ fun HomeContextMenu(
                 }
             }
 
-            Spacer(Modifier.height(12.dp))
+            // App Shortcuts
+            if (shortcuts.isNotEmpty() && cell is GridCell.App) {
+                Spacer(Modifier.height(8.dp))
+                Divider(color = c.border.copy(alpha = 0.3f), thickness = 0.5.dp)
+                shortcuts.forEach { shortcut ->
+                    ShortcutItem(shortcut, c) { vm.launchShortcut(shortcut) }
+                }
+            }
+
+            Spacer(Modifier.height(if (shortcuts.isEmpty()) 12.dp else 4.dp))
             Divider(color = c.border.copy(alpha = 0.3f), thickness = 0.5.dp)
 
-            // Actions
             if (cell is GridCell.App && app != null) {
                 CtxItem("Rename", c) { vm.startLabelEdit(cell.appKey) }
                 CtxItem("Rearrange Icons", c) { vm.enterEditMode() }
@@ -367,14 +400,18 @@ fun FolderOverlay(folder: GridCell.Folder, shape: IconShape, iconSizeDp: Dp, res
 // ── Drawer Context Menu ──────────────────────────────────────────────
 
 @Composable
-fun DrawerContextMenu(app: AppInfo, shape: IconShape, onPinHome: () -> Unit, onPinDock: () -> Unit, onHide: () -> Unit, onAppInfo: () -> Unit, onUninstall: () -> Unit, onDismiss: () -> Unit) {
+fun DrawerContextMenu(app: AppInfo, shape: IconShape, shortcuts: List<AppShortcut>, onShortcutClick: (AppShortcut) -> Unit, onPinHome: () -> Unit, onPinDock: () -> Unit, onHide: () -> Unit, onAppInfo: () -> Unit, onUninstall: () -> Unit, onDismiss: () -> Unit) {
     val c = LocalLauncherColors.current
     Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.5f)).pointerInput(Unit) { detectTapGestures { onDismiss() } }, Alignment.Center) {
         Column(Modifier.widthIn(min = 240.dp, max = 280.dp).clip(RoundedCornerShape(20.dp)).background(c.surface).border(0.5.dp, c.border, RoundedCornerShape(20.dp)).pointerInput(Unit) { detectTapGestures { } }.padding(vertical = 12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Spacer(Modifier.height(8.dp))
             Box(Modifier.size(54.dp).clip(iconClip(shape)).background(c.card), Alignment.Center) { if (app.icon != null) Image(rememberDrawablePainter(app.icon), null, Modifier.fillMaxSize().padding(5.dp)) }
             Spacer(Modifier.height(6.dp)); Text(app.label, color = c.text, fontSize = 14.sp, fontWeight = FontWeight.SemiBold); Text(app.packageName, color = c.textSecondary, fontSize = 10.sp)
-            Spacer(Modifier.height(12.dp)); Divider(color = c.border.copy(alpha = 0.3f), thickness = 0.5.dp)
+            if (shortcuts.isNotEmpty()) {
+                Spacer(Modifier.height(8.dp)); Divider(color = c.border.copy(alpha = 0.3f), thickness = 0.5.dp)
+                shortcuts.forEach { shortcut -> ShortcutItem(shortcut, c) { onShortcutClick(shortcut) } }
+            }
+            Spacer(Modifier.height(if (shortcuts.isEmpty()) 12.dp else 4.dp)); Divider(color = c.border.copy(alpha = 0.3f), thickness = 0.5.dp)
             CtxItem("Add to Home Screen", c, onClick = onPinHome); CtxItem("Add to Dock", c, onClick = onPinDock)
             CtxItem("Hide from Drawer", c, onClick = onHide); CtxItem("App Info", c, onClick = onAppInfo)
             if (!app.isSystemApp) { Divider(color = c.border.copy(alpha = 0.3f), thickness = 0.5.dp); CtxItem("Uninstall", c, isRed = true, onClick = onUninstall) }
@@ -385,6 +422,22 @@ fun DrawerContextMenu(app: AppInfo, shape: IconShape, onPinHome: () -> Unit, onP
 @Composable private fun CtxItem(label: String, c: LauncherColors, isRed: Boolean = false, onClick: () -> Unit) {
     Text(label, color = if (isRed) Color(0xFFEF5350) else c.text, fontSize = 14.sp, fontWeight = if (isRed) FontWeight.SemiBold else FontWeight.Normal,
         modifier = Modifier.fillMaxWidth().clickable { onClick() }.padding(horizontal = 24.dp, vertical = 13.dp))
+}
+
+@Composable private fun ShortcutItem(shortcut: AppShortcut, c: LauncherColors, onClick: () -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().clickable { onClick() }.padding(horizontal = 20.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (shortcut.icon != null) {
+            Image(rememberDrawablePainter(shortcut.icon), null, Modifier.size(22.dp).clip(RoundedCornerShape(6.dp)))
+            Spacer(Modifier.width(10.dp))
+        } else {
+            Icon(Icons.Default.ArrowForward, null, tint = c.accent, modifier = Modifier.size(16.dp))
+            Spacer(Modifier.width(10.dp))
+        }
+        Text(shortcut.shortLabel.toString(), color = c.text, fontSize = 13.sp, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+    }
 }
 
 @Composable
