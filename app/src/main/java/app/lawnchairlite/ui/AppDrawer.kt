@@ -2,7 +2,9 @@ package app.lawnchairlite.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
@@ -31,7 +33,7 @@ import app.lawnchairlite.data.IconShape
 import kotlinx.coroutines.launch
 
 /**
- * Lawnchair Lite v2.4.0 - App Drawer
+ * Lawnchair Lite v2.5.0 - App Drawer
  *
  * v2.2.0: Recent apps row, notification badges, package name search
  */
@@ -45,6 +47,10 @@ fun AppDrawer(
     iconSizeDp: Dp,
     columns: Int,
     recentApps: List<AppInfo>,
+    categorizedApps: Map<app.lawnchairlite.data.DrawerCategory, List<AppInfo>>,
+    showCategories: Boolean,
+    selectedCategory: app.lawnchairlite.data.DrawerCategory,
+    onCategoryChange: (app.lawnchairlite.data.DrawerCategory) -> Unit,
     notifCounts: Map<String, Int>,
     showBadges: Boolean,
     badgeDotOnly: Boolean,
@@ -131,7 +137,11 @@ fun AppDrawer(
     }
 
     val translationY = (1f - progress) * screenHeightPx
-    val showRecent = searchQuery.isBlank() && recentApps.isNotEmpty()
+    val showRecent = searchQuery.isBlank() && recentApps.isNotEmpty() && !showCategories
+    // Use categorized apps when categories enabled, otherwise use full list
+    val displayApps = if (showCategories && searchQuery.isBlank() && selectedCategory != app.lawnchairlite.data.DrawerCategory.ALL) {
+        categorizedApps[selectedCategory] ?: apps
+    } else apps
 
     Box(
         Modifier
@@ -150,16 +160,40 @@ fun AppDrawer(
                         .background(colors.textSecondary.copy(alpha = 0.5f)))
                 }
                 DrawerSearch(searchQuery, onSearchChange, Modifier.padding(horizontal = 20.dp, vertical = 4.dp))
+                if (showCategories && searchQuery.isBlank()) {
+                    Spacer(Modifier.height(4.dp))
+                    Row(
+                        Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        app.lawnchairlite.data.DrawerCategory.entries.forEach { cat ->
+                            val count = categorizedApps[cat]?.size ?: 0
+                            if (cat == app.lawnchairlite.data.DrawerCategory.ALL || count > 0) {
+                                val sel = selectedCategory == cat
+                                Text(
+                                    if (cat == app.lawnchairlite.data.DrawerCategory.ALL) cat.label else "${cat.label} ($count)",
+                                    color = if (sel) colors.accent else colors.textSecondary,
+                                    fontSize = 12.sp, fontWeight = if (sel) FontWeight.Bold else FontWeight.Medium,
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(16.dp))
+                                        .background(if (sel) colors.accent.copy(alpha = 0.12f) else colors.card)
+                                        .clickable { onCategoryChange(cat) }
+                                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                                )
+                            }
+                        }
+                    }
+                }
                 Spacer(Modifier.height(6.dp))
                 Row(Modifier.padding(horizontal = 24.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text("${apps.size} apps", color = colors.textSecondary, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                    Text("${displayApps.size} apps", color = colors.textSecondary, fontSize = 12.sp, fontWeight = FontWeight.Medium)
                     if (drawerSort != app.lawnchairlite.data.DrawerSort.NAME) {
                         Text("  ·  ${drawerSort.label}", color = colors.accent.copy(alpha = 0.6f), fontSize = 11.sp, fontWeight = FontWeight.Medium)
                     }
                 }
             }
 
-            if (apps.isEmpty()) {
+            if (displayApps.isEmpty()) {
                 Box(Modifier.fillMaxWidth().weight(1f), Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text("No apps found", color = colors.textSecondary, fontSize = 14.sp)
@@ -219,7 +253,7 @@ fun AppDrawer(
                             }
                         }
 
-                        items(apps, key = { it.key }) { app ->
+                        items(displayApps, key = { it.key }) { app ->
                             val badge = if (showBadges) notifCounts[app.packageName] ?: 0 else 0
                             Box(Modifier.fillMaxWidth(), Alignment.Center) {
                                 TappableAppIcon(

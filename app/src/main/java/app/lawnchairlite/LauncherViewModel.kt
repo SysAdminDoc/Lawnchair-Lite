@@ -23,7 +23,7 @@ import kotlinx.coroutines.launch
 import kotlin.math.max
 
 /**
- * Lawnchair Lite v2.4.0 - ViewModel
+ * Lawnchair Lite v2.5.0 - ViewModel
  *
  * v2.3.0 additions:
  * - Drawer sort (name, most used, recently installed)
@@ -104,6 +104,15 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
             DrawerSort.RECENT_INSTALL -> filtered.sortedByDescending { it.firstInstallTime }
         }
     }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    // Categorized apps for drawer tabs
+    val categorizedApps: StateFlow<Map<DrawerCategory, List<AppInfo>>> = filteredApps.map { apps ->
+        AppCategorizer.categorizeAll(apps)
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyMap())
+
+    private val _selectedCategory = MutableStateFlow(DrawerCategory.ALL)
+    val selectedCategory: StateFlow<DrawerCategory> = _selectedCategory.asStateFlow()
+    fun setSelectedCategory(c: DrawerCategory) { _selectedCategory.value = c }
 
     // Recent apps: top N most recently used (not hidden)
     val recentApps: StateFlow<List<AppInfo>> = combine(_allApps, _appUsage, _hiddenApps) { apps, usage, hidden ->
@@ -235,6 +244,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     // -- Home/Dock Context Menu --
 
     fun showHomeMenu(cell: GridCell, source: DragSource, index: Int) {
+        if (settings.value.homeLocked) { toast("Home screen is locked"); return }
         val info = if (cell is GridCell.App) resolveApp(cell.appKey) else null
         _homeMenu.value = HomeMenuState(cell, source, index, info)
         // Load shortcuts for the app
@@ -254,7 +264,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         _homeMenu.value = null; _shortcuts.value = emptyList()
     }}
 
-    fun enterEditMode() { _homeMenu.value = null; _shortcuts.value = emptyList(); _editMode.value = true }
+    fun enterEditMode() { if (settings.value.homeLocked) { toast("Home screen is locked"); return }; _homeMenu.value = null; _shortcuts.value = emptyList(); _editMode.value = true }
     fun exitEditMode() { _editMode.value = false }
 
     // -- App Shortcuts --
@@ -570,6 +580,11 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     fun setGridPaddingH(v: Int) = pref(LauncherPrefs.GRID_PADDING_H, v.coerceIn(0, 24))
     fun setGridPaddingV(v: Int) = pref(LauncherPrefs.GRID_PADDING_V, v.coerceIn(0, 24))
     fun setHideStatusBar(v: Boolean) = pref(LauncherPrefs.HIDE_STATUS_BAR, v)
+    fun setDrawerColumns(c: Int) = pref(LauncherPrefs.DRAWER_COLUMNS, c.coerceIn(0, 8))
+    fun setHomeLocked(v: Boolean) { pref(LauncherPrefs.HOME_LOCKED, v); if (v) { _editMode.value = false }; toast(if (v) "Home screen locked" else "Home screen unlocked") }
+    fun setIconShadow(v: Boolean) = pref(LauncherPrefs.ICON_SHADOW, v)
+    fun setAccentOverride(hex: String) = pref(LauncherPrefs.ACCENT_OVERRIDE, hex)
+    fun setDrawerCategories(v: Boolean) = pref(LauncherPrefs.DRAWER_CATEGORIES, v)
 
     // -- Dock Swipe Actions --
 

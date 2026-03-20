@@ -15,7 +15,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 /**
- * Lawnchair Lite v2.4.0 - App Repository
+ * Lawnchair Lite v2.5.0 - App Repository
  *
  * Stability improvements:
  * - All PackageManager calls wrapped in try-catch for DeadSystemException,
