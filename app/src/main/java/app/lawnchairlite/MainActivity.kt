@@ -1,5 +1,6 @@
 package app.lawnchairlite
 
+import android.appwidget.AppWidgetManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -11,6 +12,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.*
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -18,7 +20,7 @@ import app.lawnchairlite.ui.HomeScreen
 import app.lawnchairlite.ui.LauncherTheme
 
 /**
- * Lawnchair Lite v2.7.0
+ * Lawnchair Lite v2.8.0
  *
  * Stability improvements:
  * - Debounced package receiver: bulk install/uninstall events coalesced
@@ -54,7 +56,11 @@ class MainActivity : ComponentActivity() {
             LaunchedEffect(vm) { vmRef = vm }
             val settings by vm.settings.collectAsState()
             LauncherTheme(themeMode = settings.themeMode, accentOverride = settings.accentOverride) { HomeScreen(vm = vm) }
-            DisposableEffect(Unit) { registerPkgReceiver(vm); onDispose { unregisterPkgReceiver() } }
+            DisposableEffect(Unit) {
+                registerPkgReceiver(vm)
+                vm.startWidgetHost()
+                onDispose { unregisterPkgReceiver(); vm.stopWidgetHost() }
+            }
         }
     }
 

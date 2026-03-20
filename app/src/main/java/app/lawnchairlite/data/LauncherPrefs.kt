@@ -14,7 +14,7 @@ import org.json.JSONObject
 import java.io.IOException
 
 /**
- * Lawnchair Lite v2.7.0 - Preferences
+ * Lawnchair Lite v2.8.0 - Preferences
  *
  * Stability improvements:
  * - ReplaceFileCorruptionHandler: if DataStore file is corrupted, reset to defaults
@@ -125,6 +125,7 @@ class LauncherPrefs(private val context: Context) {
         val TRIPLE_TAP_ACTION = stringPreferencesKey("triple_tap_action")
         val PINCH_ACTION = stringPreferencesKey("pinch_action")
         val DOCK_TAP_ACTION = stringPreferencesKey("dock_tap_action")
+        val WIDGETS = stringPreferencesKey("widgets_v1")
     }
 
     // Safe data flow: catches IOException (disk errors) and emits defaults
@@ -268,6 +269,37 @@ class LauncherPrefs(private val context: Context) {
         runCatching {
             context.dataStore.edit { it[DOCK_SWIPE_APPS] = map.entries.joinToString("|") { (k, v) -> "$k=$v" } }
         }.onFailure { Log.e(TAG, "Failed to save dock swipe apps", it) }
+    }
+
+    val widgets: Flow<List<WidgetInfo>> = safeData.map { p ->
+        p[WIDGETS]?.let { parseWidgets(it) } ?: emptyList()
+    }
+
+    suspend fun saveWidgets(list: List<WidgetInfo>) {
+        runCatching {
+            context.dataStore.edit { it[WIDGETS] = serializeWidgets(list) }
+        }.onFailure { Log.e(TAG, "Failed to save widgets", it) }
+    }
+
+    private fun serializeWidgets(list: List<WidgetInfo>): String =
+        list.joinToString("|") { "${it.appWidgetId},${it.page},${it.row},${it.col},${it.spanX},${it.spanY},${it.provider}" }
+
+    private fun parseWidgets(s: String): List<WidgetInfo> {
+        if (s.isBlank()) return emptyList()
+        return s.split("|").mapNotNull { token ->
+            runCatching {
+                val p = token.split(",")
+                if (p.size >= 6) WidgetInfo(
+                    appWidgetId = p[0].toInt(),
+                    page = p[1].toInt(),
+                    row = p[2].toInt(),
+                    col = p[3].toInt(),
+                    spanX = p[4].toInt().coerceIn(1, 4),
+                    spanY = p[5].toInt().coerceIn(1, 4),
+                    provider = p.getOrElse(6) { "" },
+                ) else null
+            }.getOrNull()
+        }
     }
 
     suspend fun saveAppUsage(map: Map<String, Long>) {

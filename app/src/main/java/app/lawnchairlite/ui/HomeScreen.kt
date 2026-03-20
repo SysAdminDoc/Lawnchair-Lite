@@ -37,12 +37,13 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import android.appwidget.AppWidgetManager
 import app.lawnchairlite.LauncherViewModel
 import app.lawnchairlite.data.*
 import kotlinx.coroutines.launch
 
 /**
- * Lawnchair Lite v2.7.0 - Home Screen
+ * Lawnchair Lite v2.8.0 - Home Screen
  *
  * Drawer transition ported from Launcher3's AbstractStateChangeTouchController
  * + AllAppsSwipeController + AllAppsTransitionController.
@@ -100,6 +101,8 @@ fun HomeScreen(vm: LauncherViewModel) {
     val recentApps by vm.recentApps.collectAsState()
     val categorizedApps by vm.categorizedApps.collectAsState()
     val selectedCategory by vm.selectedCategory.collectAsState()
+    val widgetPickerOpen by vm.widgetPickerOpen.collectAsState()
+    val widgetInfos by vm.widgets.collectAsState()
     val colors = LocalLauncherColors.current
     val isDragging = drag != null
     val iconDp = settings.iconSize.dp.dp
@@ -326,6 +329,12 @@ fun HomeScreen(vm: LauncherViewModel) {
                                 .background(colors.accent.copy(alpha = 0.12f))
                                 .clickable { vm.exitEditMode() }
                                 .padding(horizontal = 14.dp, vertical = 6.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text("Widgets", color = colors.text, fontSize = 14.sp, fontWeight = FontWeight.Medium,
+                            modifier = Modifier.clip(RoundedCornerShape(10.dp))
+                                .background(colors.card)
+                                .clickable { vm.openWidgetPicker() }
+                                .padding(horizontal = 14.dp, vertical = 6.dp))
                     }
                     Spacer(Modifier.weight(1f))
                     IconButton(onClick = { vm.openSettings() }, Modifier.size(36.dp)) {
@@ -364,38 +373,80 @@ fun HomeScreen(vm: LauncherViewModel) {
                         app.lawnchairlite.data.PageTransition.SLIDE -> Modifier
                     }
 
-                    Column(Modifier.fillMaxSize().then(transitionMod).padding(horizontal = gridPadH).padding(vertical = gridPadV), verticalArrangement = Arrangement.SpaceEvenly) {
-                        for (row in 0 until rows) Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
-                            for (col in 0 until cols) {
-                                val li = row * cols + col; val gi = ps + li; val cell = pageCells.getOrNull(li)
-                                val isHovered = !hoverDock && hoverIdx == gi && isDragging
-                                val isDragSrc = drag?.source == DragSource.HOME && drag?.sourceIndex == gi
+                    Box(Modifier.fillMaxSize().then(transitionMod).padding(horizontal = gridPadH).padding(vertical = gridPadV)) {
+                        // Grid cells
+                        Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.SpaceEvenly) {
+                            for (row in 0 until rows) Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
+                                for (col in 0 until cols) {
+                                    val li = row * cols + col; val gi = ps + li; val cell = pageCells.getOrNull(li)
+                                    val isHovered = !hoverDock && hoverIdx == gi && isDragging
+                                    val isDragSrc = drag?.source == DragSource.HOME && drag?.sourceIndex == gi
+                                    // Skip widget cells (rendered by overlay)
+                                    val isWidgetCell = cell is GridCell.Widget
 
-                                val hoverScale by animateFloatAsState(if (isHovered) 1.12f else 1f, spring(dampingRatio = 0.5f, stiffness = 400f), label = "hs$gi")
-                                val hoverAlpha by animateFloatAsState(if (isHovered) 0.2f else 0f, tween(150), label = "ha$gi")
+                                    val hoverScale by animateFloatAsState(if (isHovered) 1.12f else 1f, spring(dampingRatio = 0.5f, stiffness = 400f), label = "hs$gi")
+                                    val hoverAlpha by animateFloatAsState(if (isHovered) 0.2f else 0f, tween(150), label = "ha$gi")
 
+                                    Box(
+                                        Modifier.weight(1f).aspectRatio(0.85f)
+                                            .onGloballyPositioned { if (page == currentPage) homeBounds[li] = it.boundsInRoot() }
+                                            .graphicsLayer(scaleX = hoverScale, scaleY = hoverScale, alpha = if (isWidgetCell) 0f else 1f)
+                                            .then(if (hoverAlpha > 0f) Modifier.clip(RoundedCornerShape(14.dp)).background(colors.accent.copy(alpha = hoverAlpha)) else Modifier),
+                                        Alignment.Center,
+                                    ) {
+                                        if (!isWidgetCell) {
+                                            val cellBadge = if (settings.showNotifBadges && settings.badgeStyle != app.lawnchairlite.data.BadgeStyle.HIDDEN && cell is GridCell.App) notifCounts[cell.appKey.substringBefore("/")] ?: 0 else 0
+                                            GridCellView(
+                                                cell, settings.iconShape, iconDp, { vm.resolveApp(it) }, customLabels,
+                                                isDragSrc, homeLabels, editMode,
+                                                badgeCount = cellBadge, badgeDotOnly = settings.badgeStyle == app.lawnchairlite.data.BadgeStyle.DOT, iconShadow = settings.iconShadow, labelSizeSp = settings.labelSize.sp,
+                                                onTap = { when (cell) {
+                                                    is GridCell.App -> vm.resolveApp(cell.appKey)?.let { vm.launch(it) }
+                                                    is GridCell.Folder -> vm.openFolderView(cell, DragSource.HOME, gi)
+                                                    is GridCell.Widget -> {}
+                                                    null -> {}
+                                                }},
+                                                onLongPress = { if (cell != null) vm.showHomeMenu(cell, DragSource.HOME, gi) },
+                                                onDragStart = { rp -> if (cell != null) vm.startDrag(cell, DragSource.HOME, gi, rp) },
+                                                onDrag = { rp -> vm.updateDrag(rp); hitTest(rp) },
+                                                onDragEnd = { vm.endDrag() },
+                                                onDragCancel = { vm.cancelDrag() },
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        // Widget overlays on this page
+                        val pageWidgets = widgetInfos.filter { it.page == page }
+                        val context = androidx.compose.ui.platform.LocalContext.current
+                        pageWidgets.forEach { wi ->
+                            val cellW = 1f / cols
+                            val cellH = 1f / rows
+                            val hostView = remember(wi.appWidgetId) {
+                                try {
+                                    val info = vm.widgetManager.getAppWidgetInfo(wi.appWidgetId)
+                                    if (info != null) vm.widgetHost.createView(context, wi.appWidgetId, info) else null
+                                } catch (e: Exception) { null }
+                            }
+                            if (hostView != null) {
                                 Box(
-                                    Modifier.weight(1f).aspectRatio(0.85f)
-                                        .onGloballyPositioned { if (page == currentPage) homeBounds[li] = it.boundsInRoot() }
-                                        .graphicsLayer(scaleX = hoverScale, scaleY = hoverScale)
-                                        .then(if (hoverAlpha > 0f) Modifier.clip(RoundedCornerShape(14.dp)).background(colors.accent.copy(alpha = hoverAlpha)) else Modifier),
-                                    Alignment.Center,
+                                    Modifier.fillMaxSize()
+                                        .graphicsLayer(
+                                            translationX = 0f, translationY = 0f,
+                                            clip = true,
+                                        )
                                 ) {
-                                    val cellBadge = if (settings.showNotifBadges && settings.badgeStyle != app.lawnchairlite.data.BadgeStyle.HIDDEN && cell is GridCell.App) notifCounts[cell.appKey.substringBefore("/")] ?: 0 else 0
-                                    GridCellView(
-                                        cell, settings.iconShape, iconDp, { vm.resolveApp(it) }, customLabels,
-                                        isDragSrc, homeLabels, editMode,
-                                        badgeCount = cellBadge, badgeDotOnly = settings.badgeStyle == app.lawnchairlite.data.BadgeStyle.DOT, iconShadow = settings.iconShadow, labelSizeSp = settings.labelSize.sp,
-                                        onTap = { when (cell) {
-                                            is GridCell.App -> vm.resolveApp(cell.appKey)?.let { vm.launch(it) }
-                                            is GridCell.Folder -> vm.openFolderView(cell, DragSource.HOME, gi)
-                                            null -> {}
-                                        }},
-                                        onLongPress = { if (cell != null) vm.showHomeMenu(cell, DragSource.HOME, gi) },
-                                        onDragStart = { rp -> if (cell != null) vm.startDrag(cell, DragSource.HOME, gi, rp) },
-                                        onDrag = { rp -> vm.updateDrag(rp); hitTest(rp) },
-                                        onDragEnd = { vm.endDrag() },
-                                        onDragCancel = { vm.cancelDrag() },
+                                    WidgetHostViewComposable(
+                                        hostView = hostView,
+                                        modifier = Modifier
+                                            .fillMaxWidth(cellW * wi.spanX)
+                                            .fillMaxHeight(cellH * wi.spanY)
+                                            .offset(
+                                                x = with(density) { (wi.col * cellW * 1000).dp },
+                                                y = with(density) { (wi.row * cellH * 1000).dp },
+                                            )
+                                            .then(if (editMode) Modifier.clickable { vm.removeWidget(wi.appWidgetId) } else Modifier),
                                     )
                                 }
                             }
@@ -465,6 +516,7 @@ fun HomeScreen(vm: LauncherViewModel) {
                                     onTap = { when (cell) {
                                         is GridCell.App -> vm.resolveApp(cell.appKey)?.let { vm.launch(it) }
                                         is GridCell.Folder -> vm.openFolderView(cell, DragSource.DOCK, i)
+                                        is GridCell.Widget -> {}
                                         null -> {}
                                     }},
                                     onLongPress = { if (cell != null) vm.showHomeMenu(cell, DragSource.DOCK, i) },
@@ -515,6 +567,9 @@ fun HomeScreen(vm: LauncherViewModel) {
                     vm.setSearch("")
                 },
                 onAppLongClick = { vm.showDrawerMenu(it) },
+                contactResults = vm.contactResults.collectAsState().value,
+                onContactTap = { uri -> vm.openContact(uri); scope.launch { drawerProgress.animateTo(0f, tween(200)) }; vm.setSearch("") },
+                onContactCall = { number -> vm.callContact(number); scope.launch { drawerProgress.animateTo(0f, tween(200)) }; vm.setSearch("") },
                 onSearchWeb = { vm.searchWeb(it) },
                 onProgressChange = { newP ->
                     scope.launch { drawerProgress.snapTo(newP) }
@@ -531,6 +586,33 @@ fun HomeScreen(vm: LauncherViewModel) {
         // OVERLAYS
         // ═════════════════════════════════════════════════════════════
         SettingsPanel(visible = settingsOpen, settings = settings, vm = vm, onClose = { vm.closeSettings() })
+
+        // Widget picker
+        if (widgetPickerOpen) {
+            val availableWidgets = remember { vm.getAvailableWidgets() }
+            WidgetPickerDialog(
+                widgets = availableWidgets,
+                onSelect = { providerInfo ->
+                    val widgetId = vm.allocateWidgetId()
+                    val bound = vm.canBindWidget(widgetId, providerInfo.provider)
+                    if (bound) {
+                        // Find first empty span for widget
+                        val minCols = ((providerInfo.minWidth + 72) / 73).coerceIn(1, cols)
+                        val minRows = ((providerInfo.minHeight + 72) / 73).coerceIn(1, rows)
+                        val span = vm.findFirstEmptySpan(currentPage, minCols, minRows)
+                        if (span != null) {
+                            vm.addWidget(WidgetInfo(widgetId, currentPage, span.first, span.second, minCols, minRows, providerInfo.provider.flattenToString()))
+                        } else {
+                            vm.widgetHost.deleteAppWidgetId(widgetId)
+                        }
+                    } else {
+                        // Need user permission to bind
+                        vm.widgetHost.deleteAppWidgetId(widgetId)
+                    }
+                },
+                onDismiss = { vm.closeWidgetPicker() },
+            )
+        }
 
         val menu = homeMenu
         if (menu != null) HomeContextMenu(menuState = menu, shape = settings.iconShape, vm = vm, shortcuts = appShortcuts, onDismiss = { vm.dismissHomeMenu() })
@@ -607,6 +689,7 @@ private fun GridCellView(
         when (cell) {
             is GridCell.App -> resolveApp(cell.appKey)?.let { AppIconContent(it, shape, iconSizeDp, showLabel = showLabel, dimmed = dimmed, customLabel = customLabels[cell.appKey], badgeCount = badgeCount, badgeDotOnly = badgeDotOnly, iconShadow = iconShadow, labelSizeSp = labelSizeSp) }
             is GridCell.Folder -> FolderIconContent(cell, shape, resolveApp, iconSizeDp, showLabel = showLabel, dimmed = dimmed)
+            is GridCell.Widget -> { /* Rendered by overlay, skip */ }
         }
     }
 }

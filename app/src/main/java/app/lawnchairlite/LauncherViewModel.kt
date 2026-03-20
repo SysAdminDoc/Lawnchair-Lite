@@ -3,13 +3,18 @@ package app.lawnchairlite
 import android.app.ActivityManager
 import android.app.Application
 import android.app.admin.DevicePolicyManager
+import android.appwidget.AppWidgetHost
+import android.appwidget.AppWidgetManager
+import android.appwidget.AppWidgetProviderInfo
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.database.Cursor
 import android.hardware.camera2.CameraManager
 import android.os.Build
 import android.os.VibrationEffect
 import android.os.Vibrator
+import android.provider.ContactsContract
 import android.provider.Settings
 import android.util.Log
 import android.widget.Toast
@@ -24,7 +29,7 @@ import kotlinx.coroutines.launch
 import kotlin.math.max
 
 /**
- * Lawnchair Lite v2.7.0 - ViewModel
+ * Lawnchair Lite v2.8.0 - ViewModel
  *
  * v2.3.0 additions:
  * - Drawer sort (name, most used, recently installed)
@@ -47,6 +52,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         private const val TAG = "LauncherVM"
         private const val DEBOUNCE_MS = 300L
         private const val MAX_RECENT_APPS = 8
+        private const val WIDGET_HOST_ID = 1024
     }
 
     private val ctx = app.applicationContext
@@ -54,6 +60,8 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     val prefs = LauncherPrefs(app)
     val iconPackManager = IconPackManager(app)
     val shortcutRepo = ShortcutRepository(app)
+    val widgetHost = AppWidgetHost(app, WIDGET_HOST_ID)
+    val widgetManager: AppWidgetManager = AppWidgetManager.getInstance(app)
 
     private val _allApps = MutableStateFlow<List<AppInfo>>(emptyList())
     val allApps: StateFlow<List<AppInfo>> = _allApps.asStateFlow()
@@ -86,6 +94,17 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     // App shortcuts state
     private val _shortcuts = MutableStateFlow<List<AppShortcut>>(emptyList())
     val shortcuts: StateFlow<List<AppShortcut>> = _shortcuts.asStateFlow()
+
+    // Widget state
+    private val _widgets = MutableStateFlow<List<WidgetInfo>>(emptyList())
+    val widgets: StateFlow<List<WidgetInfo>> = _widgets.asStateFlow()
+    private val _widgetPickerOpen = MutableStateFlow(false)
+    val widgetPickerOpen: StateFlow<Boolean> = _widgetPickerOpen.asStateFlow()
+
+    // Contact search results
+    data class ContactResult(val name: String, val number: String?, val lookupUri: String?)
+    private val _contactResults = MutableStateFlow<List<ContactResult>>(emptyList())
+    val contactResults: StateFlow<List<ContactResult>> = _contactResults.asStateFlow()
 
     private val _search = MutableStateFlow("")
     val search: StateFlow<String> = _search.asStateFlow()
@@ -176,6 +195,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch { prefs.hiddenApps.collect { _hiddenApps.value = it } }
         viewModelScope.launch { prefs.customLabels.collect { _customLabels.value = it } }
         viewModelScope.launch { prefs.appUsage.collect { _appUsage.value = it } }
+        viewModelScope.launch { prefs.widgets.collect { _widgets.value = it } }
         viewModelScope.launch {
             combine(_allApps, _initialized) { a, i -> a to i }.filter { it.first.isNotEmpty() && !it.second }
                 .take(1).collect { (apps, _) -> autoPopulate(apps) }
@@ -235,7 +255,10 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
 
     fun appInfo(app: AppInfo) = repo.openAppInfo(app)
     fun uninstall(app: AppInfo) = repo.uninstallApp(app)
-    fun setSearch(q: String) { _search.value = q }
+    fun setSearch(q: String) {
+        _search.value = q
+        if (q.length >= 2) searchContacts(q) else _contactResults.value = emptyList()
+    }
     fun openDrawer() { _drawerOpen.value = true }
     fun closeDrawer() { _drawerOpen.value = false; _search.value = "" }
     fun openSettings() { _settingsOpen.value = true }
@@ -464,6 +487,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     private fun cleanCell(cell: GridCell?, valid: Set<String>): GridCell? = when (cell) {
         is GridCell.App -> if (cell.appKey in valid) cell else null
         is GridCell.Folder -> { val f = cell.appKeys.filter { it in valid }; when { f.isEmpty() -> null; f.size == 1 -> GridCell.App(f[0]); f.size != cell.appKeys.size -> cell.copy(appKeys = f); else -> cell } }
+        is GridCell.Widget -> cell
         null -> null
     }
 
@@ -564,6 +588,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
                     ex is GridCell.Folder -> { if (item.appKey !in ex.appKeys) { if (same && drag.sourceIndex in tg.indices) tg[drag.sourceIndex] = null; tg[ti] = ex.copy(appKeys = ex.appKeys + item.appKey); saveTrimmed(target, tg); if (!same) clearSourceCell(drag) } }
                 }
             }
+            is GridCell.Widget -> { /* Widgets cannot be dragged */ }
         }
     }
     private suspend fun saveTrimmed(src: DragSource, grid: List<GridCell?>) { saveGrid(src, if (src == DragSource.HOME) trimGrid(grid, pageSize()) else grid) }
@@ -745,5 +770,131 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         } catch (e: Exception) {
             Log.e(TAG, "autoPopulate failed", e)
         }
+    }
+
+    // -- Widgets --
+
+    fun startWidgetHost() { runCatching { widgetHost.startListening() }.onFailure { Log.e(TAG, "startWidgetHost failed", it) } }
+    fun stopWidgetHost() { runCatching { widgetHost.stopListening() }.onFailure { Log.e(TAG, "stopWidgetHost failed", it) } }
+
+    fun openWidgetPicker() { _widgetPickerOpen.value = true }
+    fun closeWidgetPicker() { _widgetPickerOpen.value = false }
+
+    fun getAvailableWidgets(): List<AppWidgetProviderInfo> = runCatching {
+        widgetManager.installedProviders.sortedBy { it.loadLabel(ctx.packageManager).toString().lowercase() }
+    }.getOrDefault(emptyList())
+
+    fun allocateWidgetId(): Int = widgetHost.allocateAppWidgetId()
+
+    fun addWidget(info: WidgetInfo) { viewModelScope.launch {
+        val list = _widgets.value + info
+        _widgets.value = list; prefs.saveWidgets(list)
+        // Mark grid cells as occupied
+        val ps = pageSize(); val grid = padGrid(_homeGrid.value, ps).toMutableList()
+        val pageStart = info.page * ps
+        for (r in info.row until (info.row + info.spanY)) {
+            for (c in info.col until (info.col + info.spanX)) {
+                val idx = pageStart + r * settings.value.gridColumns + c
+                if (idx in grid.indices && grid[idx] == null) grid[idx] = GridCell.Widget(info.appWidgetId)
+            }
+        }
+        _homeGrid.value = grid; prefs.saveHome(grid)
+        _widgetPickerOpen.value = false
+        toast("Widget added")
+    }}
+
+    fun removeWidget(appWidgetId: Int) { viewModelScope.launch {
+        widgetHost.deleteAppWidgetId(appWidgetId)
+        val list = _widgets.value.filter { it.appWidgetId != appWidgetId }
+        _widgets.value = list; prefs.saveWidgets(list)
+        // Clear grid cells
+        val grid = _homeGrid.value.toMutableList()
+        for (i in grid.indices) { if (grid[i] is GridCell.Widget && (grid[i] as GridCell.Widget).widgetId == appWidgetId) grid[i] = null }
+        _homeGrid.value = trimGrid(grid, pageSize()); prefs.saveHome(_homeGrid.value)
+        toast("Widget removed")
+    }}
+
+    fun widgetForId(id: Int): WidgetInfo? = _widgets.value.find { it.appWidgetId == id }
+
+    fun canBindWidget(appWidgetId: Int, provider: ComponentName): Boolean =
+        widgetManager.bindAppWidgetIdIfAllowed(appWidgetId, provider)
+
+    fun getBindIntent(appWidgetId: Int, provider: ComponentName): Intent =
+        Intent(AppWidgetManager.ACTION_APPWIDGET_BIND).apply {
+            putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
+            putExtra(AppWidgetManager.EXTRA_APPWIDGET_PROVIDER, provider)
+        }
+
+    fun findFirstEmptySpan(page: Int, spanX: Int, spanY: Int): Pair<Int, Int>? {
+        val cols = settings.value.gridColumns; val rows = settings.value.gridRows
+        val ps = cols * rows; val pageStart = page * ps
+        val grid = padGrid(_homeGrid.value, ps)
+        for (r in 0..(rows - spanY)) {
+            for (c in 0..(cols - spanX)) {
+                var fits = true
+                for (dr in 0 until spanY) { for (dc in 0 until spanX) {
+                    val idx = pageStart + (r + dr) * cols + (c + dc)
+                    if (idx !in grid.indices || grid[idx] != null) { fits = false; break }
+                }; if (!fits) break }
+                if (fits) return r to c
+            }
+        }
+        return null
+    }
+
+    // -- Contact Search --
+
+    private var contactSearchJob: Job? = null
+
+    private fun searchContacts(query: String) {
+        contactSearchJob?.cancel()
+        contactSearchJob = viewModelScope.launch {
+            delay(200) // debounce
+            val results = mutableListOf<ContactResult>()
+            try {
+                val uri = ContactsContract.Contacts.CONTENT_URI
+                val proj = arrayOf(ContactsContract.Contacts._ID, ContactsContract.Contacts.DISPLAY_NAME_PRIMARY, ContactsContract.Contacts.LOOKUP_KEY, ContactsContract.Contacts.HAS_PHONE_NUMBER)
+                val sel = "${ContactsContract.Contacts.DISPLAY_NAME_PRIMARY} LIKE ?"
+                val args = arrayOf("%$query%")
+                val cursor: Cursor? = ctx.contentResolver.query(uri, proj, sel, args, "${ContactsContract.Contacts.DISPLAY_NAME_PRIMARY} ASC")
+                cursor?.use { c ->
+                    while (c.moveToNext() && results.size < 5) {
+                        val name = c.getString(c.getColumnIndexOrThrow(ContactsContract.Contacts.DISPLAY_NAME_PRIMARY)) ?: continue
+                        val id = c.getString(c.getColumnIndexOrThrow(ContactsContract.Contacts._ID))
+                        val lookupKey = c.getString(c.getColumnIndexOrThrow(ContactsContract.Contacts.LOOKUP_KEY))
+                        val hasPhone = c.getInt(c.getColumnIndexOrThrow(ContactsContract.Contacts.HAS_PHONE_NUMBER)) > 0
+                        var number: String? = null
+                        if (hasPhone) {
+                            val phoneCursor = ctx.contentResolver.query(
+                                ContactsContract.CommonDataKinds.Phone.CONTENT_URI, arrayOf(ContactsContract.CommonDataKinds.Phone.NUMBER),
+                                "${ContactsContract.CommonDataKinds.Phone.CONTACT_ID} = ?", arrayOf(id), null
+                            )
+                            phoneCursor?.use { pc -> if (pc.moveToFirst()) number = pc.getString(0) }
+                        }
+                        val lookupUri = ContactsContract.Contacts.getLookupUri(id.toLongOrNull() ?: 0, lookupKey)?.toString()
+                        results.add(ContactResult(name, number, lookupUri))
+                    }
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "Contact search failed", e)
+            }
+            _contactResults.value = results
+        }
+    }
+
+    fun openContact(lookupUri: String) {
+        try {
+            ctx.startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse(lookupUri)).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            })
+        } catch (e: Exception) { Log.e(TAG, "openContact failed", e) }
+    }
+
+    fun callContact(number: String) {
+        try {
+            ctx.startActivity(Intent(Intent.ACTION_DIAL, android.net.Uri.parse("tel:$number")).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            })
+        } catch (e: Exception) { Log.e(TAG, "callContact failed", e) }
     }
 }

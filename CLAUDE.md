@@ -37,6 +37,7 @@
 - filteredApps uses combine() with 5 flows for sort/filter
 
 ## Version History
+- v2.8.0: Home screen widgets (AppWidgetHost, picker, render, remove), contact search in drawer, staggered drawer animation
 - v2.7.0: Flashlight gesture, triple-tap gesture, pinch-in gesture, dock handle tap action, wallpaper parallax, drawer animation toggle
 - v2.6.0: Section headers, dock styles (solid/pill/floating/transparent), search bar styles, haptic levels, drawer opacity, label font size, folder columns, app version info
 - v2.5.0: Drawer categories (auto-categorized tabs), home screen lock, drawer column count, custom accent color, icon shadow, app categorizer
@@ -61,3 +62,8 @@
 - Triple-tap detection: uses double-tap timing (400ms window after last double-tap = triple)
 - CameraManager.setTorchMode requires API 23+ (SDK 28 min covers this)
 - Pinch gesture threshold: zoom < 0.7 triggers action (pinch-in only, not pinch-out)
+- GridCell.Widget added to sealed class — all exhaustive when() expressions must include it
+- AppWidgetHost ID is 1024 — fixed constant, must match across startListening/stopListening
+- BIND_APPWIDGET is a protected permission — most widgets need user approval via bind intent
+- Widget grid cells are invisible (alpha=0) — actual widget rendered by overlay AndroidView
+- Contact search debounced at 200ms, max 5 results, requires READ_CONTACTS permission

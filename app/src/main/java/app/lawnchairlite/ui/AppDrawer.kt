@@ -1,5 +1,7 @@
 package app.lawnchairlite.ui
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -33,7 +35,7 @@ import app.lawnchairlite.data.IconShape
 import kotlinx.coroutines.launch
 
 /**
- * Lawnchair Lite v2.7.0 - App Drawer
+ * Lawnchair Lite v2.8.0 - App Drawer
  *
  * v2.2.0: Recent apps row, notification badges, package name search
  */
@@ -62,6 +64,9 @@ fun AppDrawer(
     onSearchChange: (String) -> Unit,
     onAppClick: (AppInfo) -> Unit,
     onAppLongClick: (AppInfo) -> Unit,
+    contactResults: List<app.lawnchairlite.LauncherViewModel.ContactResult> = emptyList(),
+    onContactTap: (String) -> Unit = {},
+    onContactCall: (String) -> Unit = {},
     onSearchWeb: (String) -> Unit,
     onProgressChange: (Float) -> Unit,
     onSettle: (velocityPxPerSec: Float) -> Unit,
@@ -193,6 +198,21 @@ fun AppDrawer(
                     if (drawerSort != app.lawnchairlite.data.DrawerSort.NAME) {
                         Text("  ·  ${drawerSort.label}", color = colors.accent.copy(alpha = 0.6f), fontSize = 11.sp, fontWeight = FontWeight.Medium)
                     }
+                }
+            }
+
+            // Contact search results
+            if (contactResults.isNotEmpty() && searchQuery.isNotBlank()) {
+                Column(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp)) {
+                    Text("CONTACTS", color = LocalLauncherColors.current.accent, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
+                    contactResults.forEach { contact ->
+                        ContactResultRow(
+                            name = contact.name, number = contact.number, lookupUri = contact.lookupUri,
+                            onTap = { contact.lookupUri?.let { onContactTap(it) } },
+                            onCall = if (contact.number != null) {{ onContactCall(contact.number) }} else null,
+                        )
+                    }
+                    Box(Modifier.fillMaxWidth().height(0.5.dp).padding(horizontal = 20.dp).background(LocalLauncherColors.current.border.copy(alpha = 0.3f)))
                 }
             }
 
