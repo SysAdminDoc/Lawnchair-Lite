@@ -337,6 +337,7 @@ fun DrawerSearch(query: String, onQueryChange: (String) -> Unit, modifier: Modif
     TextField(value = query, onValueChange = onQueryChange, modifier = modifier.fillMaxWidth().height(50.dp).clip(RoundedCornerShape(25.dp)).background(c.searchBg),
         placeholder = { Text("Search apps\u2026", color = c.textSecondary, fontSize = 14.sp) },
         leadingIcon = { Icon(Icons.Default.Search, null, tint = c.textSecondary, modifier = Modifier.size(18.dp)) },
+        trailingIcon = if (query.isNotBlank()) {{ IconButton(onClick = { onQueryChange("") }, modifier = Modifier.size(32.dp)) { Icon(Icons.Default.Close, "Clear", tint = c.textSecondary, modifier = Modifier.size(16.dp)) } }} else null,
         colors = TextFieldDefaults.colors(focusedTextColor = c.text, unfocusedTextColor = c.text, cursorColor = c.accent, focusedContainerColor = Color.Transparent, unfocusedContainerColor = Color.Transparent, focusedIndicatorColor = Color.Transparent, unfocusedIndicatorColor = Color.Transparent),
         singleLine = true, textStyle = TextStyle(fontSize = 14.sp))
 }
@@ -410,7 +411,8 @@ fun HomeContextMenu(
                     Text(vm.customLabels.collectAsState().value[cell.appKey] ?: app.label, color = c.text, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
                     val verInfo = remember(app.packageName) { vm.getAppVersionInfo(app.packageName) }
                     val launchCount = remember(cell.appKey) { vm.getAppLaunchCount(cell.appKey) }
-                    Text("${app.packageName}${if (verInfo != null) " $verInfo" else ""}${if (launchCount > 0) " · $launchCount launches" else ""}", color = c.textSecondary, fontSize = 10.sp)
+                    val sizeInfo = remember(app.packageName) { vm.getAppSizeInfo(app.packageName) }
+                    Text("${app.packageName}${if (verInfo != null) " $verInfo" else ""}${if (sizeInfo != null) " · $sizeInfo" else ""}${if (launchCount > 0) " · $launchCount launches" else ""}", color = c.textSecondary, fontSize = 10.sp)
                 }
                 is GridCell.Folder -> {
                     FolderIconContent(cell, shape, { vm.resolveApp(it) }, 54.dp, showLabel = false)

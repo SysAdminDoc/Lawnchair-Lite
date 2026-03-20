@@ -380,6 +380,15 @@ fun HomeScreen(vm: LauncherViewModel) {
                         app.lawnchairlite.data.PageTransition.FADE -> Modifier.graphicsLayer {
                             alpha = (1f - kotlin.math.abs(pageOffset) * 1.5f).coerceIn(0f, 1f)
                         }
+                        app.lawnchairlite.data.PageTransition.CAROUSEL -> Modifier.graphicsLayer {
+                            val rot = pageOffset * 15f
+                            rotationY = rot
+                            val sc = (1f - kotlin.math.abs(pageOffset) * 0.1f).coerceIn(0.9f, 1f)
+                            scaleX = sc; scaleY = sc
+                            translationX = pageOffset * size.width * 0.15f
+                            alpha = (1f - kotlin.math.abs(pageOffset) * 0.4f).coerceIn(0f, 1f)
+                            cameraDistance = 8f * this.density
+                        }
                         app.lawnchairlite.data.PageTransition.SLIDE -> Modifier
                     }
 
