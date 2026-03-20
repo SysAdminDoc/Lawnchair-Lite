@@ -170,7 +170,9 @@ fun AppDrawer(
     ) {
         Column(Modifier.fillMaxSize()) {
             Column(Modifier.fillMaxWidth()) {
-                Box(Modifier.fillMaxWidth().padding(vertical = 14.dp), Alignment.Center) {
+                Box(Modifier.fillMaxWidth().padding(vertical = 14.dp).clickable {
+                    scope.launch { gridState.animateScrollToItem(0) }
+                }, Alignment.Center) {
                     Box(Modifier.width(40.dp).height(4.dp).clip(RoundedCornerShape(2.dp))
                         .background(colors.textSecondary.copy(alpha = 0.5f)))
                 }

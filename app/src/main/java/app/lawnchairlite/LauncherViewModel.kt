@@ -133,6 +133,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         if (q.isBlank()) {
             when (s.drawerSort) {
                 DrawerSort.NAME -> visible.sortedBy { it.label.lowercase() }
+                DrawerSort.REVERSE_NAME -> visible.sortedByDescending { it.label.lowercase() }
                 DrawerSort.MOST_USED -> visible.sortedByDescending { usage[it.key] ?: 0L }
                 DrawerSort.RECENT_INSTALL -> visible.sortedByDescending { it.firstInstallTime }
             }

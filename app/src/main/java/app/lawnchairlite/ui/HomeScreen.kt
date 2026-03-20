@@ -380,6 +380,19 @@ fun HomeScreen(vm: LauncherViewModel) {
                         app.lawnchairlite.data.PageTransition.FADE -> Modifier.graphicsLayer {
                             alpha = (1f - kotlin.math.abs(pageOffset) * 1.5f).coerceIn(0f, 1f)
                         }
+                        app.lawnchairlite.data.PageTransition.DEPTH -> Modifier.graphicsLayer {
+                            if (pageOffset < 0) {
+                                // Page moving to the left (behind) — shrink and fade
+                                val scale = (1f + pageOffset * 0.25f).coerceIn(0.75f, 1f)
+                                scaleX = scale; scaleY = scale
+                                alpha = (1f + pageOffset).coerceIn(0f, 1f)
+                                translationX = size.width * pageOffset
+                            } else {
+                                // Page moving to the right (in front) — slide normally
+                                translationX = 0f
+                                alpha = (1f - pageOffset).coerceIn(0f, 1f)
+                            }
+                        }
                         app.lawnchairlite.data.PageTransition.CAROUSEL -> Modifier.graphicsLayer {
                             val rot = pageOffset * 15f
                             rotationY = rot
@@ -507,18 +520,25 @@ fun HomeScreen(vm: LauncherViewModel) {
                             else -> {}
                         }
                     }
-                    if (!isDragging) Box(
-                        Modifier.fillMaxWidth()
-                            .clickable {
-                                if (settings.dockTapAction == GestureAction.APP_DRAWER) {
-                                    scope.launch { drawerProgress.animateTo(1f, spring(stiffness = Spring.StiffnessMedium)) }
-                                } else {
-                                    vm.executeGesture(settings.dockTapAction)
+                    if (!isDragging) {
+                        val pulseAnim = rememberInfiniteTransition(label = "dockPulse")
+                        val pulseAlpha by pulseAnim.animateFloat(
+                            initialValue = 0.3f, targetValue = 0.6f,
+                            animationSpec = infiniteRepeatable(tween(2000, easing = FastOutSlowInEasing), RepeatMode.Reverse), label = "pa",
+                        )
+                        Box(
+                            Modifier.fillMaxWidth()
+                                .clickable {
+                                    if (settings.dockTapAction == GestureAction.APP_DRAWER) {
+                                        scope.launch { drawerProgress.animateTo(1f, spring(stiffness = Spring.StiffnessMedium)) }
+                                    } else {
+                                        vm.executeGesture(settings.dockTapAction)
+                                    }
                                 }
-                            }
-                            .padding(vertical = 3.dp),
-                        Alignment.Center,
-                    ) { Box(Modifier.width(32.dp).height(3.dp).clip(RoundedCornerShape(2.dp)).background(colors.textSecondary.copy(alpha = 0.4f))) }
+                                .padding(vertical = 3.dp),
+                            Alignment.Center,
+                        ) { Box(Modifier.width(32.dp).height(3.dp).clip(RoundedCornerShape(2.dp)).background(colors.accent.copy(alpha = pulseAlpha))) }
+                    }
                     val dockMod = when (settings.dockStyle) {
                         app.lawnchairlite.data.DockStyle.SOLID -> Modifier.fillMaxWidth().clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)).background(colors.dock)
                         app.lawnchairlite.data.DockStyle.PILL -> Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp).clip(RoundedCornerShape(24.dp)).background(colors.dock)
