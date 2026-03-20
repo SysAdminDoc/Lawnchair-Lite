@@ -5,7 +5,7 @@ import android.graphics.drawable.Drawable
 import android.util.Log
 
 /**
- * Lawnchair Lite v2.7.0 - Data Model
+ * Lawnchair Lite v2.8.0 - Data Model
  *
  * Stability: Deserialization never throws. Malformed data returns null.
  */
@@ -64,7 +64,18 @@ enum class LabelSize(val label: String, val sp: Int) {
 sealed class GridCell {
     data class App(val appKey: String) : GridCell()
     data class Folder(val name: String, val appKeys: List<String>) : GridCell()
+    data class Widget(val widgetId: Int) : GridCell()
 }
+
+data class WidgetInfo(
+    val appWidgetId: Int,
+    val page: Int,
+    val row: Int,
+    val col: Int,
+    val spanX: Int = 1,
+    val spanY: Int = 1,
+    val provider: String = "",
+)
 
 enum class DragSource { HOME, DOCK, DRAWER }
 
@@ -95,6 +106,7 @@ private fun unescapeField(s: String): String = s
 fun GridCell.serialize(): String = when (this) {
     is GridCell.App -> "A:${appKey}"
     is GridCell.Folder -> "F:${escapeField(name)}:${appKeys.joinToString(",")}"
+    is GridCell.Widget -> "W:${widgetId}"
 }
 
 /**
@@ -114,6 +126,10 @@ fun deserializeCell(s: String): GridCell? = try {
                 val keys = parts[1].split(",").filter { it.isNotBlank() && it.contains("/") }
                 if (keys.isNotEmpty()) GridCell.Folder(unescapeField(parts[0]), keys) else null
             } else null
+        }
+        s.startsWith("W:") -> {
+            val id = s.removePrefix("W:").toIntOrNull()
+            if (id != null) GridCell.Widget(id) else null
         }
         else -> null
     }

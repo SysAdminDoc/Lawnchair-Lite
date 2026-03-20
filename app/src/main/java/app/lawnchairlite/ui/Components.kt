@@ -45,10 +45,16 @@ import com.google.accompanist.drawablepainter.rememberDrawablePainter
 import java.text.SimpleDateFormat
 import java.util.*
 import android.app.AlarmManager
+import android.appwidget.AppWidgetHostView
+import android.appwidget.AppWidgetProviderInfo
 import android.content.Context
 import android.os.BatteryManager
+import android.view.View
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.ui.viewinterop.AndroidView
 
-/** Lawnchair Lite v2.6.0 - UI Components */
+/** Lawnchair Lite v2.8.0 - UI Components */
 
 fun iconClip(shape: IconShape): androidx.compose.ui.graphics.Shape = when (shape) {
     IconShape.CIRCLE -> CircleShape
@@ -135,6 +141,7 @@ fun DragGhost(cell: GridCell?, app: AppInfo?, shape: IconShape, offset: Offset, 
     Box(Modifier.offset(x = with(d) { offset.x.toDp() - half }, y = with(d) { offset.y.toDp() - half }).size(sizeDp + 6.dp).shadow(12.dp, iconClip(shape)).clip(iconClip(shape)).background(c.card).graphicsLayer(alpha = 0.95f, scaleX = 1.2f, scaleY = 1.2f), Alignment.Center) {
         when (cell) {
             is GridCell.App -> if (app?.icon != null) Image(rememberDrawablePainter(app.icon), null, Modifier.fillMaxSize().padding(5.dp))
+            is GridCell.Widget -> Icon(Icons.Default.Widgets, null, tint = c.accent, modifier = Modifier.size(26.dp))
             is GridCell.Folder -> {
                 val p = cell.appKeys.take(4).mapNotNull { resolveApp(it) }
                 if (p.isEmpty()) Icon(Icons.Default.Folder, null, tint = c.accent, modifier = Modifier.size(26.dp))
@@ -311,6 +318,11 @@ fun HomeContextMenu(
                     Spacer(Modifier.height(6.dp))
                     Text(cell.name, color = c.accent, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
                     Text("${cell.appKeys.size} apps", color = c.textSecondary, fontSize = 10.sp)
+                }
+                is GridCell.Widget -> {
+                    Icon(Icons.Default.Widgets, null, tint = c.accent, modifier = Modifier.size(40.dp))
+                    Spacer(Modifier.height(6.dp))
+                    Text("Widget", color = c.text, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
                 }
             }
 
@@ -509,6 +521,120 @@ fun RenameDialog(currentName: String, title: String = "Rename Folder", onConfirm
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                 TextButton(onClick = onDismiss) { Text("Cancel", color = c.textSecondary) }; Spacer(Modifier.width(8.dp))
                 Button(onClick = { onConfirm(name.trim()) }, colors = ButtonDefaults.buttonColors(containerColor = c.accent), shape = RoundedCornerShape(12.dp)) { Text("Save", color = Color.White) }
+            }
+        }
+    }
+}
+
+// ── Widget Picker ─────────────────────────────────────────────────────
+
+@Composable
+fun WidgetPickerDialog(
+    widgets: List<AppWidgetProviderInfo>,
+    onSelect: (AppWidgetProviderInfo) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val c = LocalLauncherColors.current
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val pm = context.packageManager
+    var search by remember { mutableStateOf("") }
+    val filtered = remember(widgets, search) {
+        if (search.isBlank()) widgets
+        else widgets.filter { it.loadLabel(pm).toString().contains(search, ignoreCase = true) }
+    }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Column(
+            Modifier.fillMaxWidth().heightIn(max = 500.dp)
+                .clip(RoundedCornerShape(20.dp)).background(c.surface)
+                .border(0.5.dp, c.border, RoundedCornerShape(20.dp)).padding(16.dp)
+        ) {
+            Text("Add Widget", color = c.text, fontSize = 18.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(bottom = 8.dp))
+            TextField(
+                value = search, onValueChange = { search = it },
+                modifier = Modifier.fillMaxWidth().height(46.dp).clip(RoundedCornerShape(12.dp)),
+                placeholder = { Text("Search widgets...", color = c.textSecondary, fontSize = 13.sp) },
+                colors = TextFieldDefaults.colors(focusedTextColor = c.text, unfocusedTextColor = c.text, cursorColor = c.accent, focusedContainerColor = c.card, unfocusedContainerColor = c.card, focusedIndicatorColor = Color.Transparent, unfocusedIndicatorColor = Color.Transparent),
+                singleLine = true, textStyle = TextStyle(fontSize = 13.sp),
+            )
+            Spacer(Modifier.height(8.dp))
+            if (filtered.isEmpty()) {
+                Box(Modifier.fillMaxWidth().weight(1f), Alignment.Center) {
+                    Text("No widgets found", color = c.textSecondary, fontSize = 13.sp)
+                }
+            } else {
+                LazyColumn(Modifier.weight(1f)) {
+                    items(filtered) { info ->
+                        val label = info.loadLabel(pm).toString()
+                        val appLabel = try { pm.getApplicationLabel(pm.getApplicationInfo(info.provider.packageName, 0)).toString() } catch (_: Exception) { info.provider.packageName }
+                        val minW = info.minWidth; val minH = info.minHeight
+                        Row(
+                            Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
+                                .clickable { onSelect(info) }
+                                .padding(horizontal = 10.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            val icon = try { info.loadIcon(context, context.resources.displayMetrics.densityDpi) } catch (_: Exception) { null }
+                            if (icon != null) {
+                                Image(rememberDrawablePainter(icon), label, Modifier.size(40.dp).clip(RoundedCornerShape(8.dp)))
+                                Spacer(Modifier.width(10.dp))
+                            }
+                            Column(Modifier.weight(1f)) {
+                                Text(label, color = c.text, fontSize = 13.sp, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                Text(appLabel, color = c.textSecondary, fontSize = 10.sp, maxLines = 1)
+                                Text("${minW}x${minH}dp", color = c.textSecondary.copy(alpha = 0.6f), fontSize = 9.sp)
+                            }
+                        }
+                        Divider(color = c.border.copy(alpha = 0.2f), thickness = 0.5.dp)
+                    }
+                }
+            }
+            Spacer(Modifier.height(8.dp))
+            TextButton(onClick = onDismiss, modifier = Modifier.align(Alignment.End)) { Text("Cancel", color = c.textSecondary) }
+        }
+    }
+}
+
+// ── Widget Host View (Compose wrapper for AppWidgetHostView) ──────────
+
+@Composable
+fun WidgetHostViewComposable(
+    hostView: AppWidgetHostView?,
+    modifier: Modifier = Modifier,
+) {
+    if (hostView == null) return
+    AndroidView(
+        factory = { hostView },
+        modifier = modifier,
+        update = { /* host view manages its own updates */ },
+        onRelease = { (it.parent as? android.view.ViewGroup)?.removeView(it) },
+    )
+}
+
+// ── Contact Search Result ─────────────────────────────────────────────
+
+@Composable
+fun ContactResultRow(
+    name: String, number: String?, lookupUri: String?,
+    onTap: () -> Unit, onCall: (() -> Unit)?,
+) {
+    val c = LocalLauncherColors.current
+    Row(
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
+            .clickable { onTap() }.padding(horizontal = 14.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(Modifier.size(34.dp).clip(CircleShape).background(c.accent.copy(alpha = 0.15f)), Alignment.Center) {
+            Icon(Icons.Default.Person, null, tint = c.accent, modifier = Modifier.size(18.dp))
+        }
+        Spacer(Modifier.width(10.dp))
+        Column(Modifier.weight(1f)) {
+            Text(name, color = c.text, fontSize = 13.sp, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            if (number != null) Text(number, color = c.textSecondary, fontSize = 11.sp, maxLines = 1)
+        }
+        if (onCall != null) {
+            IconButton(onClick = { onCall() }, modifier = Modifier.size(32.dp)) {
+                Icon(Icons.Default.Phone, "Call", tint = c.accent, modifier = Modifier.size(16.dp))
             }
         }
     }

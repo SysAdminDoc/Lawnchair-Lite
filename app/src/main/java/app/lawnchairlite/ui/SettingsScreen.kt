@@ -28,7 +28,7 @@ import com.google.accompanist.drawablepainter.rememberDrawablePainter
 import kotlinx.coroutines.launch
 
 /**
- * Lawnchair Lite v2.7.0 - Settings
+ * Lawnchair Lite v2.8.0 - Settings
  */
 @Composable
 fun SettingsPanel(
