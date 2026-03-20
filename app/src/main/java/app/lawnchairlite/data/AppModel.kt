@@ -5,7 +5,7 @@ import android.graphics.drawable.Drawable
 import android.util.Log
 
 /**
- * Lawnchair Lite v2.10.0 - Data Model
+ * Lawnchair Lite v2.12.0 - Data Model
  *
  * Stability: Deserialization never throws. Malformed data returns null.
  */

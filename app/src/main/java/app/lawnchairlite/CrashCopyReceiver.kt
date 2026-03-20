@@ -8,7 +8,7 @@ import android.content.Intent
 import android.widget.Toast
 
 /**
- * Lawnchair Lite v2.1.0 - Crash Report Clipboard Receiver
+ * Lawnchair Lite v2.12.0 - Crash Report Clipboard Receiver
  *
  * Handles the "Copy Report" action from crash notifications.
  */

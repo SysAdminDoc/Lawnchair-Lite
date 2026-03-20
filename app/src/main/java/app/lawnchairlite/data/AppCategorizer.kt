@@ -1,7 +1,7 @@
 package app.lawnchairlite.data
 
 /**
- * Lawnchair Lite v2.5.0 - App Categorizer
+ * Lawnchair Lite v2.12.0 - App Categorizer
  *
  * Smart auto-categorization based on package name heuristics.
  * No Play Store API needed - works offline.
