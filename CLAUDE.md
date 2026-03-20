@@ -71,3 +71,10 @@
 - Suggestion usage stores "bucket:appKey=count" format — time buckets: morning/afternoon/evening/night
 - Search history max 10 items, suggestion usage capped at 200 entries to prevent unbounded growth
 - Badge colors now use theme accent — no longer hardcoded red
+- Launch tracking uses batched DataStore write (saveLaunchTracking) — 3 writes → 1
+- Search history terms are escaped for pipe delimiter (escapeSearchTerm/unescapeSearchTerm)
+- NotificationListener debounces rebuildCounts at 150ms
+- IconPackManager shared fields are @Volatile for thread safety
+- dropOnGrid caps target index to prevent unbounded list growth
+- Contact search checks READ_CONTACTS permission before querying
+- Widget host auto-cleans stale entries when provider returns null info
