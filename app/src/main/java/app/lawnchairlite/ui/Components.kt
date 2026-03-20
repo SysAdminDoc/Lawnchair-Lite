@@ -48,7 +48,7 @@ import android.app.AlarmManager
 import android.content.Context
 import android.os.BatteryManager
 
-/** Lawnchair Lite v2.3.0 - UI Components */
+/** Lawnchair Lite v2.4.0 - UI Components */
 
 fun iconClip(shape: IconShape): androidx.compose.ui.graphics.Shape = when (shape) {
     IconShape.CIRCLE -> CircleShape
@@ -58,7 +58,7 @@ fun iconClip(shape: IconShape): androidx.compose.ui.graphics.Shape = when (shape
 }
 
 @Composable
-fun AppIconContent(app: AppInfo, shape: IconShape, iconSizeDp: Dp = 50.dp, modifier: Modifier = Modifier, showLabel: Boolean = true, dimmed: Boolean = false, customLabel: String? = null, badgeCount: Int = 0) {
+fun AppIconContent(app: AppInfo, shape: IconShape, iconSizeDp: Dp = 50.dp, modifier: Modifier = Modifier, showLabel: Boolean = true, dimmed: Boolean = false, customLabel: String? = null, badgeCount: Int = 0, badgeDotOnly: Boolean = false) {
     val c = LocalLauncherColors.current
     Column(modifier.graphicsLayer(alpha = if (dimmed) 0.25f else 1f), horizontalAlignment = Alignment.CenterHorizontally) {
         Box(Modifier.size(iconSizeDp)) {
@@ -66,14 +66,18 @@ fun AppIconContent(app: AppInfo, shape: IconShape, iconSizeDp: Dp = 50.dp, modif
                 if (app.icon != null) Image(rememberDrawablePainter(app.icon), app.label, Modifier.fillMaxSize().padding((iconSizeDp.value * 0.1f).dp))
             }
             if (badgeCount > 0) {
-                val badgeText = if (badgeCount > 99) "99+" else badgeCount.toString()
-                Box(
-                    Modifier.align(Alignment.TopEnd).offset(x = 4.dp, y = (-2).dp)
-                        .defaultMinSize(minWidth = 16.dp, minHeight = 16.dp)
-                        .clip(RoundedCornerShape(8.dp)).background(Color(0xFFEF5350))
-                        .padding(horizontal = 4.dp),
-                    Alignment.Center,
-                ) { Text(badgeText, color = Color.White, fontSize = 9.sp, fontWeight = FontWeight.Bold, maxLines = 1) }
+                if (badgeDotOnly) {
+                    Box(Modifier.align(Alignment.TopEnd).offset(x = 2.dp, y = (-1).dp).size(10.dp).clip(CircleShape).background(Color(0xFFEF5350)))
+                } else {
+                    val badgeText = if (badgeCount > 99) "99+" else badgeCount.toString()
+                    Box(
+                        Modifier.align(Alignment.TopEnd).offset(x = 4.dp, y = (-2).dp)
+                            .defaultMinSize(minWidth = 16.dp, minHeight = 16.dp)
+                            .clip(RoundedCornerShape(8.dp)).background(Color(0xFFEF5350))
+                            .padding(horizontal = 4.dp),
+                        Alignment.Center,
+                    ) { Text(badgeText, color = Color.White, fontSize = 9.sp, fontWeight = FontWeight.Bold, maxLines = 1) }
+                }
             }
         }
         if (showLabel) { Spacer(Modifier.height(3.dp)); Text(customLabel ?: app.label, color = c.text, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, modifier = Modifier.widthIn(max = 68.dp)) }
@@ -81,21 +85,25 @@ fun AppIconContent(app: AppInfo, shape: IconShape, iconSizeDp: Dp = 50.dp, modif
 }
 
 @Composable
-fun TappableAppIcon(app: AppInfo, shape: IconShape, iconSizeDp: Dp = 50.dp, modifier: Modifier = Modifier, showLabel: Boolean = true, customLabel: String? = null, badgeCount: Int = 0, onClick: () -> Unit = {}, onLongClick: () -> Unit = {}) {
+fun TappableAppIcon(app: AppInfo, shape: IconShape, iconSizeDp: Dp = 50.dp, modifier: Modifier = Modifier, showLabel: Boolean = true, customLabel: String? = null, badgeCount: Int = 0, badgeDotOnly: Boolean = false, onClick: () -> Unit = {}, onLongClick: () -> Unit = {}) {
     val c = LocalLauncherColors.current; var pressed by remember { mutableStateOf(false) }
     val scale by animateFloatAsState(if (pressed) 0.9f else 1f, spring(dampingRatio = 0.6f, stiffness = 500f), label = "s")
     Column(modifier.graphicsLayer(scaleX = scale, scaleY = scale).pointerInput(app.key) { detectTapGestures(onPress = { pressed = true; tryAwaitRelease(); pressed = false }, onTap = { onClick() }, onLongPress = { onLongClick() }) }, horizontalAlignment = Alignment.CenterHorizontally) {
         Box(Modifier.size(iconSizeDp)) {
             Box(Modifier.fillMaxSize().clip(iconClip(shape)).background(c.card), Alignment.Center) { if (app.icon != null) Image(rememberDrawablePainter(app.icon), app.label, Modifier.fillMaxSize().padding((iconSizeDp.value * 0.1f).dp)) }
             if (badgeCount > 0) {
-                val badgeText = if (badgeCount > 99) "99+" else badgeCount.toString()
-                Box(
-                    Modifier.align(Alignment.TopEnd).offset(x = 4.dp, y = (-2).dp)
-                        .defaultMinSize(minWidth = 16.dp, minHeight = 16.dp)
-                        .clip(RoundedCornerShape(8.dp)).background(Color(0xFFEF5350))
-                        .padding(horizontal = 4.dp),
-                    Alignment.Center,
-                ) { Text(badgeText, color = Color.White, fontSize = 9.sp, fontWeight = FontWeight.Bold, maxLines = 1) }
+                if (badgeDotOnly) {
+                    Box(Modifier.align(Alignment.TopEnd).offset(x = 2.dp, y = (-1).dp).size(10.dp).clip(CircleShape).background(Color(0xFFEF5350)))
+                } else {
+                    val badgeText = if (badgeCount > 99) "99+" else badgeCount.toString()
+                    Box(
+                        Modifier.align(Alignment.TopEnd).offset(x = 4.dp, y = (-2).dp)
+                            .defaultMinSize(minWidth = 16.dp, minHeight = 16.dp)
+                            .clip(RoundedCornerShape(8.dp)).background(Color(0xFFEF5350))
+                            .padding(horizontal = 4.dp),
+                        Alignment.Center,
+                    ) { Text(badgeText, color = Color.White, fontSize = 9.sp, fontWeight = FontWeight.Bold, maxLines = 1) }
+                }
             }
         }
         if (showLabel) { Spacer(Modifier.height(3.dp)); Text(customLabel ?: app.label, color = c.text, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, modifier = Modifier.widthIn(max = 68.dp)) }
@@ -169,7 +177,7 @@ fun PageDots(pageCount: Int, currentPage: Int, modifier: Modifier = Modifier) {
 }
 
 @Composable
-fun AtAGlanceClock(modifier: Modifier = Modifier) {
+fun AtAGlanceClock(modifier: Modifier = Modifier, onDateClick: () -> Unit = {}, onTimeClick: () -> Unit = {}) {
     val c = LocalLauncherColors.current
     val context = androidx.compose.ui.platform.LocalContext.current
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
@@ -203,8 +211,8 @@ fun AtAGlanceClock(modifier: Modifier = Modifier) {
     }
 
     Column(modifier.padding(horizontal = 24.dp, vertical = 12.dp)) {
-        // Date + info row
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        // Date + info row (tap date -> calendar)
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clickable { onDateClick() }) {
             Text(dateStr, color = c.text.copy(alpha = 0.7f), fontSize = 14.sp, fontWeight = FontWeight.Medium)
             if (batteryPct in 0..100) {
                 Text("  |  ", color = c.textSecondary.copy(alpha = 0.4f), fontSize = 12.sp)
@@ -220,12 +228,15 @@ fun AtAGlanceClock(modifier: Modifier = Modifier) {
             }
         }
         Spacer(Modifier.height(2.dp))
-        if (is24h) {
-            val h = String.format("%02d", cal.get(Calendar.HOUR_OF_DAY)); val m = String.format("%02d", cal.get(Calendar.MINUTE))
-            Text("$h:$m", color = c.text, fontSize = 52.sp, fontWeight = FontWeight.Thin, lineHeight = 52.sp)
-        } else {
-            val hour = cal.get(Calendar.HOUR).let { if (it == 0) 12 else it }; val min = String.format("%02d", cal.get(Calendar.MINUTE)); val ampm = if (cal.get(Calendar.AM_PM) == Calendar.AM) "AM" else "PM"
-            Row(verticalAlignment = Alignment.Bottom) { Text("$hour:$min", color = c.text, fontSize = 52.sp, fontWeight = FontWeight.Thin, lineHeight = 52.sp); Spacer(Modifier.width(6.dp)); Text(ampm, color = c.accent, fontSize = 16.sp, fontWeight = FontWeight.Medium, modifier = Modifier.padding(bottom = 9.dp)) }
+        // Tap time -> clock app
+        Box(Modifier.clickable { onTimeClick() }) {
+            if (is24h) {
+                val h = String.format("%02d", cal.get(Calendar.HOUR_OF_DAY)); val m = String.format("%02d", cal.get(Calendar.MINUTE))
+                Text("$h:$m", color = c.text, fontSize = 52.sp, fontWeight = FontWeight.Thin, lineHeight = 52.sp)
+            } else {
+                val hour = cal.get(Calendar.HOUR).let { if (it == 0) 12 else it }; val min = String.format("%02d", cal.get(Calendar.MINUTE)); val ampm = if (cal.get(Calendar.AM_PM) == Calendar.AM) "AM" else "PM"
+                Row(verticalAlignment = Alignment.Bottom) { Text("$hour:$min", color = c.text, fontSize = 52.sp, fontWeight = FontWeight.Thin, lineHeight = 52.sp); Spacer(Modifier.width(6.dp)); Text(ampm, color = c.accent, fontSize = 16.sp, fontWeight = FontWeight.Medium, modifier = Modifier.padding(bottom = 9.dp)) }
+            }
         }
     }
 }

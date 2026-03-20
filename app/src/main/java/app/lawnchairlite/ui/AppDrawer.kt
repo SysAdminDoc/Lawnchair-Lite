@@ -31,7 +31,7 @@ import app.lawnchairlite.data.IconShape
 import kotlinx.coroutines.launch
 
 /**
- * Lawnchair Lite v2.3.0 - App Drawer
+ * Lawnchair Lite v2.4.0 - App Drawer
  *
  * v2.2.0: Recent apps row, notification badges, package name search
  */
@@ -47,6 +47,7 @@ fun AppDrawer(
     recentApps: List<AppInfo>,
     notifCounts: Map<String, Int>,
     showBadges: Boolean,
+    badgeDotOnly: Boolean,
     showLabels: Boolean,
     drawerSort: app.lawnchairlite.data.DrawerSort,
     onSearchChange: (String) -> Unit,
@@ -205,7 +206,7 @@ fun AppDrawer(
                                             val badge = if (showBadges) notifCounts[app.packageName] ?: 0 else 0
                                             TappableAppIcon(
                                                 app, shape, iconSizeDp, showLabel = true,
-                                                badgeCount = badge,
+                                                badgeCount = badge, badgeDotOnly = badgeDotOnly,
                                                 onClick = { onAppClick(app) },
                                                 onLongClick = { onAppLongClick(app) },
                                                 modifier = Modifier.width(70.dp),
@@ -223,7 +224,7 @@ fun AppDrawer(
                             Box(Modifier.fillMaxWidth(), Alignment.Center) {
                                 TappableAppIcon(
                                     app, shape, iconSizeDp, showLabel = showLabels,
-                                    badgeCount = badge,
+                                    badgeCount = badge, badgeDotOnly = badgeDotOnly,
                                     onClick = { onAppClick(app) },
                                     onLongClick = { onAppLongClick(app) },
                                     modifier = Modifier.width(70.dp),

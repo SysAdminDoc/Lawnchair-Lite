@@ -37,6 +37,7 @@
 - filteredApps uses combine() with 5 flows for sort/filter
 
 ## Version History
+- v2.4.0: Page transitions (cube/stack/fade), dock swipe-up actions, badge styles (count/dot/hidden), grid padding, clock tap actions, status bar hide
 - v2.3.0: Themed icons, drawer sort, label styles, At-a-Glance battery/alarm, web search fallback, install date tracking
 - v2.2.0: Notification badges, app shortcuts, wallpaper dimming, recent apps, search by package, expanded grid options
 - v2.1.0: Icon packs, folders, custom labels, hidden apps, gestures, backup/restore, edit mode
