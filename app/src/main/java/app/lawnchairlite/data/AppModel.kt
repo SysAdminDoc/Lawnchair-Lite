@@ -26,7 +26,7 @@ enum class ThemeMode(val label: String) {
     MIDNIGHT("Midnight"), GLASS("Glass"), OLED("OLED"), MOCHA("Mocha"), AURORA("Aurora"), NEON("Neon");
 }
 enum class IconSize(val label: String, val dp: Int) {
-    SMALL("Small", 42), MEDIUM("Medium", 50), LARGE("Large", 58);
+    SMALL("Small", 42), MEDIUM("Medium", 50), LARGE("Large", 58), XLARGE("XL", 66);
 }
 enum class GestureAction(val label: String) {
     NONE("None"), LOCK_SCREEN("Lock Screen"), NOTIFICATION_SHADE("Notification Shade"),
@@ -37,13 +37,13 @@ enum class ClockStyle(val label: String) {
     LARGE("Large"), COMPACT("Compact"), MINIMAL("Minimal");
 }
 enum class DrawerSort(val label: String) {
-    NAME("A-Z"), MOST_USED("Most Used"), RECENT_INSTALL("Recently Installed");
+    NAME("A-Z"), REVERSE_NAME("Z-A"), MOST_USED("Most Used"), RECENT_INSTALL("Recently Installed");
 }
 enum class LabelStyle(val label: String) {
     SHOWN("Shown"), HIDDEN("Hidden"), HOME_ONLY("Home Only"), DRAWER_ONLY("Drawer Only");
 }
 enum class PageTransition(val label: String) {
-    SLIDE("Slide"), CUBE("Cube"), STACK("Stack"), FADE("Fade"), CAROUSEL("Carousel");
+    SLIDE("Slide"), CUBE("Cube"), STACK("Stack"), FADE("Fade"), CAROUSEL("Carousel"), DEPTH("Depth");
 }
 enum class BadgeStyle(val label: String) {
     COUNT("Count"), DOT("Dot Only"), HIDDEN("Hidden");
