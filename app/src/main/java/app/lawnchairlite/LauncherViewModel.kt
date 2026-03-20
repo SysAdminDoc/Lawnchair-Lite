@@ -869,6 +869,12 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     fun setDockTapAction(a: GestureAction) = pref(LauncherPrefs.DOCK_TAP_ACTION, a.name)
     fun setShowSuggestions(v: Boolean) = pref(LauncherPrefs.SHOW_SUGGESTIONS, v)
     fun setClockStyle(s: ClockStyle) = pref(LauncherPrefs.CLOCK_STYLE, s.name)
+    fun cycleClockStyle() {
+        val styles = ClockStyle.entries
+        val next = styles[(styles.indexOf(settings.value.clockStyle) + 1) % styles.size]
+        setClockStyle(next)
+        vibrate()
+    }
 
     fun getAppVersionInfo(packageName: String): String? {
         return try {

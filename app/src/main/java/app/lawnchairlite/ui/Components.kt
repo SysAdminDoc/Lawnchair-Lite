@@ -144,18 +144,30 @@ fun TappableAppIcon(app: AppInfo, shape: IconShape, iconSizeDp: Dp = 50.dp, modi
 }
 
 @Composable
-fun FolderIconContent(folder: GridCell.Folder, shape: IconShape, resolveApp: (String) -> AppInfo?, iconSizeDp: Dp = 50.dp, modifier: Modifier = Modifier, showLabel: Boolean = true, dimmed: Boolean = false) {
+fun FolderIconContent(folder: GridCell.Folder, shape: IconShape, resolveApp: (String) -> AppInfo?, iconSizeDp: Dp = 50.dp, modifier: Modifier = Modifier, showLabel: Boolean = true, dimmed: Boolean = false, badgeCount: Int = 0) {
     val c = LocalLauncherColors.current
     Column(modifier.graphicsLayer(alpha = if (dimmed) 0.25f else 1f), horizontalAlignment = Alignment.CenterHorizontally) {
-        Box(Modifier.size(iconSizeDp).clip(iconClip(shape)).background(c.card).border(0.5.dp, c.accent.copy(alpha = 0.3f), iconClip(shape)), Alignment.Center) {
-            val p = folder.appKeys.take(4).mapNotNull { resolveApp(it) }
-            if (p.isEmpty()) Icon(Icons.Default.Folder, null, tint = c.accent, modifier = Modifier.size(26.dp))
-            else Column(Modifier.padding(6.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                p.chunked(2).take(2).forEach { row ->
-                    Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                        row.forEach { a -> if (a.icon != null) Image(rememberDrawablePainter(a.icon), null, Modifier.size(17.dp).clip(RoundedCornerShape(4.dp))) else Box(Modifier.size(17.dp).clip(RoundedCornerShape(4.dp)).background(c.border)) }
+        Box(Modifier.size(iconSizeDp)) {
+            Box(Modifier.fillMaxSize().clip(iconClip(shape)).background(c.card).border(0.5.dp, c.accent.copy(alpha = 0.3f), iconClip(shape)), Alignment.Center) {
+                val p = folder.appKeys.take(4).mapNotNull { resolveApp(it) }
+                if (p.isEmpty()) Icon(Icons.Default.Folder, null, tint = c.accent, modifier = Modifier.size(26.dp))
+                else Column(Modifier.padding(6.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    p.chunked(2).take(2).forEach { row ->
+                        Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                            row.forEach { a -> if (a.icon != null) Image(rememberDrawablePainter(a.icon), null, Modifier.size(17.dp).clip(RoundedCornerShape(4.dp))) else Box(Modifier.size(17.dp).clip(RoundedCornerShape(4.dp)).background(c.border)) }
+                        }
                     }
                 }
+            }
+            if (badgeCount > 0) {
+                val badgeText = if (badgeCount > 99) "99+" else badgeCount.toString()
+                Box(
+                    Modifier.align(Alignment.TopEnd).offset(x = 4.dp, y = (-2).dp)
+                        .defaultMinSize(minWidth = 16.dp, minHeight = 16.dp)
+                        .clip(RoundedCornerShape(8.dp)).background(c.accent)
+                        .padding(horizontal = 4.dp),
+                    Alignment.Center,
+                ) { Text(badgeText, color = Color.White, fontSize = 9.sp, fontWeight = FontWeight.Bold, maxLines = 1) }
             }
         }
         if (showLabel) { Spacer(Modifier.height(3.dp)); Text(folder.name, color = c.accent, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.Medium, textAlign = TextAlign.Center, modifier = Modifier.widthIn(max = 68.dp)) }
@@ -211,7 +223,7 @@ fun PageDots(pageCount: Int, currentPage: Int, modifier: Modifier = Modifier) {
 }
 
 @Composable
-fun AtAGlanceClock(modifier: Modifier = Modifier, clockStyle: app.lawnchairlite.data.ClockStyle = app.lawnchairlite.data.ClockStyle.LARGE, onDateClick: () -> Unit = {}, onTimeClick: () -> Unit = {}) {
+fun AtAGlanceClock(modifier: Modifier = Modifier, clockStyle: app.lawnchairlite.data.ClockStyle = app.lawnchairlite.data.ClockStyle.LARGE, onDateClick: () -> Unit = {}, onTimeClick: () -> Unit = {}, onCycleStyle: () -> Unit = {}) {
     val c = LocalLauncherColors.current
     val context = androidx.compose.ui.platform.LocalContext.current
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
@@ -269,7 +281,7 @@ fun AtAGlanceClock(modifier: Modifier = Modifier, clockStyle: app.lawnchairlite.
                 }
             }
             Spacer(Modifier.height(2.dp))
-            Box(Modifier.clickable { onTimeClick() }) {
+            Box(Modifier.pointerInput(Unit) { detectTapGestures(onTap = { onTimeClick() }, onDoubleTap = { onCycleStyle() }) }) {
                 Row(verticalAlignment = Alignment.Bottom) {
                     Text(timeStr, color = c.text, fontSize = 52.sp, fontWeight = FontWeight.Thin, lineHeight = 52.sp)
                     if (ampm != null) { Spacer(Modifier.width(6.dp)); Text(ampm, color = c.accent, fontSize = 16.sp, fontWeight = FontWeight.Medium, modifier = Modifier.padding(bottom = 9.dp)) }
@@ -277,7 +289,7 @@ fun AtAGlanceClock(modifier: Modifier = Modifier, clockStyle: app.lawnchairlite.
             }
         }
         app.lawnchairlite.data.ClockStyle.COMPACT -> Row(
-            modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 10.dp).clickable { onTimeClick() },
+            modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 10.dp).pointerInput(Unit) { detectTapGestures(onTap = { onTimeClick() }, onDoubleTap = { onCycleStyle() }) },
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(dateStr, color = c.textSecondary, fontSize = 13.sp, fontWeight = FontWeight.Medium, modifier = Modifier.clickable { onDateClick() })
@@ -290,7 +302,7 @@ fun AtAGlanceClock(modifier: Modifier = Modifier, clockStyle: app.lawnchairlite.
             }
         }
         app.lawnchairlite.data.ClockStyle.MINIMAL -> Box(
-            modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 8.dp).clickable { onTimeClick() },
+            modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 8.dp).pointerInput(Unit) { detectTapGestures(onTap = { onTimeClick() }, onDoubleTap = { onCycleStyle() }) },
             Alignment.CenterStart,
         ) {
             Row(verticalAlignment = Alignment.Bottom) {
@@ -694,16 +706,24 @@ fun WidgetHostViewComposable(
 @Composable
 fun CalculatorResultRow(result: String, modifier: Modifier = Modifier) {
     val c = LocalLauncherColors.current
+    val context = androidx.compose.ui.platform.LocalContext.current
     Row(
         modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 6.dp)
             .clip(RoundedCornerShape(14.dp)).background(c.accent.copy(alpha = 0.1f))
             .border(0.5.dp, c.accent.copy(alpha = 0.2f), RoundedCornerShape(14.dp))
+            .clickable {
+                val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager
+                cm?.setPrimaryClip(android.content.ClipData.newPlainText("result", result))
+                android.widget.Toast.makeText(context, "Copied: $result", android.widget.Toast.LENGTH_SHORT).show()
+            }
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text("=", color = c.accent, fontSize = 20.sp, fontWeight = FontWeight.Bold)
         Spacer(Modifier.width(12.dp))
         Text(result, color = c.text, fontSize = 22.sp, fontWeight = FontWeight.SemiBold)
+        Spacer(Modifier.weight(1f))
+        Icon(Icons.Default.ContentCopy, "Copy", tint = c.textSecondary.copy(alpha = 0.4f), modifier = Modifier.size(16.dp))
     }
 }
 
