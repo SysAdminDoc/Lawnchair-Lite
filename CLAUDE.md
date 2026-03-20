@@ -37,6 +37,7 @@
 - filteredApps uses combine() with 5 flows for sort/filter
 
 ## Version History
+- v2.10.0: Smart fuzzy search (relevance-scored: exact>starts-with>word>contains>package>subsequence), inline calculator (math expression eval in drawer search), hexagon + diamond icon shapes, draggable fast-scroller rail
 - v2.9.0: App suggestions row (time-bucketed usage prediction), search history with chips, themed notification badges (accent-colored)
 - v2.8.0: Home screen widgets (AppWidgetHost, picker, render, remove), contact search in drawer, staggered drawer animation
 - v2.7.0: Flashlight gesture, triple-tap gesture, pinch-in gesture, dock handle tap action, wallpaper parallax, drawer animation toggle
@@ -78,3 +79,7 @@
 - dropOnGrid caps target index to prevent unbounded list growth
 - Contact search checks READ_CONTACTS permission before querying
 - Widget host auto-cleans stale entries when provider returns null info
+- Fuzzy search scoring: 100=exact, 90=starts-with, 80=word-starts, 70=contains, 60=pkg, 50=subsequence
+- Calculator uses recursive descent parser (evalExpression/evalTerm/evalFactor), supports +-*/% and parentheses
+- HexagonShape and DiamondShape are top-level GenericShape constants (not recreated per call)
+- FastScrollerRail uses awaitEachGesture for combined tap+drag (single gesture handler)

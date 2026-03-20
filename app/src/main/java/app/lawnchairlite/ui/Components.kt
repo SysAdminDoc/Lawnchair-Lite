@@ -8,10 +8,13 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.GenericShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -56,13 +59,35 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.ui.viewinterop.AndroidView
 
-/** Lawnchair Lite v2.9.0 - UI Components */
+/** Lawnchair Lite v2.10.0 - UI Components */
+
+private val HexagonShape = GenericShape { size, _ ->
+    val w = size.width; val h = size.height
+    moveTo(w * 0.5f, 0f)
+    lineTo(w, h * 0.25f)
+    lineTo(w, h * 0.75f)
+    lineTo(w * 0.5f, h)
+    lineTo(0f, h * 0.75f)
+    lineTo(0f, h * 0.25f)
+    close()
+}
+
+private val DiamondShape = GenericShape { size, _ ->
+    val w = size.width; val h = size.height
+    moveTo(w * 0.5f, h * 0.05f)
+    lineTo(w * 0.95f, h * 0.5f)
+    lineTo(w * 0.5f, h * 0.95f)
+    lineTo(w * 0.05f, h * 0.5f)
+    close()
+}
 
 fun iconClip(shape: IconShape): androidx.compose.ui.graphics.Shape = when (shape) {
     IconShape.CIRCLE -> CircleShape
     IconShape.SQUIRCLE -> RoundedCornerShape(22)
     IconShape.SQUARE -> RoundedCornerShape(14)
     IconShape.TEARDROP -> RoundedCornerShape(topStartPercent = 50, topEndPercent = 50, bottomStartPercent = 50, bottomEndPercent = 14)
+    IconShape.HEXAGON -> HexagonShape
+    IconShape.DIAMOND -> DiamondShape
 }
 
 @Composable
@@ -272,10 +297,34 @@ fun DrawerSearch(query: String, onQueryChange: (String) -> Unit, modifier: Modif
 @Composable
 fun FastScrollerRail(letters: List<Char>, onLetterSelected: (Char) -> Unit, modifier: Modifier = Modifier) {
     val c = LocalLauncherColors.current
-    Column(modifier.padding(end = 2.dp, top = 8.dp, bottom = 8.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.SpaceEvenly) {
+    var dragging by remember { mutableStateOf(false) }
+    val bgAlpha by animateFloatAsState(if (dragging) 0.12f else 0f, label = "fsa")
+    Column(
+        modifier.padding(end = 2.dp, top = 8.dp, bottom = 8.dp).widthIn(min = 20.dp)
+            .clip(RoundedCornerShape(10.dp))
+            .background(c.accent.copy(alpha = bgAlpha))
+            .pointerInput(letters) {
+                awaitEachGesture {
+                    val down = awaitFirstDown()
+                    dragging = true
+                    val idx = (down.position.y / size.height * letters.size).toInt().coerceIn(0, letters.lastIndex)
+                    onLetterSelected(letters[idx])
+                    while (true) {
+                        val event = awaitPointerEvent()
+                        if (event.changes.all { !it.pressed }) { dragging = false; break }
+                        val pos = event.changes.first().position
+                        val newIdx = (pos.y / size.height * letters.size).toInt().coerceIn(0, letters.lastIndex)
+                        onLetterSelected(letters[newIdx])
+                        event.changes.forEach { it.consume() }
+                    }
+                }
+            },
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.SpaceEvenly,
+    ) {
         letters.forEach { ch ->
             Text(ch.toString(), color = c.accent, fontSize = 9.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center,
-                modifier = Modifier.size(16.dp).clip(CircleShape).clickable { onLetterSelected(ch) }.wrapContentSize(Alignment.Center))
+                modifier = Modifier.size(16.dp).wrapContentSize(Alignment.Center))
         }
     }
 }
@@ -611,6 +660,24 @@ fun WidgetHostViewComposable(
         update = { /* host view manages its own updates */ },
         onRelease = { try { (it.parent as? android.view.ViewGroup)?.removeView(it) } catch (_: Exception) {} },
     )
+}
+
+// ── Calculator Result ─────────────────────────────────────────────────
+
+@Composable
+fun CalculatorResultRow(result: String, modifier: Modifier = Modifier) {
+    val c = LocalLauncherColors.current
+    Row(
+        modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 6.dp)
+            .clip(RoundedCornerShape(14.dp)).background(c.accent.copy(alpha = 0.1f))
+            .border(0.5.dp, c.accent.copy(alpha = 0.2f), RoundedCornerShape(14.dp))
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text("=", color = c.accent, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+        Spacer(Modifier.width(12.dp))
+        Text(result, color = c.text, fontSize = 22.sp, fontWeight = FontWeight.SemiBold)
+    }
 }
 
 // ── Suggestion Row ────────────────────────────────────────────────────
