@@ -297,14 +297,14 @@ fun AtAGlanceClock(modifier: Modifier = Modifier, clockStyle: app.lawnchairlite.
     var pendingTapJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
     var lastClockTap by remember { mutableLongStateOf(0L) }
     val clockTapHandler: () -> Unit = {
-        val now = System.currentTimeMillis()
-        if (now - lastClockTap < 350L) {
+        val tapTime = System.currentTimeMillis()
+        if (tapTime - lastClockTap < 350L) {
             pendingTapJob?.cancel()
             pendingTapJob = null
             onCycleStyle()
             lastClockTap = 0L
         } else {
-            lastClockTap = now
+            lastClockTap = tapTime
             pendingTapJob?.cancel()
             pendingTapJob = scope.launch {
                 kotlinx.coroutines.delay(360L)
@@ -350,8 +350,12 @@ fun AtAGlanceClock(modifier: Modifier = Modifier, clockStyle: app.lawnchairlite.
             Text(timeStr, color = c.text, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
             if (ampm != null) { Spacer(Modifier.width(3.dp)); Text(ampm, color = c.accent, fontSize = 10.sp, fontWeight = FontWeight.Medium) }
             if (batteryPct in 0..100) {
+                val compactBatteryLow = batteryPct <= 15
                 Text("  ·  ", color = c.textSecondary.copy(alpha = 0.4f), fontSize = 13.sp)
-                Text("$batteryPct%", color = c.textSecondary, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                Icon(if (compactBatteryLow) Icons.Default.BatteryAlert else Icons.Default.BatteryFull,
+                    null, tint = if (compactBatteryLow) Color(0xFFEF5350) else c.textSecondary.copy(alpha = 0.5f),
+                    modifier = Modifier.size(12.dp))
+                Text("$batteryPct%", color = if (compactBatteryLow) Color(0xFFEF5350) else c.textSecondary, fontSize = 12.sp, fontWeight = FontWeight.Medium)
             }
         }
         app.lawnchairlite.data.ClockStyle.MINIMAL -> Box(
