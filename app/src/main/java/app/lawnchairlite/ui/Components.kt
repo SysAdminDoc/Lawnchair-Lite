@@ -62,6 +62,8 @@ import android.view.View
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.ui.viewinterop.AndroidView
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 /** Lawnchair Lite v2.12.0 - UI Components */
 
