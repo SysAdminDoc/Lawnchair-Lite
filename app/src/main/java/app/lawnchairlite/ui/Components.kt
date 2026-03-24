@@ -31,8 +31,12 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -60,6 +64,12 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.ui.viewinterop.AndroidView
 
 /** Lawnchair Lite v2.12.0 - UI Components */
+
+private val GrayscaleColorFilter = androidx.compose.ui.graphics.ColorFilter.colorMatrix(
+    androidx.compose.ui.graphics.ColorMatrix(
+        android.graphics.ColorMatrix().apply { setSaturation(0f) }.array
+    )
+)
 
 private val HexagonShape = GenericShape { size, _ ->
     val w = size.width; val h = size.height
@@ -97,7 +107,7 @@ fun AppIconContent(app: AppInfo, shape: IconShape, iconSizeDp: Dp = 50.dp, modif
         Box(Modifier.size(iconSizeDp).then(if (iconShadow) Modifier.shadow(6.dp, iconClip(shape)) else Modifier)) {
             Box(Modifier.fillMaxSize().clip(iconClip(shape)).background(c.card), Alignment.Center) {
                 if (app.icon != null) Image(rememberDrawablePainter(app.icon), app.label, Modifier.fillMaxSize().padding((iconSizeDp.value * 0.1f).dp),
-                    colorFilter = if (grayscale) androidx.compose.ui.graphics.ColorFilter.colorMatrix(android.graphics.ColorMatrix().apply { setSaturation(0f) }.let { androidx.compose.ui.graphics.ColorMatrix(it.array) }) else null)
+                    colorFilter = if (grayscale) GrayscaleColorFilter else null)
             }
             if (badgeCount > 0) {
                 if (badgeDotOnly) {
@@ -119,12 +129,15 @@ fun AppIconContent(app: AppInfo, shape: IconShape, iconSizeDp: Dp = 50.dp, modif
 }
 
 @Composable
-fun TappableAppIcon(app: AppInfo, shape: IconShape, iconSizeDp: Dp = 50.dp, modifier: Modifier = Modifier, showLabel: Boolean = true, customLabel: String? = null, badgeCount: Int = 0, badgeDotOnly: Boolean = false, labelSizeSp: Int = 11, onClick: () -> Unit = {}, onLongClick: () -> Unit = {}) {
+fun TappableAppIcon(app: AppInfo, shape: IconShape, iconSizeDp: Dp = 50.dp, modifier: Modifier = Modifier, showLabel: Boolean = true, customLabel: String? = null, badgeCount: Int = 0, badgeDotOnly: Boolean = false, iconShadow: Boolean = false, grayscale: Boolean = false, labelSizeSp: Int = 11, labelWeight: FontWeight = FontWeight.Normal, onClick: () -> Unit = {}, onLongClick: () -> Unit = {}) {
     val c = LocalLauncherColors.current; var pressed by remember { mutableStateOf(false) }
     val scale by animateFloatAsState(if (pressed) 0.9f else 1f, spring(dampingRatio = 0.6f, stiffness = 500f), label = "s")
     Column(modifier.graphicsLayer(scaleX = scale, scaleY = scale).pointerInput(app.key) { detectTapGestures(onPress = { pressed = true; tryAwaitRelease(); pressed = false }, onTap = { onClick() }, onLongPress = { onLongClick() }) }, horizontalAlignment = Alignment.CenterHorizontally) {
-        Box(Modifier.size(iconSizeDp)) {
-            Box(Modifier.fillMaxSize().clip(iconClip(shape)).background(c.card), Alignment.Center) { if (app.icon != null) Image(rememberDrawablePainter(app.icon), app.label, Modifier.fillMaxSize().padding((iconSizeDp.value * 0.1f).dp)) }
+        Box(Modifier.size(iconSizeDp).then(if (iconShadow) Modifier.shadow(6.dp, iconClip(shape)) else Modifier)) {
+            Box(Modifier.fillMaxSize().clip(iconClip(shape)).background(c.card), Alignment.Center) {
+                if (app.icon != null) Image(rememberDrawablePainter(app.icon), app.label, Modifier.fillMaxSize().padding((iconSizeDp.value * 0.1f).dp),
+                    colorFilter = if (grayscale) GrayscaleColorFilter else null)
+            }
             if (badgeCount > 0) {
                 if (badgeDotOnly) {
                     Box(Modifier.align(Alignment.TopEnd).offset(x = 2.dp, y = (-1).dp).size(10.dp).clip(CircleShape).background(c.accent))
@@ -140,7 +153,7 @@ fun TappableAppIcon(app: AppInfo, shape: IconShape, iconSizeDp: Dp = 50.dp, modi
                 }
             }
         }
-        if (showLabel) { Spacer(Modifier.height(3.dp)); Text(customLabel ?: app.label, color = c.text, fontSize = labelSizeSp.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, modifier = Modifier.widthIn(max = 68.dp)) }
+        if (showLabel) { Spacer(Modifier.height(3.dp)); Text(customLabel ?: app.label, color = c.text, fontSize = labelSizeSp.sp, fontWeight = labelWeight, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, modifier = Modifier.widthIn(max = 68.dp)) }
     }
 }
 
@@ -275,13 +288,27 @@ fun AtAGlanceClock(modifier: Modifier = Modifier, clockStyle: app.lawnchairlite.
     }
     val ampm = if (!is24h) (if (cal.get(Calendar.AM_PM) == Calendar.AM) "AM" else "PM") else null
 
-    // Manual double-tap detection avoids the 300ms onTap delay that
-    // detectTapGestures(onDoubleTap) introduces for single-tap disambiguation
+    // Double-tap detection with pending-action pattern:
+    // Single tap deferred 360ms so a second tap can cancel it and cycle style instead.
+    // This avoids accidentally opening the clock app on every double-tap.
+    val scope = rememberCoroutineScope()
+    var pendingTapJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
     var lastClockTap by remember { mutableLongStateOf(0L) }
     val clockTapHandler: () -> Unit = {
         val now = System.currentTimeMillis()
-        if (now - lastClockTap < 350L) { onCycleStyle(); lastClockTap = 0L }
-        else { onTimeClick(); lastClockTap = now }
+        if (now - lastClockTap < 350L) {
+            pendingTapJob?.cancel()
+            pendingTapJob = null
+            onCycleStyle()
+            lastClockTap = 0L
+        } else {
+            lastClockTap = now
+            pendingTapJob?.cancel()
+            pendingTapJob = scope.launch {
+                kotlinx.coroutines.delay(360L)
+                onTimeClick()
+            }
+        }
     }
 
     when (clockStyle) {
@@ -289,8 +316,11 @@ fun AtAGlanceClock(modifier: Modifier = Modifier, clockStyle: app.lawnchairlite.
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clickable { onDateClick() }) {
                 Text(dateStr, color = c.text.copy(alpha = 0.7f), fontSize = 14.sp, fontWeight = FontWeight.Medium)
                 if (batteryPct in 0..100) {
+                    val batteryLow = batteryPct <= 15
                     Text("  |  ", color = c.textSecondary.copy(alpha = 0.4f), fontSize = 12.sp)
-                    Icon(Icons.Default.BatteryFull, null, tint = if (batteryPct <= 15) Color(0xFFEF5350) else c.accent.copy(alpha = 0.7f), modifier = Modifier.size(14.dp))
+                    Icon(if (batteryLow) Icons.Default.BatteryAlert else Icons.Default.BatteryFull,
+                        null, tint = if (batteryLow) Color(0xFFEF5350) else c.accent.copy(alpha = 0.7f),
+                        modifier = Modifier.size(14.dp))
                     Text("$batteryPct%", color = c.textSecondary, fontSize = 12.sp, fontWeight = FontWeight.Medium)
                 }
             }
@@ -346,12 +376,15 @@ fun SearchPill(onClick: () -> Unit, modifier: Modifier = Modifier) {
 @Composable
 fun DrawerSearch(query: String, onQueryChange: (String) -> Unit, modifier: Modifier = Modifier) {
     val c = LocalLauncherColors.current
+    val keyboardController = LocalSoftwareKeyboardController.current
     TextField(value = query, onValueChange = onQueryChange, modifier = modifier.fillMaxWidth().height(50.dp).clip(RoundedCornerShape(25.dp)).background(c.searchBg),
         placeholder = { Text("Search apps\u2026", color = c.textSecondary, fontSize = 14.sp) },
         leadingIcon = { Icon(Icons.Default.Search, null, tint = c.textSecondary, modifier = Modifier.size(18.dp)) },
         trailingIcon = if (query.isNotBlank()) {{ IconButton(onClick = { onQueryChange("") }, modifier = Modifier.size(32.dp)) { Icon(Icons.Default.Close, "Clear", tint = c.textSecondary, modifier = Modifier.size(16.dp)) } }} else null,
         colors = TextFieldDefaults.colors(focusedTextColor = c.text, unfocusedTextColor = c.text, cursorColor = c.accent, focusedContainerColor = Color.Transparent, unfocusedContainerColor = Color.Transparent, focusedIndicatorColor = Color.Transparent, unfocusedIndicatorColor = Color.Transparent),
-        singleLine = true, textStyle = TextStyle(fontSize = 14.sp))
+        singleLine = true, textStyle = TextStyle(fontSize = 14.sp),
+        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+        keyboardActions = KeyboardActions(onSearch = { keyboardController?.hide() }))
 }
 
 @Composable
@@ -476,7 +509,7 @@ fun HomeContextMenu(
 // ── Folder Overlay (improved - selective X, better UX) ───────────────
 
 @Composable
-fun FolderOverlay(folder: GridCell.Folder, shape: IconShape, iconSizeDp: Dp, resolveApp: (String) -> AppInfo?, customLabels: Map<String, String>, onAppClick: (AppInfo) -> Unit, onRemoveApp: (String) -> Unit, onReorder: (List<String>) -> Unit, onRename: () -> Unit, onDismiss: () -> Unit) {
+fun FolderOverlay(folder: GridCell.Folder, shape: IconShape, iconSizeDp: Dp, resolveApp: (String) -> AppInfo?, customLabels: Map<String, String>, folderColumns: Int = 4, onAppClick: (AppInfo) -> Unit, onRemoveApp: (String) -> Unit, onReorder: (List<String>) -> Unit, onRename: () -> Unit, onDismiss: () -> Unit) {
     val c = LocalLauncherColors.current
     val orderedKeys = remember(folder.appKeys) { mutableStateListOf(*folder.appKeys.toTypedArray()) }
     var editMode by remember { mutableStateOf(false) }
@@ -526,10 +559,10 @@ fun FolderOverlay(folder: GridCell.Folder, shape: IconShape, iconSizeDp: Dp, res
                         } else Modifier)
                 ) {
                     Column(Modifier.fillMaxWidth()) {
-                        orderedKeys.chunked(4).forEachIndexed { rowIdx, row ->
+                        orderedKeys.chunked(folderColumns).forEachIndexed { rowIdx, row ->
                             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
                                 row.forEachIndexed { colIdx, key ->
-                                    val flatIdx = rowIdx * 4 + colIdx
+                                    val flatIdx = rowIdx * folderColumns + colIdx
                                     val app = resolveApp(key)
                                     val isBeingDragged = dragIdx == flatIdx
                                     val isSelectedForRemoval = selectedForRemoval == key
@@ -568,7 +601,7 @@ fun FolderOverlay(folder: GridCell.Folder, shape: IconShape, iconSizeDp: Dp, res
                                         }
                                     }
                                 }
-                                repeat(4 - row.size) { Spacer(Modifier.width(66.dp)) }
+                                repeat(folderColumns - row.size) { Spacer(Modifier.width(66.dp)) }
                             }; Spacer(Modifier.height(10.dp))
                         }
                     }
@@ -582,13 +615,17 @@ fun FolderOverlay(folder: GridCell.Folder, shape: IconShape, iconSizeDp: Dp, res
 // ── Drawer Context Menu ──────────────────────────────────────────────
 
 @Composable
-fun DrawerContextMenu(app: AppInfo, shape: IconShape, shortcuts: List<AppShortcut>, onShortcutClick: (AppShortcut) -> Unit, onPinHome: () -> Unit, onPinDock: () -> Unit, onHide: () -> Unit, onAppInfo: () -> Unit, onUninstall: () -> Unit, onDismiss: () -> Unit) {
+fun DrawerContextMenu(app: AppInfo, shape: IconShape, vm: LauncherViewModel, shortcuts: List<AppShortcut>, onShortcutClick: (AppShortcut) -> Unit, onPinHome: () -> Unit, onPinDock: () -> Unit, onHide: () -> Unit, onAppInfo: () -> Unit, onUninstall: () -> Unit, onDismiss: () -> Unit) {
     val c = LocalLauncherColors.current
     Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.5f)).pointerInput(Unit) { detectTapGestures { onDismiss() } }, Alignment.Center) {
         Column(Modifier.widthIn(min = 240.dp, max = 280.dp).clip(RoundedCornerShape(20.dp)).background(c.surface).border(0.5.dp, c.border, RoundedCornerShape(20.dp)).pointerInput(Unit) { detectTapGestures { } }.padding(vertical = 12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Spacer(Modifier.height(8.dp))
             Box(Modifier.size(54.dp).clip(iconClip(shape)).background(c.card), Alignment.Center) { if (app.icon != null) Image(rememberDrawablePainter(app.icon), null, Modifier.fillMaxSize().padding(5.dp)) }
-            Spacer(Modifier.height(6.dp)); Text(app.label, color = c.text, fontSize = 14.sp, fontWeight = FontWeight.SemiBold); Text(app.packageName, color = c.textSecondary, fontSize = 10.sp)
+            val verInfo = remember(app.packageName) { vm.getAppVersionInfo(app.packageName) }
+            val launchCount = remember(app.key) { vm.getAppLaunchCount(app.key) }
+            val sizeInfo = remember(app.packageName) { vm.getAppSizeInfo(app.packageName) }
+            Spacer(Modifier.height(6.dp)); Text(app.label, color = c.text, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+            Text("${app.packageName}${if (verInfo != null) " $verInfo" else ""}${if (sizeInfo != null) " · $sizeInfo" else ""}${if (launchCount > 0) " · $launchCount launches" else ""}", color = c.textSecondary, fontSize = 10.sp, textAlign = TextAlign.Center, modifier = Modifier.padding(horizontal = 16.dp))
             if (shortcuts.isNotEmpty()) {
                 Spacer(Modifier.height(8.dp)); Divider(color = c.border.copy(alpha = 0.3f), thickness = 0.5.dp)
                 shortcuts.forEach { shortcut -> ShortcutItem(shortcut, c) { onShortcutClick(shortcut) } }
@@ -755,6 +792,8 @@ fun CalculatorResultRow(result: String, modifier: Modifier = Modifier) {
 @Composable
 fun SuggestionRow(
     apps: List<AppInfo>, shape: IconShape, iconSizeDp: Dp,
+    iconShadow: Boolean = false, grayscale: Boolean = false,
+    labelWeight: FontWeight = FontWeight.Normal,
     onAppClick: (AppInfo) -> Unit, modifier: Modifier = Modifier,
 ) {
     if (apps.isEmpty()) return
@@ -769,6 +808,7 @@ fun SuggestionRow(
         ) {
             apps.forEach { app ->
                 TappableAppIcon(app, shape, iconSizeDp - 4.dp, showLabel = true,
+                    iconShadow = iconShadow, grayscale = grayscale, labelWeight = labelWeight,
                     onClick = { onAppClick(app) },
                     modifier = Modifier.width(62.dp))
             }

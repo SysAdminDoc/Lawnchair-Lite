@@ -57,6 +57,9 @@ fun AppDrawer(
     showBadges: Boolean,
     badgeDotOnly: Boolean,
     showLabels: Boolean,
+    iconShadow: Boolean,
+    grayscale: Boolean,
+    labelWeight: androidx.compose.ui.text.font.FontWeight,
     drawerOpacity: Int,
     showSectionHeaders: Boolean,
     labelSizeSp: Int,
@@ -90,13 +93,6 @@ fun AppDrawer(
     }}
 
     var displaced by remember { mutableStateOf(false) }
-
-    val letters = remember(apps) { apps.map { it.label.firstOrNull()?.uppercaseChar() ?: '#' }.distinct().sorted() }
-    val letterIndex = remember(apps) {
-        val map = mutableMapOf<Char, Int>()
-        apps.forEachIndexed { i, app -> val ch = app.label.firstOrNull()?.uppercaseChar() ?: '#'; if (ch !in map) map[ch] = i }
-        map
-    }
 
     LaunchedEffect(progress) {
         if (progress > 0.99f) displaced = false
@@ -155,6 +151,37 @@ fun AppDrawer(
     val displayApps = if (showCategories && searchQuery.isBlank() && selectedCategory != app.lawnchairlite.data.DrawerCategory.ALL) {
         categorizedApps[selectedCategory] ?: apps
     } else apps
+
+    // Compute letters/index from displayApps so fast scroller is correct when
+    // categories are active or section headers shift grid positions.
+    val letters = remember(displayApps) { displayApps.map { it.label.firstOrNull()?.uppercaseChar() ?: '#' }.distinct().sorted() }
+    // Maps letter -> index of first matching app within displayApps (used for non-header path)
+    val letterIndex = remember(displayApps) {
+        val map = mutableMapOf<Char, Int>()
+        displayApps.forEachIndexed { i, a -> val ch = a.label.firstOrNull()?.uppercaseChar() ?: '#'; if (ch !in map) map[ch] = i }
+        map
+    }
+    // When section headers are enabled, each header occupies one grid item slot.
+    // Recompute letter -> grid-item-index accounting for those header items.
+    val headerAdjustedLetterIndex = remember(displayApps, showSectionHeaders, showRecent) {
+        if (!showSectionHeaders) letterIndex
+        else {
+            val map = mutableMapOf<Char, Int>()
+            var gridIdx = if (showRecent) 1 else 0
+            var lastLetter: Char? = null
+            displayApps.forEach { a ->
+                val ch = a.label.firstOrNull()?.uppercaseChar() ?: '#'
+                if (ch != lastLetter) { lastLetter = ch; gridIdx++ }  // header item
+                if (ch !in map) map[ch] = gridIdx
+                gridIdx++  // app item
+            }
+            map
+        }
+    }
+    // Hide fast scroller when a specific category is selected — displayApps is a subset
+    // and the alphabet rail wouldn't match the visible grid position anyway.
+    val showFastScroller = letters.size > 3 && searchQuery.isBlank() &&
+        !(showCategories && selectedCategory != app.lawnchairlite.data.DrawerCategory.ALL)
 
     Box(
         Modifier
@@ -287,6 +314,7 @@ fun AppDrawer(
                                             TappableAppIcon(
                                                 app, shape, iconSizeDp, showLabel = true,
                                                 badgeCount = badge, badgeDotOnly = badgeDotOnly,
+                                                iconShadow = iconShadow, grayscale = grayscale, labelWeight = labelWeight,
                                                 onClick = { onAppClick(app) },
                                                 onLongClick = { onAppLongClick(app) },
                                                 modifier = Modifier.width(70.dp),
@@ -320,6 +348,7 @@ fun AppDrawer(
                                         TappableAppIcon(
                                             app, shape, iconSizeDp, showLabel = showLabels,
                                             badgeCount = badge, badgeDotOnly = badgeDotOnly, labelSizeSp = labelSizeSp,
+                                            iconShadow = iconShadow, grayscale = grayscale, labelWeight = labelWeight,
                                             onClick = { onAppClick(app) },
                                             onLongClick = { onAppLongClick(app) },
                                             modifier = Modifier.width(70.dp),
@@ -334,6 +363,7 @@ fun AppDrawer(
                                     TappableAppIcon(
                                         app, shape, iconSizeDp, showLabel = showLabels,
                                         badgeCount = badge, badgeDotOnly = badgeDotOnly, labelSizeSp = labelSizeSp,
+                                        iconShadow = iconShadow, grayscale = grayscale, labelWeight = labelWeight,
                                         onClick = { onAppClick(app) },
                                         onLongClick = { onAppLongClick(app) },
                                         modifier = Modifier.width(70.dp),
@@ -342,11 +372,15 @@ fun AppDrawer(
                             }
                         }
                     }
-                    if (letters.size > 3 && searchQuery.isBlank()) {
+                    if (showFastScroller) {
                         FastScrollerRail(letters = letters, onLetterSelected = { ch ->
-                            letterIndex[ch]?.let { idx ->
-                                scope.launch { gridState.animateScrollToItem(idx / columns * columns + (if (showRecent) 1 else 0)) }
+                            val scrollIdx = if (showSectionHeaders && searchQuery.isBlank() && !showCategories) {
+                                headerAdjustedLetterIndex[ch] ?: return@FastScrollerRail
+                            } else {
+                                val appIdx = letterIndex[ch] ?: return@FastScrollerRail
+                                appIdx / columns * columns + (if (showRecent) 1 else 0)
                             }
+                            scope.launch { gridState.animateScrollToItem(scrollIdx) }
                         })
                     }
                 }
