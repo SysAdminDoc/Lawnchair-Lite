@@ -175,7 +175,7 @@ class LauncherPrefs(private val context: Context) {
             gridPaddingV = (p[GRID_PADDING_V] ?: 0).coerceIn(0, 24),
             hideStatusBar = p[HIDE_STATUS_BAR] ?: false,
             dockSwipeApps = p[DOCK_SWIPE_APPS]?.let { parseDockSwipeApps(it) } ?: emptyMap(),
-            drawerColumns = (p[DRAWER_COLUMNS] ?: 0).coerceIn(0, 8),
+            drawerColumns = (p[DRAWER_COLUMNS] ?: 0).coerceIn(0, 6),
             homeLocked = p[HOME_LOCKED] ?: false,
             iconShadow = p[ICON_SHADOW] ?: false,
             accentOverride = p[ACCENT_OVERRIDE] ?: "",
@@ -498,7 +498,7 @@ class LauncherPrefs(private val context: Context) {
             if (j.has("grid_padding_v")) p[GRID_PADDING_V] = j.getInt("grid_padding_v").coerceIn(0, 24)
             if (j.has("hide_status_bar")) p[HIDE_STATUS_BAR] = j.getBoolean("hide_status_bar")
             j.optString("dock_swipe_apps").takeIf { it.isNotBlank() }?.let { p[DOCK_SWIPE_APPS] = it }
-            if (j.has("drawer_columns")) p[DRAWER_COLUMNS] = j.getInt("drawer_columns").coerceIn(0, 8)
+            if (j.has("drawer_columns")) p[DRAWER_COLUMNS] = j.getInt("drawer_columns").coerceIn(0, 6)
             if (j.has("home_locked")) p[HOME_LOCKED] = j.getBoolean("home_locked")
             if (j.has("icon_shadow")) p[ICON_SHADOW] = j.getBoolean("icon_shadow")
             j.optString("accent_override").let { p[ACCENT_OVERRIDE] = it }

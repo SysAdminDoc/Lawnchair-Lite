@@ -238,6 +238,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
 
     private var reloadJob: Job? = null
     private var flashlightOn = false
+    private var torchCallback: CameraManager.TorchCallback? = null
 
     init {
         loadApps()
@@ -259,6 +260,30 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
             settings.filter { it.iconPack.isNotBlank() }.take(1).collect { s ->
                 applyIconPack(s.iconPack)
             }
+        }
+        // Sync flashlight state when user toggles via quick settings
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            try {
+                val cm = ctx.getSystemService(Context.CAMERA_SERVICE) as? CameraManager
+                if (cm != null) {
+                    torchCallback = object : CameraManager.TorchCallback() {
+                        override fun onTorchModeChanged(cameraId: String, enabled: Boolean) {
+                            flashlightOn = enabled
+                        }
+                    }
+                    cm.registerTorchCallback(torchCallback!!, null)
+                }
+            } catch (e: Exception) { Log.w(TAG, "Torch callback registration failed", e) }
+        }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && torchCallback != null) {
+            try {
+                val cm = ctx.getSystemService(Context.CAMERA_SERVICE) as? CameraManager
+                cm?.unregisterTorchCallback(torchCallback!!)
+            } catch (_: Exception) {}
         }
     }
 
@@ -692,8 +717,17 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     private suspend fun saveGrid(s: DragSource, g: List<GridCell?>) = when (s) { DragSource.HOME -> { _homeGrid.value = g; prefs.saveHome(g) }; DragSource.DOCK -> { _dockGrid.value = g; prefs.saveDock(g) }; DragSource.DRAWER -> {} }
 
     private fun suggestFolderName(k1: String, k2: String): String {
-        val b = listOf(k1.substringBefore("/"), k2.substringBefore("/"))
-        return when { b.any { "messaging" in it || "dialer" in it || "contacts" in it || "whatsapp" in it } -> "Social"; b.any { "camera" in it || "photos" in it || "gallery" in it } -> "Photos"; b.any { "chrome" in it || "browser" in it || "firefox" in it } -> "Internet"; b.any { "music" in it || "spotify" in it || "youtube" in it } -> "Media"; b.any { "settings" in it || "calculator" in it || "clock" in it } -> "Tools"; b.any { "game" in it } -> "Games"; else -> "Folder" }
+        val tokens = listOf(k1.substringBefore("/"), k2.substringBefore("/"))
+            .flatMap { it.lowercase().split('.', '_', '-') }.toSet()
+        return when {
+            tokens.any { it in setOf("messaging", "dialer", "contacts", "whatsapp", "telegram", "messenger", "sms", "mms", "chat") } -> "Social"
+            tokens.any { it in setOf("camera", "photos", "gallery") } -> "Photos"
+            tokens.any { it in setOf("chrome", "browser", "firefox", "edge", "brave", "opera") } -> "Internet"
+            tokens.any { it in setOf("music", "spotify", "youtube", "video", "player", "podcast") } -> "Media"
+            tokens.any { it in setOf("settings", "calculator", "clock", "calendar", "weather", "files") } -> "Tools"
+            tokens.any { it in setOf("game", "games", "puzzle", "arcade") } -> "Games"
+            else -> "Folder"
+        }
     }
 
     // -- Fuzzy Search --
@@ -776,10 +810,11 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
 
     // -- Unit Converter --
 
+    private val unitRegex = Regex("""^(-?\d+\.?\d*)\s*(km|mi|lb|kg|oz|g|ft|m|cm|in|gal|L|F|C)$""", RegexOption.IGNORE_CASE)
+
     private fun tryConvertUnit(input: String): String? {
         val cleaned = input.trim()
-        val match = Regex("""^(-?\d+\.?\d*)\s*(km|mi|lb|kg|oz|g|ft|m|cm|in|gal|L|F|C)$""", RegexOption.IGNORE_CASE)
-            .matchEntire(cleaned) ?: return null
+        val match = unitRegex.matchEntire(cleaned) ?: return null
         val value = match.groupValues[1].toDoubleOrNull() ?: return null
         val unit = match.groupValues[2]
         val (result, toUnit) = when (unit.lowercase()) {
@@ -860,7 +895,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     fun setGridPaddingH(v: Int) = pref(LauncherPrefs.GRID_PADDING_H, v.coerceIn(0, 24))
     fun setGridPaddingV(v: Int) = pref(LauncherPrefs.GRID_PADDING_V, v.coerceIn(0, 24))
     fun setHideStatusBar(v: Boolean) = pref(LauncherPrefs.HIDE_STATUS_BAR, v)
-    fun setDrawerColumns(c: Int) = pref(LauncherPrefs.DRAWER_COLUMNS, c.coerceIn(0, 8))
+    fun setDrawerColumns(c: Int) = pref(LauncherPrefs.DRAWER_COLUMNS, c.coerceIn(0, 6))
     fun setHomeLocked(v: Boolean) { pref(LauncherPrefs.HOME_LOCKED, v); if (v) { _editMode.value = false }; toast(if (v) "Home screen locked" else "Home screen unlocked") }
     fun setIconShadow(v: Boolean) = pref(LauncherPrefs.ICON_SHADOW, v)
     fun setAccentOverride(hex: String) = pref(LauncherPrefs.ACCENT_OVERRIDE, hex)

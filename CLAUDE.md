@@ -37,6 +37,7 @@
 - filteredApps uses combine() with 5 flows for sort/filter
 
 ## Version History
+- v2.15.7: Audit round 5 — suggestFolderName tokenized (same substring fix as AppCategorizer), unit converter regex hoisted to class field, flashlight syncs external toggles via TorchCallback, drawer columns range 0-8 capped to 0-6 matching settings UI
 - v2.15.6: Audit round 4 — resetAllSettings atomic single-transaction (was 30+ individual writes), widget picker shows toast on permission/space failure, all drawer close paths reset selectedCategory, hasOpenOverlay includes widgetPicker+editMode for back-press, closeAllOverlays closes widgetPicker
 - v2.15.5: Polish — zero compiler warnings (ArrowForward, VIBRATOR_SERVICE, unused lookupUri), web search link at bottom of search results, drawer search auto-focuses on open
 - v2.15.4: Audit fixes — AppCategorizer uses word-boundary tokenization (fixes false positives like "display"="play"), backup exports/imports widget data, ProGuard rules tightened (removes blanket Compose keep), HomeContextMenu info text wraps like DrawerContextMenu, FolderOverlay passes iconShadow/grayscale/labelWeight, closeDrawer/closeAllOverlays always reset selectedCategory to ALL
