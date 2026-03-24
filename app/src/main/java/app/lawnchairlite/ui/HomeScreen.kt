@@ -686,7 +686,7 @@ fun HomeScreen(vm: LauncherViewModel) {
 
         val fState = openFolder
         if (fState != null) { val (folder, src, fi) = fState
-            FolderOverlay(folder, settings.iconShape, iconDp, { vm.resolveApp(it) }, customLabels, folderColumns = settings.folderColumns, onAppClick = { vm.launch(it); vm.closeFolderView() }, onRemoveApp = { k -> vm.removeFolderApp(src, fi, k) }, onReorder = { keys -> vm.reorderFolderApps(src, fi, keys) }, onRename = { vm.startFolderRename(src, fi, folder.name) }, onDismiss = { vm.closeFolderView() }) }
+            FolderOverlay(folder, settings.iconShape, iconDp, { vm.resolveApp(it) }, customLabels, folderColumns = settings.folderColumns, iconShadow = settings.iconShadow, grayscale = settings.grayscaleIcons, labelWeight = resolvedLabelWeight, onAppClick = { vm.launch(it); vm.closeFolderView() }, onRemoveApp = { k -> vm.removeFolderApp(src, fi, k) }, onReorder = { keys -> vm.reorderFolderApps(src, fi, keys) }, onRename = { vm.startFolderRename(src, fi, folder.name) }, onDismiss = { vm.closeFolderView() }) }
 
         val rn = folderRename
         if (rn != null) RenameDialog(rn.current, "Rename Folder", onConfirm = { vm.renameFolder(rn.source, rn.index, it); vm.closeFolderView() }, onDismiss = { vm.dismissFolderRename() })
