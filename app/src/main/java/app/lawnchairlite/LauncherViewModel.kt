@@ -426,7 +426,10 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
                 GestureAction.FLASHLIGHT -> toggleFlashlight()
                 GestureAction.EDIT_MODE -> { if (!settings.value.homeLocked) { _editMode.value = !_editMode.value } else toast("Home screen is locked") }
                 GestureAction.RECENT_APP -> {
-                    val lastUsed = _appUsage.value.entries.maxByOrNull { it.value }
+                    val hidden = _hiddenApps.value
+                    val lastUsed = _appUsage.value.entries
+                        .filter { it.key !in hidden }
+                        .maxByOrNull { it.value }
                     lastUsed?.let { resolveApp(it.key)?.let { app -> launch(app) } }
                 }
             }

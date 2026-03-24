@@ -37,6 +37,8 @@
 - filteredApps uses combine() with 5 flows for sort/filter
 
 ## Version History
+- v2.15.2: Bug fixes — FolderOverlay now uses folderColumns setting (was always 4), selectedCategory resets to ALL on drawer close, RECENT_APP gesture respects hidden apps, SuggestionRow now passes iconShadow/grayscale/labelWeight, GrayscaleColorFilter is a top-level constant, DrawerSearch uses ImeAction.Search, battery icon shows BatteryAlert below 16%, DrawerContextMenu shows version/size/launches like HomeContextMenu
+- v2.15.1: Bug fixes — widget overlay positioning (BoxWithConstraints replaces magic 1000dp), clock double-tap no longer fires single-tap action on first tap of a double, fast scroller letter index computed from displayApps (fixes categories + section header offsets)
 - v2.15.0: Hide dock toggle, Recent App gesture action, grayscale icon mode, page line indicator, label font weight (Light/Regular/Bold)
 - v2.14.0: Reverse sort Z-A, Depth page transition (parallax), dock handle pulse animation, drawer scroll-to-top on handle tap, XL icon size (66dp)
 - v2.13.0: Accent color presets (12 quick-pick colors), drawer search clear button, Carousel page transition, app size in context menu, reset all settings
@@ -55,6 +57,10 @@
 - v2.0.0: Initial stability architecture, crash handler, DataStore corruption recovery
 
 ## Gotchas
+- Widget overlay positioning: uses BoxWithConstraints so offset is based on actual container dp, NOT a magic 1000dp multiplier
+- Clock double-tap: uses pending-job pattern (scope.launch + delay(360ms)) — cancels single-tap on second tap. Never fire single-tap immediately on press.
+- TappableAppIcon: has grayscale/iconShadow/labelWeight params; AppDrawer passes them from settings
+- Fast scroller: letters/letterIndex computed from displayApps (not apps), so categories + section headers work. headerAdjustedLetterIndex accounts for header item slots. showFastScroller=false when non-ALL category selected.
 - GridCellView: do NOT use `cell` as pointerInput key - restarts gesture on recomposition
 - drawerVisible must NOT be a pointerInput key - cancels drag mid-flight
 - NEVER set LazyVerticalGrid userScrollEnabled=false - kills NestedScrollConnection
@@ -88,3 +94,9 @@
 - Calculator uses recursive descent parser (evalExpression/evalTerm/evalFactor), supports +-*/% and parentheses
 - HexagonShape and DiamondShape are top-level GenericShape constants (not recreated per call)
 - FastScrollerRail uses awaitEachGesture for combined tap+drag (single gesture handler)
+- FolderOverlay accepts folderColumns param (default 4); call site must pass settings.folderColumns
+- selectedCategory resets to DrawerCategory.ALL on every drawer close (both settle and external/back-press path)
+- RECENT_APP gesture filters _hiddenApps before picking last-used app
+- GrayscaleColorFilter is a top-level private val in Components.kt — do NOT recreate per recomposition
+- DrawerSearch uses ImeAction.Search + KeyboardActions(onSearch) to hide keyboard on search key
+- DrawerContextMenu accepts vm: LauncherViewModel to display version/size/launch count (same as HomeContextMenu)

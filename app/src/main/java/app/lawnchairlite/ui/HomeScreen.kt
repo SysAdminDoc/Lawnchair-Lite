@@ -171,6 +171,7 @@ fun HomeScreen(vm: LauncherViewModel) {
                     stiffness = if (isFling) Spring.StiffnessMediumLow else Spring.StiffnessMedium,
                 )) else drawerProgress.snapTo(0f)
                 vm.setSearch("")
+                vm.setSelectedCategory(app.lawnchairlite.data.DrawerCategory.ALL)
             }
         }
     }
@@ -189,6 +190,7 @@ fun HomeScreen(vm: LauncherViewModel) {
                 dampingRatio = Spring.DampingRatioLowBouncy,
                 stiffness = Spring.StiffnessMedium,
             )) else drawerProgress.snapTo(0f)
+            vm.setSelectedCategory(app.lawnchairlite.data.DrawerCategory.ALL)
         }
     }
 
@@ -351,6 +353,9 @@ fun HomeScreen(vm: LauncherViewModel) {
                         apps = suggestedApps,
                         shape = settings.iconShape,
                         iconSizeDp = iconDp,
+                        iconShadow = settings.iconShadow,
+                        grayscale = settings.grayscaleIcons,
+                        labelWeight = resolvedLabelWeight,
                         onAppClick = { vm.launch(it) },
                     )
                 }
@@ -476,21 +481,17 @@ fun HomeScreen(vm: LauncherViewModel) {
                                 }
                             }
                             if (hostView != null) {
-                                Box(
-                                    Modifier.fillMaxSize()
-                                        .graphicsLayer(
-                                            translationX = 0f, translationY = 0f,
-                                            clip = true,
-                                        )
+                                BoxWithConstraints(
+                                    Modifier.fillMaxSize().graphicsLayer(clip = true)
                                 ) {
                                     WidgetHostViewComposable(
                                         hostView = hostView,
                                         modifier = Modifier
-                                            .fillMaxWidth(cellW * wi.spanX)
-                                            .fillMaxHeight(cellH * wi.spanY)
-                                            .offset(
-                                                x = with(density) { (wi.col * cellW * 1000).dp },
-                                                y = with(density) { (wi.row * cellH * 1000).dp },
+                                            .width(maxWidth * cellW * wi.spanX)
+                                            .height(maxHeight * cellH * wi.spanY)
+                                            .absoluteOffset(
+                                                x = maxWidth * wi.col * cellW,
+                                                y = maxHeight * wi.row * cellH,
                                             )
                                             .then(if (editMode) Modifier.clickable { vm.removeWidget(wi.appWidgetId) } else Modifier),
                                     )
@@ -614,6 +615,9 @@ fun HomeScreen(vm: LauncherViewModel) {
                 showBadges = settings.showNotifBadges && settings.badgeStyle != app.lawnchairlite.data.BadgeStyle.HIDDEN,
                 badgeDotOnly = settings.badgeStyle == app.lawnchairlite.data.BadgeStyle.DOT,
                 showLabels = settings.labelStyle != app.lawnchairlite.data.LabelStyle.HOME_ONLY && settings.labelStyle != app.lawnchairlite.data.LabelStyle.HIDDEN,
+                iconShadow = settings.iconShadow,
+                grayscale = settings.grayscaleIcons,
+                labelWeight = resolvedLabelWeight,
                 drawerSort = settings.drawerSort,
                 drawerOpacity = settings.drawerOpacity,
                 showSectionHeaders = settings.drawerSectionHeaders,
@@ -682,7 +686,7 @@ fun HomeScreen(vm: LauncherViewModel) {
 
         val fState = openFolder
         if (fState != null) { val (folder, src, fi) = fState
-            FolderOverlay(folder, settings.iconShape, iconDp, { vm.resolveApp(it) }, customLabels, onAppClick = { vm.launch(it); vm.closeFolderView() }, onRemoveApp = { k -> vm.removeFolderApp(src, fi, k) }, onReorder = { keys -> vm.reorderFolderApps(src, fi, keys) }, onRename = { vm.startFolderRename(src, fi, folder.name) }, onDismiss = { vm.closeFolderView() }) }
+            FolderOverlay(folder, settings.iconShape, iconDp, { vm.resolveApp(it) }, customLabels, folderColumns = settings.folderColumns, onAppClick = { vm.launch(it); vm.closeFolderView() }, onRemoveApp = { k -> vm.removeFolderApp(src, fi, k) }, onReorder = { keys -> vm.reorderFolderApps(src, fi, keys) }, onRename = { vm.startFolderRename(src, fi, folder.name) }, onDismiss = { vm.closeFolderView() }) }
 
         val rn = folderRename
         if (rn != null) RenameDialog(rn.current, "Rename Folder", onConfirm = { vm.renameFolder(rn.source, rn.index, it); vm.closeFolderView() }, onDismiss = { vm.dismissFolderRename() })
@@ -691,7 +695,7 @@ fun HomeScreen(vm: LauncherViewModel) {
         if (le != null) RenameDialog(le.current, "Rename Shortcut", onConfirm = { vm.saveCustomLabel(le.appKey, it) }, onDismiss = { vm.dismissLabelEdit() })
 
         val menuApp = drawerMenuApp
-        if (menuApp != null) DrawerContextMenu(menuApp, settings.iconShape, shortcuts = appShortcuts, onShortcutClick = { vm.launchShortcut(it); scope.launch { drawerProgress.animateTo(0f, tween(200)) }; vm.setSearch("") }, onPinHome = { vm.pinToHome(menuApp); scope.launch { drawerProgress.animateTo(0f, tween(200)) }; vm.setSearch("") }, onPinDock = { vm.pinToDock(menuApp); scope.launch { drawerProgress.animateTo(0f, tween(200)) }; vm.setSearch("") }, onHide = { vm.hideApp(menuApp.key) }, onAppInfo = { vm.appInfo(menuApp); vm.dismissDrawerMenu() }, onUninstall = { vm.uninstall(menuApp); vm.dismissDrawerMenu() }, onDismiss = { vm.dismissDrawerMenu() })
+        if (menuApp != null) DrawerContextMenu(menuApp, settings.iconShape, vm = vm, shortcuts = appShortcuts, onShortcutClick = { vm.launchShortcut(it); scope.launch { drawerProgress.animateTo(0f, tween(200)) }; vm.setSearch("") }, onPinHome = { vm.pinToHome(menuApp); scope.launch { drawerProgress.animateTo(0f, tween(200)) }; vm.setSearch("") }, onPinDock = { vm.pinToDock(menuApp); scope.launch { drawerProgress.animateTo(0f, tween(200)) }; vm.setSearch("") }, onHide = { vm.hideApp(menuApp.key) }, onAppInfo = { vm.appInfo(menuApp); vm.dismissDrawerMenu() }, onUninstall = { vm.uninstall(menuApp); vm.dismissDrawerMenu() }, onDismiss = { vm.dismissDrawerMenu() })
     }
 }
 
