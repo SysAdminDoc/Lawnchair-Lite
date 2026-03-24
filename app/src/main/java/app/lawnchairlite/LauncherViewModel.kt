@@ -429,7 +429,9 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
                     val hidden = _hiddenApps.value
                     val lastUsed = _appUsage.value.entries
                         .filter { it.key !in hidden }
-                        .maxByOrNull { it.value }
+                        .sortedByDescending { it.value }
+                        .drop(1) // skip the most recent (current) app
+                        .firstOrNull()
                     lastUsed?.let { resolveApp(it.key)?.let { app -> launch(app) } }
                 }
             }
@@ -942,6 +944,15 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
                 prefs.set(LauncherPrefs.HIDE_STATUS_BAR, defaults.hideStatusBar)
                 prefs.set(LauncherPrefs.ICON_SHADOW, defaults.iconShadow)
                 prefs.set(LauncherPrefs.HOME_LOCKED, false)
+                prefs.set(LauncherPrefs.DRAWER_COLUMNS, defaults.drawerColumns)
+                prefs.set(LauncherPrefs.FOLDER_COLUMNS, defaults.folderColumns)
+                prefs.set(LauncherPrefs.DRAWER_SECTION_HEADERS, defaults.drawerSectionHeaders)
+                prefs.set(LauncherPrefs.WALLPAPER_PARALLAX, defaults.wallpaperParallax)
+                prefs.set(LauncherPrefs.DRAWER_ANIMATION, defaults.drawerAnimation)
+                prefs.set(LauncherPrefs.TRIPLE_TAP_ACTION, defaults.tripleTapAction.name)
+                prefs.set(LauncherPrefs.PINCH_ACTION, defaults.pinchAction.name)
+                prefs.set(LauncherPrefs.DOCK_TAP_ACTION, defaults.dockTapAction.name)
+                prefs.set(LauncherPrefs.SEARCH_BAR_STYLE, defaults.searchBarStyle.name)
                 iconPackManager.clearPack()
                 loadAppsInternal()
                 toast("Settings reset to defaults")

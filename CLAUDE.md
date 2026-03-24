@@ -37,6 +37,7 @@
 - filteredApps uses combine() with 5 flows for sort/filter
 
 ## Version History
+- v2.15.3: Audit fixes — RECENT_APP gesture skips current app (launches 2nd most recent), resetAllSettings covers all v2.15.x prefs, backup exports/imports suggestion_usage + app_usage, compact clock shows battery alert icon, fixed `now` variable shadowing in clock tap handler
 - v2.15.2: Bug fixes — FolderOverlay now uses folderColumns setting (was always 4), selectedCategory resets to ALL on drawer close, RECENT_APP gesture respects hidden apps, SuggestionRow now passes iconShadow/grayscale/labelWeight, GrayscaleColorFilter is a top-level constant, DrawerSearch uses ImeAction.Search, battery icon shows BatteryAlert below 16%, DrawerContextMenu shows version/size/launches like HomeContextMenu
 - v2.15.1: Bug fixes — widget overlay positioning (BoxWithConstraints replaces magic 1000dp), clock double-tap no longer fires single-tap action on first tap of a double, fast scroller letter index computed from displayApps (fixes categories + section header offsets)
 - v2.15.0: Hide dock toggle, Recent App gesture action, grayscale icon mode, page line indicator, label font weight (Light/Regular/Bold)
