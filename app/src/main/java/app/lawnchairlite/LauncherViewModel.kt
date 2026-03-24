@@ -344,8 +344,8 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     fun closeDrawer() { _drawerOpen.value = false; _search.value = ""; _selectedCategory.value = DrawerCategory.ALL }
     fun openSettings() { _settingsOpen.value = true }
     fun closeSettings() { _settingsOpen.value = false }
-    fun closeAllOverlays() { _drawerOpen.value = false; _settingsOpen.value = false; _openFolder.value = null; _drawerMenuApp.value = null; _folderRename.value = null; _labelEdit.value = null; _homeMenu.value = null; _editMode.value = false; _search.value = ""; _shortcuts.value = emptyList(); _selectedCategory.value = DrawerCategory.ALL }
-    fun hasOpenOverlay(): Boolean = _drawerOpen.value || _settingsOpen.value || _openFolder.value != null || _drawerMenuApp.value != null || _labelEdit.value != null || _homeMenu.value != null
+    fun closeAllOverlays() { _drawerOpen.value = false; _settingsOpen.value = false; _openFolder.value = null; _drawerMenuApp.value = null; _folderRename.value = null; _labelEdit.value = null; _homeMenu.value = null; _editMode.value = false; _widgetPickerOpen.value = false; _search.value = ""; _shortcuts.value = emptyList(); _selectedCategory.value = DrawerCategory.ALL }
+    fun hasOpenOverlay(): Boolean = _drawerOpen.value || _settingsOpen.value || _openFolder.value != null || _drawerMenuApp.value != null || _labelEdit.value != null || _homeMenu.value != null || _widgetPickerOpen.value || _editMode.value
 
     // -- Home/Dock Context Menu --
 
@@ -914,45 +914,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     fun resetAllSettings() {
         viewModelScope.launch {
             try {
-                val defaults = LauncherSettings()
-                prefs.set(LauncherPrefs.THEME, defaults.themeMode.name)
-                prefs.set(LauncherPrefs.ICON_SHAPE, defaults.iconShape.name)
-                prefs.set(LauncherPrefs.ICON_SIZE, defaults.iconSize.name)
-                prefs.set(LauncherPrefs.ICON_PACK, "")
-                prefs.set(LauncherPrefs.GRID_COLS, defaults.gridColumns)
-                prefs.set(LauncherPrefs.GRID_ROWS, defaults.gridRows)
-                prefs.set(LauncherPrefs.DOCK_COUNT, defaults.dockCount)
-                prefs.set(LauncherPrefs.SHOW_CLOCK, defaults.showClock)
-                prefs.set(LauncherPrefs.WALLPAPER_DIM, defaults.wallpaperDim)
-                prefs.set(LauncherPrefs.SHOW_NOTIF_BADGES, defaults.showNotifBadges)
-                prefs.set(LauncherPrefs.DRAWER_SORT, defaults.drawerSort.name)
-                prefs.set(LauncherPrefs.LABEL_STYLE, defaults.labelStyle.name)
-                prefs.set(LauncherPrefs.PAGE_TRANSITION, defaults.pageTransition.name)
-                prefs.set(LauncherPrefs.BADGE_STYLE, defaults.badgeStyle.name)
-                prefs.set(LauncherPrefs.ACCENT_OVERRIDE, "")
-                prefs.set(LauncherPrefs.DOCK_STYLE, defaults.dockStyle.name)
-                prefs.set(LauncherPrefs.SEARCH_BAR_STYLE, defaults.searchBarStyle.name)
-                prefs.set(LauncherPrefs.HAPTIC_LEVEL, defaults.hapticLevel.name)
-                prefs.set(LauncherPrefs.DRAWER_OPACITY, defaults.drawerOpacity)
-                prefs.set(LauncherPrefs.LABEL_SIZE_PREF, defaults.labelSize.name)
-                prefs.set(LauncherPrefs.CLOCK_STYLE, defaults.clockStyle.name)
-                prefs.set(LauncherPrefs.SHOW_SUGGESTIONS, defaults.showSuggestions)
-                prefs.set(LauncherPrefs.HIDE_DOCK, false)
-                prefs.set(LauncherPrefs.GRAYSCALE_ICONS, false)
-                prefs.set(LauncherPrefs.PAGE_INDICATOR_STYLE, PageIndicatorStyle.DOTS.name)
-                prefs.set(LauncherPrefs.LABEL_WEIGHT, LabelWeight.REGULAR.name)
-                prefs.set(LauncherPrefs.HIDE_STATUS_BAR, defaults.hideStatusBar)
-                prefs.set(LauncherPrefs.ICON_SHADOW, defaults.iconShadow)
-                prefs.set(LauncherPrefs.HOME_LOCKED, false)
-                prefs.set(LauncherPrefs.DRAWER_COLUMNS, defaults.drawerColumns)
-                prefs.set(LauncherPrefs.FOLDER_COLUMNS, defaults.folderColumns)
-                prefs.set(LauncherPrefs.DRAWER_SECTION_HEADERS, defaults.drawerSectionHeaders)
-                prefs.set(LauncherPrefs.WALLPAPER_PARALLAX, defaults.wallpaperParallax)
-                prefs.set(LauncherPrefs.DRAWER_ANIMATION, defaults.drawerAnimation)
-                prefs.set(LauncherPrefs.TRIPLE_TAP_ACTION, defaults.tripleTapAction.name)
-                prefs.set(LauncherPrefs.PINCH_ACTION, defaults.pinchAction.name)
-                prefs.set(LauncherPrefs.DOCK_TAP_ACTION, defaults.dockTapAction.name)
-                prefs.set(LauncherPrefs.SEARCH_BAR_STYLE, defaults.searchBarStyle.name)
+                prefs.resetToDefaults()
                 iconPackManager.clearPack()
                 loadAppsInternal()
                 toast("Settings reset to defaults")

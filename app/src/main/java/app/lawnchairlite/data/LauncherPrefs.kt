@@ -245,6 +245,35 @@ class LauncherPrefs(private val context: Context) {
             .onFailure { Log.e(TAG, "Failed to write pref: $key", it) }
     }
 
+    /** Reset all settings to defaults in a single atomic DataStore transaction. */
+    suspend fun resetToDefaults() {
+        val d = LauncherSettings()
+        runCatching {
+            context.dataStore.edit { p ->
+                p[THEME] = d.themeMode.name; p[ICON_SHAPE] = d.iconShape.name; p[ICON_SIZE] = d.iconSize.name
+                p[ICON_PACK] = ""; p[GRID_COLS] = d.gridColumns; p[GRID_ROWS] = d.gridRows; p[DOCK_COUNT] = d.dockCount
+                p[SHOW_CLOCK] = d.showClock; p[SHOW_DOCK_SEARCH] = d.showDockSearch; p[AUTO_PLACE_NEW] = d.autoPlaceNew
+                p[WALLPAPER_DIM] = d.wallpaperDim; p[SHOW_NOTIF_BADGES] = d.showNotifBadges
+                p[DOUBLE_TAP_ACTION] = d.doubleTapAction.name; p[SWIPE_DOWN_ACTION] = d.swipeDownAction.name
+                p[DRAWER_SORT] = d.drawerSort.name; p[LABEL_STYLE] = d.labelStyle.name; p[THEMED_ICONS] = d.themedIcons
+                p[PAGE_TRANSITION] = d.pageTransition.name; p[BADGE_STYLE] = d.badgeStyle.name
+                p[GRID_PADDING_H] = d.gridPaddingH; p[GRID_PADDING_V] = d.gridPaddingV
+                p[HIDE_STATUS_BAR] = d.hideStatusBar; p[ACCENT_OVERRIDE] = ""
+                p[DOCK_STYLE] = d.dockStyle.name; p[SEARCH_BAR_STYLE] = d.searchBarStyle.name
+                p[HAPTIC_LEVEL] = d.hapticLevel.name; p[DRAWER_OPACITY] = d.drawerOpacity
+                p[LABEL_SIZE_PREF] = d.labelSize.name; p[CLOCK_STYLE] = d.clockStyle.name
+                p[SHOW_SUGGESTIONS] = d.showSuggestions; p[HIDE_DOCK] = d.hideDock
+                p[GRAYSCALE_ICONS] = d.grayscaleIcons; p[PAGE_INDICATOR_STYLE] = d.pageIndicatorStyle.name
+                p[LABEL_WEIGHT] = d.labelWeight.name; p[ICON_SHADOW] = d.iconShadow; p[HOME_LOCKED] = d.homeLocked
+                p[DRAWER_COLUMNS] = d.drawerColumns; p[FOLDER_COLUMNS] = d.folderColumns
+                p[DRAWER_SECTION_HEADERS] = d.drawerSectionHeaders; p[WALLPAPER_PARALLAX] = d.wallpaperParallax
+                p[DRAWER_ANIMATION] = d.drawerAnimation; p[DRAWER_CATEGORIES] = d.drawerCategories
+                p[TRIPLE_TAP_ACTION] = d.tripleTapAction.name; p[PINCH_ACTION] = d.pinchAction.name
+                p[DOCK_TAP_ACTION] = d.dockTapAction.name
+            }
+        }.onFailure { Log.e(TAG, "resetToDefaults failed", it) }
+    }
+
     suspend fun saveHome(cells: List<GridCell?>) {
         runCatching { context.dataStore.edit { it[HOME_GRID] = serializeGrid(cells) } }
             .onFailure { Log.e(TAG, "Failed to save home grid", it) }

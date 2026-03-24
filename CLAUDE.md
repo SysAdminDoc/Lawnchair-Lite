@@ -37,6 +37,7 @@
 - filteredApps uses combine() with 5 flows for sort/filter
 
 ## Version History
+- v2.15.6: Audit round 4 — resetAllSettings atomic single-transaction (was 30+ individual writes), widget picker shows toast on permission/space failure, all drawer close paths reset selectedCategory, hasOpenOverlay includes widgetPicker+editMode for back-press, closeAllOverlays closes widgetPicker
 - v2.15.5: Polish — zero compiler warnings (ArrowForward, VIBRATOR_SERVICE, unused lookupUri), web search link at bottom of search results, drawer search auto-focuses on open
 - v2.15.4: Audit fixes — AppCategorizer uses word-boundary tokenization (fixes false positives like "display"="play"), backup exports/imports widget data, ProGuard rules tightened (removes blanket Compose keep), HomeContextMenu info text wraps like DrawerContextMenu, FolderOverlay passes iconShadow/grayscale/labelWeight, closeDrawer/closeAllOverlays always reset selectedCategory to ALL
 - v2.15.3: Audit fixes — RECENT_APP gesture skips current app (launches 2nd most recent), resetAllSettings covers all v2.15.x prefs, backup exports/imports suggestion_usage + app_usage, compact clock shows battery alert icon, fixed `now` variable shadowing in clock tap handler
