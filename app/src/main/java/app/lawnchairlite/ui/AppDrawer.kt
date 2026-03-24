@@ -93,9 +93,13 @@ fun AppDrawer(
     }}
 
     var displaced by remember { mutableStateOf(false) }
+    val searchFocusRequester = remember { androidx.compose.ui.focus.FocusRequester() }
 
     LaunchedEffect(progress) {
-        if (progress > 0.99f) displaced = false
+        if (progress > 0.99f) {
+            displaced = false
+            try { searchFocusRequester.requestFocus() } catch (_: Exception) {}
+        }
     }
     LaunchedEffect(progress < 0.01f) {
         if (progress < 0.01f) { displaced = false; gridState.scrollToItem(0) }
@@ -203,7 +207,7 @@ fun AppDrawer(
                     Box(Modifier.width(40.dp).height(4.dp).clip(RoundedCornerShape(2.dp))
                         .background(colors.textSecondary.copy(alpha = 0.5f)))
                 }
-                DrawerSearch(searchQuery, onSearchChange, Modifier.padding(horizontal = 20.dp, vertical = 4.dp))
+                DrawerSearch(searchQuery, onSearchChange, Modifier.padding(horizontal = 20.dp, vertical = 4.dp), focusRequester = searchFocusRequester)
                 if (searchQuery.isBlank() && searchHistory.isNotEmpty()) {
                     Spacer(Modifier.height(4.dp))
                     SearchHistoryChips(
@@ -257,7 +261,7 @@ fun AppDrawer(
                     Text("CONTACTS", color = LocalLauncherColors.current.accent, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
                     contactResults.forEach { contact ->
                         ContactResultRow(
-                            name = contact.name, number = contact.number, lookupUri = contact.lookupUri,
+                            name = contact.name, number = contact.number,
                             onTap = { contact.lookupUri?.let { onContactTap(it) } },
                             onCall = if (contact.number != null) {{ onContactCall(contact.number) }} else null,
                         )
@@ -368,6 +372,24 @@ fun AppDrawer(
                                         onLongClick = { onAppLongClick(app) },
                                         modifier = Modifier.width(70.dp),
                                     )
+                                }
+                            }
+                        }
+
+                        // Web search link at bottom of results when searching
+                        if (searchQuery.isNotBlank()) {
+                            item(span = { GridItemSpan(columns) }, key = "__web_search__") {
+                                Row(
+                                    Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp)
+                                        .clip(RoundedCornerShape(16.dp))
+                                        .background(colors.accent.copy(alpha = 0.08f))
+                                        .clickable { onSearchWeb(searchQuery) }
+                                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Text("G", color = colors.accent, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                                    Spacer(Modifier.width(10.dp))
+                                    Text("Search web for \"$searchQuery\"", color = colors.accent, fontSize = 13.sp, fontWeight = FontWeight.Medium)
                                 }
                             }
                         }

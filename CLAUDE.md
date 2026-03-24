@@ -37,6 +37,7 @@
 - filteredApps uses combine() with 5 flows for sort/filter
 
 ## Version History
+- v2.15.5: Polish — zero compiler warnings (ArrowForward, VIBRATOR_SERVICE, unused lookupUri), web search link at bottom of search results, drawer search auto-focuses on open
 - v2.15.4: Audit fixes — AppCategorizer uses word-boundary tokenization (fixes false positives like "display"="play"), backup exports/imports widget data, ProGuard rules tightened (removes blanket Compose keep), HomeContextMenu info text wraps like DrawerContextMenu, FolderOverlay passes iconShadow/grayscale/labelWeight, closeDrawer/closeAllOverlays always reset selectedCategory to ALL
 - v2.15.3: Audit fixes — RECENT_APP gesture skips current app (launches 2nd most recent), resetAllSettings covers all v2.15.x prefs, backup exports/imports suggestion_usage + app_usage, compact clock shows battery alert icon, fixed `now` variable shadowing in clock tap handler
 - v2.15.2: Bug fixes — FolderOverlay now uses folderColumns setting (was always 4), selectedCategory resets to ALL on drawer close, RECENT_APP gesture respects hidden apps, SuggestionRow now passes iconShadow/grayscale/labelWeight, GrayscaleColorFilter is a top-level constant, DrawerSearch uses ImeAction.Search, battery icon shows BatteryAlert below 16%, DrawerContextMenu shows version/size/launches like HomeContextMenu
