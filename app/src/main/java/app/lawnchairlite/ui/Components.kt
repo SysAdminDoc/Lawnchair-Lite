@@ -17,6 +17,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.GenericShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -33,6 +34,7 @@ import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.TextStyle
@@ -380,10 +382,10 @@ fun SearchPill(onClick: () -> Unit, modifier: Modifier = Modifier) {
 }
 
 @Composable
-fun DrawerSearch(query: String, onQueryChange: (String) -> Unit, modifier: Modifier = Modifier) {
+fun DrawerSearch(query: String, onQueryChange: (String) -> Unit, modifier: Modifier = Modifier, focusRequester: androidx.compose.ui.focus.FocusRequester? = null) {
     val c = LocalLauncherColors.current
     val keyboardController = LocalSoftwareKeyboardController.current
-    TextField(value = query, onValueChange = onQueryChange, modifier = modifier.fillMaxWidth().height(50.dp).clip(RoundedCornerShape(25.dp)).background(c.searchBg),
+    TextField(value = query, onValueChange = onQueryChange, modifier = modifier.fillMaxWidth().height(50.dp).clip(RoundedCornerShape(25.dp)).background(c.searchBg).then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier),
         placeholder = { Text("Search apps\u2026", color = c.textSecondary, fontSize = 14.sp) },
         leadingIcon = { Icon(Icons.Default.Search, null, tint = c.textSecondary, modifier = Modifier.size(18.dp)) },
         trailingIcon = if (query.isNotBlank()) {{ IconButton(onClick = { onQueryChange("") }, modifier = Modifier.size(32.dp)) { Icon(Icons.Default.Close, "Clear", tint = c.textSecondary, modifier = Modifier.size(16.dp)) } }} else null,
@@ -658,7 +660,7 @@ fun DrawerContextMenu(app: AppInfo, shape: IconShape, vm: LauncherViewModel, sho
             Image(rememberDrawablePainter(shortcut.icon), null, Modifier.size(22.dp).clip(RoundedCornerShape(6.dp)))
             Spacer(Modifier.width(10.dp))
         } else {
-            Icon(Icons.Default.ArrowForward, null, tint = c.accent, modifier = Modifier.size(16.dp))
+            Icon(Icons.AutoMirrored.Filled.ArrowForward, null, tint = c.accent, modifier = Modifier.size(16.dp))
             Spacer(Modifier.width(10.dp))
         }
         Text(shortcut.shortLabel.toString(), color = c.text, fontSize = 13.sp, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -872,7 +874,7 @@ fun SearchHistoryChips(
 
 @Composable
 fun ContactResultRow(
-    name: String, number: String?, lookupUri: String?,
+    name: String, number: String?,
     onTap: () -> Unit, onCall: (() -> Unit)?,
 ) {
     val c = LocalLauncherColors.current

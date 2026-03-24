@@ -1062,7 +1062,13 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         try {
             val ms = settings.value.hapticLevel.ms
             if (ms <= 0) return
-            val v = ctx.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator ?: return
+            val v = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                val vm = ctx.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as? android.os.VibratorManager
+                vm?.defaultVibrator
+            } else {
+                @Suppress("DEPRECATION")
+                ctx.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
+            } ?: return
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) v.vibrate(VibrationEffect.createOneShot(ms, VibrationEffect.DEFAULT_AMPLITUDE))
             else @Suppress("DEPRECATION") v.vibrate(ms)
         } catch (e: Exception) {
