@@ -341,10 +341,10 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         if (q.length >= 2) searchContacts(q) else _contactResults.value = emptyList()
     }
     fun openDrawer() { _drawerOpen.value = true }
-    fun closeDrawer() { _drawerOpen.value = false; _search.value = "" }
+    fun closeDrawer() { _drawerOpen.value = false; _search.value = ""; _selectedCategory.value = DrawerCategory.ALL }
     fun openSettings() { _settingsOpen.value = true }
     fun closeSettings() { _settingsOpen.value = false }
-    fun closeAllOverlays() { _drawerOpen.value = false; _settingsOpen.value = false; _openFolder.value = null; _drawerMenuApp.value = null; _folderRename.value = null; _labelEdit.value = null; _homeMenu.value = null; _editMode.value = false; _search.value = ""; _shortcuts.value = emptyList() }
+    fun closeAllOverlays() { _drawerOpen.value = false; _settingsOpen.value = false; _openFolder.value = null; _drawerMenuApp.value = null; _folderRename.value = null; _labelEdit.value = null; _homeMenu.value = null; _editMode.value = false; _search.value = ""; _shortcuts.value = emptyList(); _selectedCategory.value = DrawerCategory.ALL }
     fun hasOpenOverlay(): Boolean = _drawerOpen.value || _settingsOpen.value || _openFolder.value != null || _drawerMenuApp.value != null || _labelEdit.value != null || _homeMenu.value != null
 
     // -- Home/Dock Context Menu --

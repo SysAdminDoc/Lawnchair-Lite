@@ -463,7 +463,7 @@ fun HomeContextMenu(
                     val verInfo = remember(app.packageName) { vm.getAppVersionInfo(app.packageName) }
                     val launchCount = remember(cell.appKey) { vm.getAppLaunchCount(cell.appKey) }
                     val sizeInfo = remember(app.packageName) { vm.getAppSizeInfo(app.packageName) }
-                    Text("${app.packageName}${if (verInfo != null) " $verInfo" else ""}${if (sizeInfo != null) " · $sizeInfo" else ""}${if (launchCount > 0) " · $launchCount launches" else ""}", color = c.textSecondary, fontSize = 10.sp)
+                    Text("${app.packageName}${if (verInfo != null) " $verInfo" else ""}${if (sizeInfo != null) " · $sizeInfo" else ""}${if (launchCount > 0) " · $launchCount launches" else ""}", color = c.textSecondary, fontSize = 10.sp, textAlign = TextAlign.Center, modifier = Modifier.padding(horizontal = 16.dp))
                 }
                 is GridCell.Folder -> {
                     FolderIconContent(cell, shape, { vm.resolveApp(it) }, 54.dp, showLabel = false)
@@ -515,7 +515,7 @@ fun HomeContextMenu(
 // ── Folder Overlay (improved - selective X, better UX) ───────────────
 
 @Composable
-fun FolderOverlay(folder: GridCell.Folder, shape: IconShape, iconSizeDp: Dp, resolveApp: (String) -> AppInfo?, customLabels: Map<String, String>, folderColumns: Int = 4, onAppClick: (AppInfo) -> Unit, onRemoveApp: (String) -> Unit, onReorder: (List<String>) -> Unit, onRename: () -> Unit, onDismiss: () -> Unit) {
+fun FolderOverlay(folder: GridCell.Folder, shape: IconShape, iconSizeDp: Dp, resolveApp: (String) -> AppInfo?, customLabels: Map<String, String>, folderColumns: Int = 4, iconShadow: Boolean = false, grayscale: Boolean = false, labelWeight: FontWeight = FontWeight.Normal, onAppClick: (AppInfo) -> Unit, onRemoveApp: (String) -> Unit, onReorder: (List<String>) -> Unit, onRename: () -> Unit, onDismiss: () -> Unit) {
     val c = LocalLauncherColors.current
     val orderedKeys = remember(folder.appKeys) { mutableStateListOf(*folder.appKeys.toTypedArray()) }
     var editMode by remember { mutableStateOf(false) }
@@ -590,7 +590,7 @@ fun FolderOverlay(folder: GridCell.Folder, shape: IconShape, iconSizeDp: Dp, res
                                                         selectedForRemoval = if (selectedForRemoval == key) null else key
                                                     })
                                                 }) {
-                                                    AppIconContent(app, shape, iconSizeDp, showLabel = true, customLabel = customLabels[key])
+                                                    AppIconContent(app, shape, iconSizeDp, showLabel = true, customLabel = customLabels[key], iconShadow = iconShadow, grayscale = grayscale, labelWeight = labelWeight)
                                                 }
                                                 // Only show X on the tapped icon
                                                 if (isSelectedForRemoval) {
@@ -602,7 +602,7 @@ fun FolderOverlay(folder: GridCell.Folder, shape: IconShape, iconSizeDp: Dp, res
                                                     ) { Icon(Icons.Default.Close, null, tint = Color.White, modifier = Modifier.size(12.dp)) }
                                                 }
                                             } else {
-                                                TappableAppIcon(app, shape, iconSizeDp, showLabel = true, customLabel = customLabels[key], onClick = { onAppClick(app) }, onLongClick = { editMode = true })
+                                                TappableAppIcon(app, shape, iconSizeDp, showLabel = true, customLabel = customLabels[key], iconShadow = iconShadow, grayscale = grayscale, labelWeight = labelWeight, onClick = { onAppClick(app) }, onLongClick = { editMode = true })
                                             }
                                         }
                                     }

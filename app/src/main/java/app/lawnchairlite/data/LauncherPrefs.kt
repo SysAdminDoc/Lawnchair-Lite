@@ -433,6 +433,7 @@ class LauncherPrefs(private val context: Context) {
             put("search_history", p[SEARCH_HISTORY] ?: "")
             put("suggestion_usage", p[SUGGESTION_USAGE] ?: "")
             put("app_usage", p[APP_USAGE] ?: "")
+            put("widgets", p[WIDGETS] ?: "")
             put("home_grid", p[HOME_GRID] ?: ""); put("dock_grid", p[DOCK_GRID] ?: "")
             put("hidden_apps", p[HIDDEN_APPS] ?: ""); put("custom_labels", p[CUSTOM_LABELS] ?: "")
         }.toString(2)
@@ -494,6 +495,7 @@ class LauncherPrefs(private val context: Context) {
             j.optString("search_history").let { p[SEARCH_HISTORY] = it }
             j.optString("suggestion_usage").takeIf { it.isNotBlank() }?.let { p[SUGGESTION_USAGE] = it }
             j.optString("app_usage").takeIf { it.isNotBlank() }?.let { p[APP_USAGE] = it }
+            j.optString("widgets").takeIf { it.isNotBlank() }?.let { p[WIDGETS] = it }
             j.optString("home_grid").takeIf { it.isNotBlank() }?.let { p[HOME_GRID] = it }
             j.optString("dock_grid").takeIf { it.isNotBlank() }?.let { p[DOCK_GRID] = it }
             j.optString("hidden_apps").let { p[HIDDEN_APPS] = it }

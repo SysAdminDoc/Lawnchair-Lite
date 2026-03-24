@@ -37,6 +37,7 @@
 - filteredApps uses combine() with 5 flows for sort/filter
 
 ## Version History
+- v2.15.4: Audit fixes — AppCategorizer uses word-boundary tokenization (fixes false positives like "display"="play"), backup exports/imports widget data, ProGuard rules tightened (removes blanket Compose keep), HomeContextMenu info text wraps like DrawerContextMenu, FolderOverlay passes iconShadow/grayscale/labelWeight, closeDrawer/closeAllOverlays always reset selectedCategory to ALL
 - v2.15.3: Audit fixes — RECENT_APP gesture skips current app (launches 2nd most recent), resetAllSettings covers all v2.15.x prefs, backup exports/imports suggestion_usage + app_usage, compact clock shows battery alert icon, fixed `now` variable shadowing in clock tap handler
 - v2.15.2: Bug fixes — FolderOverlay now uses folderColumns setting (was always 4), selectedCategory resets to ALL on drawer close, RECENT_APP gesture respects hidden apps, SuggestionRow now passes iconShadow/grayscale/labelWeight, GrayscaleColorFilter is a top-level constant, DrawerSearch uses ImeAction.Search, battery icon shows BatteryAlert below 16%, DrawerContextMenu shows version/size/launches like HomeContextMenu
 - v2.15.1: Bug fixes — widget overlay positioning (BoxWithConstraints replaces magic 1000dp), clock double-tap no longer fires single-tap action on first tap of a double, fast scroller letter index computed from displayApps (fixes categories + section header offsets)
@@ -101,3 +102,8 @@
 - GrayscaleColorFilter is a top-level private val in Components.kt — do NOT recreate per recomposition
 - DrawerSearch uses ImeAction.Search + KeyboardActions(onSearch) to hide keyboard on search key
 - DrawerContextMenu accepts vm: LauncherViewModel to display version/size/launch count (same as HomeContextMenu)
+- AppCategorizer: uses tokenize() with word-boundary splitting (split on '.', ' ', '_', '-') — do NOT use substring `in` matching
+- closeDrawer() and closeAllOverlays() must reset _selectedCategory to DrawerCategory.ALL
+- FolderOverlay: accepts iconShadow/grayscale/labelWeight and passes them to AppIconContent and TappableAppIcon
+- Backup: must include widgets_v1 data for widget layout preservation on restore
+- ProGuard: do NOT blanket-keep Compose classes — AGP handles it; only keep manifest-referenced classes + data layer

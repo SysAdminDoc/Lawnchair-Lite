@@ -40,17 +40,23 @@ object AppCategorizer {
         "keep", "todo", "task", "pdf", "scan", "print", "remote",
     )
 
+    /**
+     * Split package name and label into tokens for word-boundary matching.
+     * "com.google.android.youtube" -> ["com", "google", "android", "youtube"]
+     * "My Game App" -> ["my", "game", "app"]
+     */
+    private fun tokenize(text: String): Set<String> =
+        text.lowercase().split('.', ' ', '_', '-').filter { it.isNotBlank() }.toSet()
+
     fun categorize(app: AppInfo): DrawerCategory {
-        val pkg = app.packageName.lowercase()
-        val label = app.label.lowercase()
-        val combined = "$pkg $label"
+        val tokens = tokenize(app.packageName) + tokenize(app.label)
 
         return when {
-            GAMES.any { it in combined } -> DrawerCategory.GAMES
-            SOCIAL.any { it in combined } -> DrawerCategory.SOCIAL
-            MEDIA.any { it in combined } -> DrawerCategory.MEDIA
-            WORK.any { it in combined } -> DrawerCategory.WORK
-            TOOLS.any { it in combined } -> DrawerCategory.TOOLS
+            GAMES.any { it in tokens } -> DrawerCategory.GAMES
+            SOCIAL.any { it in tokens } -> DrawerCategory.SOCIAL
+            MEDIA.any { it in tokens } -> DrawerCategory.MEDIA
+            WORK.any { it in tokens } -> DrawerCategory.WORK
+            TOOLS.any { it in tokens } -> DrawerCategory.TOOLS
             else -> DrawerCategory.OTHER
         }
     }
