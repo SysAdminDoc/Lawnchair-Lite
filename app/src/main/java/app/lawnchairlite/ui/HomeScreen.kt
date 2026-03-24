@@ -623,15 +623,16 @@ fun HomeScreen(vm: LauncherViewModel) {
                 showSectionHeaders = settings.drawerSectionHeaders,
                 labelSizeSp = settings.labelSize.sp,
                 onSearchChange = { vm.setSearch(it) },
-                onAppClick = { app ->
-                    vm.launch(app)
+                onAppClick = { clickedApp ->
+                    vm.launch(clickedApp)
                     scope.launch { drawerProgress.animateTo(0f, tween(200)) }
                     vm.setSearch("")
+                    vm.setSelectedCategory(app.lawnchairlite.data.DrawerCategory.ALL)
                 },
                 onAppLongClick = { vm.showDrawerMenu(it) },
                 contactResults = vm.contactResults.collectAsState().value,
-                onContactTap = { uri -> vm.openContact(uri); scope.launch { drawerProgress.animateTo(0f, tween(200)) }; vm.setSearch("") },
-                onContactCall = { number -> vm.callContact(number); scope.launch { drawerProgress.animateTo(0f, tween(200)) }; vm.setSearch("") },
+                onContactTap = { uri -> vm.openContact(uri); scope.launch { drawerProgress.animateTo(0f, tween(200)) }; vm.setSearch(""); vm.setSelectedCategory(app.lawnchairlite.data.DrawerCategory.ALL) },
+                onContactCall = { number -> vm.callContact(number); scope.launch { drawerProgress.animateTo(0f, tween(200)) }; vm.setSearch(""); vm.setSelectedCategory(app.lawnchairlite.data.DrawerCategory.ALL) },
                 onSearchWeb = { vm.searchWeb(it) },
                 calculatorResult = vm.calculatorResult.collectAsState().value,
                 searchHistory = vm.searchHistory.collectAsState().value,
@@ -657,6 +658,7 @@ fun HomeScreen(vm: LauncherViewModel) {
         // Widget picker
         if (widgetPickerOpen) {
             val availableWidgets = remember { vm.getAvailableWidgets() }
+            val widgetContext = androidx.compose.ui.platform.LocalContext.current
             WidgetPickerDialog(
                 widgets = availableWidgets,
                 onSelect = { providerInfo ->
@@ -671,10 +673,12 @@ fun HomeScreen(vm: LauncherViewModel) {
                             vm.addWidget(WidgetInfo(widgetId, currentPage, span.first, span.second, minCols, minRows, providerInfo.provider.flattenToString()))
                         } else {
                             vm.widgetHost.deleteAppWidgetId(widgetId)
+                            android.widget.Toast.makeText(widgetContext, "No room on this page — clear some cells first", android.widget.Toast.LENGTH_SHORT).show()
                         }
                     } else {
-                        // Need user permission to bind
+                        // Need user permission to bind — clean up and inform user
                         vm.widgetHost.deleteAppWidgetId(widgetId)
+                        android.widget.Toast.makeText(widgetContext, "Widget requires permission — try a different widget", android.widget.Toast.LENGTH_SHORT).show()
                     }
                 },
                 onDismiss = { vm.closeWidgetPicker() },
@@ -695,7 +699,7 @@ fun HomeScreen(vm: LauncherViewModel) {
         if (le != null) RenameDialog(le.current, "Rename Shortcut", onConfirm = { vm.saveCustomLabel(le.appKey, it) }, onDismiss = { vm.dismissLabelEdit() })
 
         val menuApp = drawerMenuApp
-        if (menuApp != null) DrawerContextMenu(menuApp, settings.iconShape, vm = vm, shortcuts = appShortcuts, onShortcutClick = { vm.launchShortcut(it); scope.launch { drawerProgress.animateTo(0f, tween(200)) }; vm.setSearch("") }, onPinHome = { vm.pinToHome(menuApp); scope.launch { drawerProgress.animateTo(0f, tween(200)) }; vm.setSearch("") }, onPinDock = { vm.pinToDock(menuApp); scope.launch { drawerProgress.animateTo(0f, tween(200)) }; vm.setSearch("") }, onHide = { vm.hideApp(menuApp.key) }, onAppInfo = { vm.appInfo(menuApp); vm.dismissDrawerMenu() }, onUninstall = { vm.uninstall(menuApp); vm.dismissDrawerMenu() }, onDismiss = { vm.dismissDrawerMenu() })
+        if (menuApp != null) DrawerContextMenu(menuApp, settings.iconShape, vm = vm, shortcuts = appShortcuts, onShortcutClick = { vm.launchShortcut(it); scope.launch { drawerProgress.animateTo(0f, tween(200)) }; vm.setSearch(""); vm.setSelectedCategory(app.lawnchairlite.data.DrawerCategory.ALL) }, onPinHome = { vm.pinToHome(menuApp); scope.launch { drawerProgress.animateTo(0f, tween(200)) }; vm.setSearch(""); vm.setSelectedCategory(app.lawnchairlite.data.DrawerCategory.ALL) }, onPinDock = { vm.pinToDock(menuApp); scope.launch { drawerProgress.animateTo(0f, tween(200)) }; vm.setSearch(""); vm.setSelectedCategory(app.lawnchairlite.data.DrawerCategory.ALL) }, onHide = { vm.hideApp(menuApp.key) }, onAppInfo = { vm.appInfo(menuApp); vm.dismissDrawerMenu() }, onUninstall = { vm.uninstall(menuApp); vm.dismissDrawerMenu() }, onDismiss = { vm.dismissDrawerMenu() })
     }
 }
 
