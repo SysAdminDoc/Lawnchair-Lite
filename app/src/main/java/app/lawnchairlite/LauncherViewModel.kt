@@ -104,6 +104,9 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     private val _search = MutableStateFlow("")
     val search: StateFlow<String> = _search.asStateFlow()
 
+    // Unit converter regex (must be declared before calculatorResult which uses SharingStarted.Eagerly)
+    private val unitRegex = Regex("""^(-?\d+\.?\d*)\s*(km|mi|lb|kg|oz|g|ft|m|cm|in|gal|L|F|C)$""", RegexOption.IGNORE_CASE)
+
     // Inline calculator: evaluates math expressions typed into search
     val calculatorResult: StateFlow<String?> = _search.map { query ->
         tryEvaluate(query) ?: tryConvertUnit(query)
@@ -852,8 +855,6 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     // -- Unit Converter --
-
-    private val unitRegex = Regex("""^(-?\d+\.?\d*)\s*(km|mi|lb|kg|oz|g|ft|m|cm|in|gal|L|F|C)$""", RegexOption.IGNORE_CASE)
 
     private fun tryConvertUnit(input: String): String? {
         val cleaned = input.trim()
