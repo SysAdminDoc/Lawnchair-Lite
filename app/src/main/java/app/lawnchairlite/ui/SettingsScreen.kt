@@ -97,27 +97,26 @@ fun SettingsPanel(
     // Swipe-down-to-dismiss: track overscroll at top
     val scrollState = rememberScrollState()
     var dismissDrag by remember { mutableFloatStateOf(0f) }
-    val dismissThreshold = with(LocalDensity.current) { 120.dp.toPx() }
+    val dismissThreshold = with(LocalDensity.current) { 60.dp.toPx() }
     val dismissNestedScroll = remember {
         object : NestedScrollConnection {
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-                // If dragging back up while in dismiss state, consume to reduce offset
                 if (dismissDrag > 0f && available.y < 0f) {
-                    dismissDrag = (dismissDrag + available.y).coerceAtLeast(0f)
+                    dismissDrag = (dismissDrag + available.y * 2.5f).coerceAtLeast(0f)
                     return Offset(0f, available.y)
                 }
                 return Offset.Zero
             }
             override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset {
                 if (available.y > 0f && scrollState.value == 0) {
-                    dismissDrag += available.y
+                    dismissDrag += available.y * 2.5f
                     return Offset(0f, available.y)
                 }
                 return Offset.Zero
             }
             override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
                 if (dismissDrag > 0f) {
-                    val shouldClose = dismissDrag > dismissThreshold || available.y > 800f
+                    val shouldClose = dismissDrag > dismissThreshold || available.y > 300f
                     dismissDrag = 0f
                     if (shouldClose) onClose()
                 }

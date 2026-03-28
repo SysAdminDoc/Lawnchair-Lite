@@ -34,7 +34,7 @@ private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(
 
 data class LauncherSettings(
     val themeMode: ThemeMode = ThemeMode.MIDNIGHT,
-    val iconShape: IconShape = IconShape.SQUIRCLE,
+    val iconShape: IconShape = IconShape.NONE,
     val iconSize: IconSize = IconSize.MEDIUM,
     val iconPack: String = "",
     val gridColumns: Int = 4,

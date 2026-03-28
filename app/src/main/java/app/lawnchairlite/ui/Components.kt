@@ -98,6 +98,7 @@ private val DiamondShape = GenericShape { size, _ ->
 }
 
 fun iconClip(shape: IconShape): androidx.compose.ui.graphics.Shape = when (shape) {
+    IconShape.NONE -> androidx.compose.ui.graphics.RectangleShape
     IconShape.CIRCLE -> CircleShape
     IconShape.SQUIRCLE -> RoundedCornerShape(22)
     IconShape.SQUARE -> RoundedCornerShape(14)
@@ -109,10 +110,11 @@ fun iconClip(shape: IconShape): androidx.compose.ui.graphics.Shape = when (shape
 @Composable
 fun AppIconContent(app: AppInfo, shape: IconShape, iconSizeDp: Dp = 50.dp, modifier: Modifier = Modifier, showLabel: Boolean = true, dimmed: Boolean = false, customLabel: String? = null, badgeCount: Int = 0, badgeDotOnly: Boolean = false, iconShadow: Boolean = false, labelSizeSp: Int = 11, grayscale: Boolean = false, labelWeight: FontWeight = FontWeight.Normal) {
     val c = LocalLauncherColors.current
+    val isNone = shape == IconShape.NONE
     Column(modifier.graphicsLayer(alpha = if (dimmed) 0.25f else 1f), horizontalAlignment = Alignment.CenterHorizontally) {
-        Box(Modifier.size(iconSizeDp).then(if (iconShadow) Modifier.shadow(6.dp, iconClip(shape)) else Modifier)) {
-            Box(Modifier.fillMaxSize().clip(iconClip(shape)).background(c.card), Alignment.Center) {
-                if (app.icon != null) Image(rememberDrawablePainter(app.icon), app.label, Modifier.fillMaxSize().padding((iconSizeDp.value * 0.1f).dp),
+        Box(Modifier.size(iconSizeDp).then(if (iconShadow && !isNone) Modifier.shadow(6.dp, iconClip(shape)) else Modifier)) {
+            Box(Modifier.fillMaxSize().then(if (isNone) Modifier else Modifier.clip(iconClip(shape)).background(c.card)), Alignment.Center) {
+                if (app.icon != null) Image(rememberDrawablePainter(app.icon), app.label, Modifier.fillMaxSize().then(if (isNone) Modifier else Modifier.padding((iconSizeDp.value * 0.1f).dp)),
                     colorFilter = if (grayscale) GrayscaleColorFilter else null)
             }
             if (badgeCount > 0) {
@@ -137,11 +139,12 @@ fun AppIconContent(app: AppInfo, shape: IconShape, iconSizeDp: Dp = 50.dp, modif
 @Composable
 fun TappableAppIcon(app: AppInfo, shape: IconShape, iconSizeDp: Dp = 50.dp, modifier: Modifier = Modifier, showLabel: Boolean = true, customLabel: String? = null, badgeCount: Int = 0, badgeDotOnly: Boolean = false, iconShadow: Boolean = false, grayscale: Boolean = false, labelSizeSp: Int = 11, labelWeight: FontWeight = FontWeight.Normal, onClick: () -> Unit = {}, onLongClick: () -> Unit = {}) {
     val c = LocalLauncherColors.current; var pressed by remember { mutableStateOf(false) }
+    val isNoneT = shape == IconShape.NONE
     val scale by animateFloatAsState(if (pressed) 0.92f else 1f, spring(dampingRatio = 1f, stiffness = 800f), label = "s")
     Column(modifier.graphicsLayer(scaleX = scale, scaleY = scale).pointerInput(app.key) { detectTapGestures(onPress = { pressed = true; tryAwaitRelease(); pressed = false }, onTap = { onClick() }, onLongPress = { onLongClick() }) }, horizontalAlignment = Alignment.CenterHorizontally) {
-        Box(Modifier.size(iconSizeDp).then(if (iconShadow) Modifier.shadow(6.dp, iconClip(shape)) else Modifier)) {
-            Box(Modifier.fillMaxSize().clip(iconClip(shape)).background(c.card), Alignment.Center) {
-                if (app.icon != null) Image(rememberDrawablePainter(app.icon), app.label, Modifier.fillMaxSize().padding((iconSizeDp.value * 0.1f).dp),
+        Box(Modifier.size(iconSizeDp).then(if (iconShadow && !isNoneT) Modifier.shadow(6.dp, iconClip(shape)) else Modifier)) {
+            Box(Modifier.fillMaxSize().then(if (isNoneT) Modifier else Modifier.clip(iconClip(shape)).background(c.card)), Alignment.Center) {
+                if (app.icon != null) Image(rememberDrawablePainter(app.icon), app.label, Modifier.fillMaxSize().then(if (isNoneT) Modifier else Modifier.padding((iconSizeDp.value * 0.1f).dp)),
                     colorFilter = if (grayscale) GrayscaleColorFilter else null)
             }
             if (badgeCount > 0) {

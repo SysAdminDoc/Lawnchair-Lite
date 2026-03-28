@@ -19,7 +19,7 @@ data class AppInfo(
 }
 
 enum class IconShape(val label: String) {
-    SQUIRCLE("Squircle"), CIRCLE("Circle"), SQUARE("Square"), TEARDROP("Teardrop"),
+    NONE("Default"), SQUIRCLE("Squircle"), CIRCLE("Circle"), SQUARE("Square"), TEARDROP("Teardrop"),
     HEXAGON("Hexagon"), DIAMOND("Diamond");
 }
 enum class ThemeMode(val label: String) {
