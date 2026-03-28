@@ -8,7 +8,7 @@ import android.os.Process
 import android.util.Log
 
 /**
- * Lawnchair Lite v2.12.0 - App Shortcuts
+ * Lawnchair Lite - App Shortcuts
  *
  * Queries dynamic/static/pinned shortcuts via LauncherApps.
  * Launches shortcuts safely with fallback handling.

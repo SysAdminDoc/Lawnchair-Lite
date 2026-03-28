@@ -10,7 +10,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 /**
- * Lawnchair Lite v2.12.0 - Notification Listener
+ * Lawnchair Lite - Notification Listener
  *
  * Tracks active notification counts per package for badge dots.
  * User must grant notification access in system settings.

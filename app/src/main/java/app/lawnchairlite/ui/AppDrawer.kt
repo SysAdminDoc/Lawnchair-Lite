@@ -35,7 +35,7 @@ import app.lawnchairlite.data.IconShape
 import kotlinx.coroutines.launch
 
 /**
- * Lawnchair Lite v2.12.0 - App Drawer
+ * Lawnchair Lite - App Drawer
  *
  * v2.2.0: Recent apps row, notification badges, package name search
  */
@@ -76,6 +76,7 @@ fun AppDrawer(
     onSearchHistoryTap: (String) -> Unit = {},
     onSearchHistoryRemove: (String) -> Unit = {},
     onSearchHistoryClear: () -> Unit = {},
+    searchEngineLabel: String = "Google",
     onProgressChange: (Float) -> Unit,
     onSettle: (velocityPxPerSec: Float) -> Unit,
 ) {
@@ -283,7 +284,7 @@ fun AppDrawer(
                                     .padding(horizontal = 16.dp, vertical = 10.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
-                                Text("G", color = colors.accent, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                                Text(searchEngineLabel.take(1), color = colors.accent, fontSize = 14.sp, fontWeight = FontWeight.Bold)
                                 Spacer(Modifier.width(8.dp))
                                 Text("Search \"$searchQuery\"", color = colors.accent, fontSize = 13.sp, fontWeight = FontWeight.Medium)
                             }
@@ -387,9 +388,9 @@ fun AppDrawer(
                                         .padding(horizontal = 16.dp, vertical = 12.dp),
                                     verticalAlignment = Alignment.CenterVertically,
                                 ) {
-                                    Text("G", color = colors.accent, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                                    Text(searchEngineLabel.take(1), color = colors.accent, fontSize = 14.sp, fontWeight = FontWeight.Bold)
                                     Spacer(Modifier.width(10.dp))
-                                    Text("Search web for \"$searchQuery\"", color = colors.accent, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                                    Text("Search $searchEngineLabel for \"$searchQuery\"", color = colors.accent, fontSize = 13.sp, fontWeight = FontWeight.Medium)
                                 }
                             }
                         }

@@ -13,7 +13,7 @@ import android.util.Log
 import androidx.core.app.NotificationCompat
 
 /**
- * Lawnchair Lite v2.12.0 - Application
+ * Lawnchair Lite - Application
  *
  * Stability: Global crash handler with notification-based reporting.
  * Modeled after Lawnchair's LawnchairApp crash infrastructure.

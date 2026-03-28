@@ -11,6 +11,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -27,9 +29,6 @@ import app.lawnchairlite.data.*
 import com.google.accompanist.drawablepainter.rememberDrawablePainter
 import kotlinx.coroutines.launch
 
-/**
- * Lawnchair Lite v2.12.0 - Settings
- */
 @Composable
 fun SettingsPanel(
     visible: Boolean, settings: LauncherSettings,
@@ -52,6 +51,16 @@ fun SettingsPanel(
         scope.launch { val json = runCatching { context.contentResolver.openInputStream(uri)?.bufferedReader()?.readText() }.getOrNull() ?: return@launch; vm.importBackup(json) }
     }
 
+    // Section expanded state
+    var themeExpanded by remember { mutableStateOf(true) }
+    var iconsExpanded by remember { mutableStateOf(false) }
+    var gridExpanded by remember { mutableStateOf(false) }
+    var drawerExpanded by remember { mutableStateOf(false) }
+    var dockExpanded by remember { mutableStateOf(false) }
+    var gesturesExpanded by remember { mutableStateOf(false) }
+    var featuresExpanded by remember { mutableStateOf(false) }
+    var advancedExpanded by remember { mutableStateOf(false) }
+
     AnimatedVisibility(
         visible = visible,
         enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(350, easing = FastOutSlowInEasing)) + fadeIn(tween(200)),
@@ -67,282 +76,336 @@ fun SettingsPanel(
 
             Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp).navigationBarsPadding()) {
 
-                // Theme
-                Lbl("Theme", colors)
-                Row(
-                    modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    ThemeMode.entries.forEach { mode ->
-                        val tc = themeColors(mode); val sel = settings.themeMode == mode
-                        Column(
-                            Modifier.width(64.dp).clip(RoundedCornerShape(12.dp))
-                                .background(if (sel) tc.accent.copy(alpha = 0.12f) else colors.card)
-                                .border(if (sel) 2.dp else 0.5.dp, if (sel) tc.accent else colors.border, RoundedCornerShape(12.dp))
-                                .clickable { vm.setTheme(mode) }.padding(vertical = 10.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally,
+                // ── THEME & WALLPAPER ──
+                SectionHeader("Theme & Wallpaper", themeExpanded, colors) { themeExpanded = !themeExpanded }
+                AnimatedVisibility(themeExpanded) {
+                    Column {
+                        Lbl("Theme", colors)
+                        Row(
+                            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
-                            Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
-                                listOf(tc.accent, tc.card, tc.text).forEach { Box(Modifier.size(10.dp).clip(CircleShape).background(it)) }
+                            ThemeMode.entries.forEach { mode ->
+                                val tc = themeColors(mode); val sel = settings.themeMode == mode
+                                Column(
+                                    Modifier.width(64.dp).clip(RoundedCornerShape(12.dp))
+                                        .background(if (sel) tc.accent.copy(alpha = 0.12f) else colors.card)
+                                        .border(if (sel) 2.dp else 0.5.dp, if (sel) tc.accent else colors.border, RoundedCornerShape(12.dp))
+                                        .clickable { vm.setTheme(mode) }.padding(vertical = 10.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                ) {
+                                    Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+                                        listOf(tc.accent, tc.card, tc.text).forEach { Box(Modifier.size(10.dp).clip(CircleShape).background(it)) }
+                                    }
+                                    Spacer(Modifier.height(4.dp))
+                                    Text(mode.label, color = if (sel) tc.accent else colors.textSecondary, fontSize = 10.sp, fontWeight = if (sel) FontWeight.Bold else FontWeight.Normal)
+                                }
+                            }
+                        }
+
+                        Lbl("Wallpaper", colors)
+                        ActionBtn("Change Wallpaper", "System Picker", colors) { vm.openWallpaperPicker() }
+                        Spacer(Modifier.height(10.dp))
+                        Text("Wallpaper Dim: ${settings.wallpaperDim}%", color = colors.text, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                        Spacer(Modifier.height(4.dp))
+                        Slider(
+                            value = settings.wallpaperDim.toFloat(),
+                            onValueChange = { vm.setWallpaperDim(it.toInt()) },
+                            valueRange = 0f..80f, steps = 15,
+                            colors = SliderDefaults.colors(thumbColor = colors.accent, activeTrackColor = colors.accent, inactiveTrackColor = colors.card),
+                        )
+
+                        // Accent Color Override
+                        Lbl("Accent Color", colors)
+                        val presetColors = listOf("#F44336", "#E91E63", "#9C27B0", "#673AB7", "#3F51B5", "#2196F3", "#00BCD4", "#4CAF50", "#FF9800", "#FF5722", "#795548", "#607D8B")
+                        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            presetColors.forEach { hex ->
+                                val parsed = try { Color(android.graphics.Color.parseColor(hex)) } catch (_: Exception) { colors.accent }
+                                val isSel = settings.accentOverride.equals(hex, ignoreCase = true)
+                                Box(Modifier.size(28.dp).clip(CircleShape).background(parsed)
+                                    .border(if (isSel) 2.dp else 0.dp, if (isSel) colors.text else Color.Transparent, CircleShape)
+                                    .clickable { vm.setAccentOverride(hex) })
+                            }
+                        }
+                        Spacer(Modifier.height(10.dp))
+                        var accentInput by remember { mutableStateOf(settings.accentOverride) }
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                            if (settings.accentOverride.isNotBlank()) {
+                                val parsed = try { Color(android.graphics.Color.parseColor(settings.accentOverride)) } catch (_: Exception) { colors.accent }
+                                Box(Modifier.size(28.dp).clip(CircleShape).background(parsed).border(1.dp, colors.border, CircleShape))
+                                Spacer(Modifier.width(10.dp))
+                            }
+                            TextField(
+                                value = accentInput, onValueChange = { accentInput = it.take(7) },
+                                modifier = Modifier.weight(1f).height(48.dp).clip(RoundedCornerShape(10.dp)),
+                                placeholder = { Text("#FF5722", color = colors.textSecondary, fontSize = 13.sp) },
+                                colors = TextFieldDefaults.colors(focusedTextColor = colors.text, unfocusedTextColor = colors.text, cursorColor = colors.accent, focusedContainerColor = colors.card, unfocusedContainerColor = colors.card, focusedIndicatorColor = Color.Transparent, unfocusedIndicatorColor = Color.Transparent),
+                                singleLine = true, textStyle = androidx.compose.ui.text.TextStyle(fontSize = 13.sp),
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text("Apply", color = colors.accent, fontSize = 12.sp, fontWeight = FontWeight.Medium,
+                                modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(colors.accent.copy(alpha = 0.12f))
+                                    .clickable { vm.setAccentOverride(accentInput.trim()) }.padding(horizontal = 10.dp, vertical = 6.dp))
+                            if (settings.accentOverride.isNotBlank()) {
+                                Spacer(Modifier.width(6.dp))
+                                Text("Reset", color = Color(0xFFEF5350), fontSize = 12.sp, fontWeight = FontWeight.Medium,
+                                    modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(Color(0xFFEF5350).copy(alpha = 0.1f))
+                                        .clickable { accentInput = ""; vm.setAccentOverride("") }.padding(horizontal = 10.dp, vertical = 6.dp))
+                            }
+                        }
+                        Spacer(Modifier.height(8.dp))
+                    }
+                }
+
+                // ── ICONS & LABELS ──
+                SectionHeader("Icons & Labels", iconsExpanded, colors) { iconsExpanded = !iconsExpanded }
+                AnimatedVisibility(iconsExpanded) {
+                    Column {
+                        Lbl("Icon Shape", colors)
+                        Chips(IconShape.entries.map { it to it.label }, settings.iconShape, colors) { vm.setShape(it) }
+                        Spacer(Modifier.height(10.dp))
+                        Lbl("Icon Size", colors)
+                        Chips(IconSize.entries.map { it to it.label }, settings.iconSize, colors) { vm.setIconSize(it) }
+
+                        Lbl("Icon Pack", colors)
+                        IconPackSection(settings, availablePacks, iconPackLoading, colors, vm)
+                        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                            Spacer(Modifier.height(6.dp))
+                            Tog("Themed Icons (Android 13+)", settings.themedIcons, colors) { vm.setThemedIcons(it) }
+                        }
+
+                        Lbl("Icon Labels", colors)
+                        Chips(LabelStyle.entries.map { it to it.label }, settings.labelStyle, colors) { vm.setLabelStyle(it) }
+                        Spacer(Modifier.height(10.dp))
+                        Lbl("Label Weight", colors)
+                        Chips(LabelWeight.entries.map { it to it.label }, settings.labelWeight, colors) { vm.setLabelWeight(it) }
+                        Spacer(Modifier.height(10.dp))
+                        Lbl("Label Size", colors)
+                        Chips(LabelSize.entries.map { it to it.label }, settings.labelSize, colors) { vm.setLabelSize(it) }
+
+                        Tog("Icon Shadow", settings.iconShadow, colors) { vm.setIconShadow(it) }
+                        Tog("Grayscale Icons", settings.grayscaleIcons, colors) { vm.setGrayscaleIcons(it) }
+                        Spacer(Modifier.height(8.dp))
+                    }
+                }
+
+                // ── GRID & LAYOUT ──
+                SectionHeader("Grid & Layout", gridExpanded, colors) { gridExpanded = !gridExpanded }
+                AnimatedVisibility(gridExpanded) {
+                    Column {
+                        Lbl("Grid Columns", colors)
+                        Chips((3..8).map { it to it.toString() }, settings.gridColumns, colors) { vm.setGridCols(it) }
+                        Spacer(Modifier.height(10.dp))
+                        Lbl("Grid Rows", colors)
+                        Chips((3..10).map { it to it.toString() }, settings.gridRows, colors) { vm.setGridRows(it) }
+                        Spacer(Modifier.height(10.dp))
+                        Lbl("Grid Padding", colors)
+                        Text("Horizontal: ${settings.gridPaddingH}dp", color = colors.text, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                        Slider(
+                            value = settings.gridPaddingH.toFloat(),
+                            onValueChange = { vm.setGridPaddingH(it.toInt()) },
+                            valueRange = 0f..24f, steps = 23,
+                            colors = SliderDefaults.colors(thumbColor = colors.accent, activeTrackColor = colors.accent, inactiveTrackColor = colors.card),
+                        )
+                        Text("Vertical: ${settings.gridPaddingV}dp", color = colors.text, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                        Slider(
+                            value = settings.gridPaddingV.toFloat(),
+                            onValueChange = { vm.setGridPaddingV(it.toInt()) },
+                            valueRange = 0f..24f, steps = 23,
+                            colors = SliderDefaults.colors(thumbColor = colors.accent, activeTrackColor = colors.accent, inactiveTrackColor = colors.card),
+                        )
+
+                        Lbl("Page Transition", colors)
+                        Chips(PageTransition.entries.map { it to it.label }, settings.pageTransition, colors) { vm.setPageTransition(it) }
+                        Spacer(Modifier.height(10.dp))
+                        Lbl("Page Indicator", colors)
+                        Chips(PageIndicatorStyle.entries.map { it to it.label }, settings.pageIndicatorStyle, colors) { vm.setPageIndicatorStyle(it) }
+                        Spacer(Modifier.height(10.dp))
+                        Lbl("Badge Style", colors)
+                        Chips(BadgeStyle.entries.map { it to it.label }, settings.badgeStyle, colors) { vm.setBadgeStyle(it) }
+                        Spacer(Modifier.height(10.dp))
+                        Lbl("Folder Columns", colors)
+                        Chips((3..5).map { it to it.toString() }, settings.folderColumns, colors) { vm.setFolderColumns(it) }
+                        Spacer(Modifier.height(8.dp))
+                    }
+                }
+
+                // ── DRAWER ──
+                SectionHeader("Drawer", drawerExpanded, colors) { drawerExpanded = !drawerExpanded }
+                AnimatedVisibility(drawerExpanded) {
+                    Column {
+                        Lbl("Drawer Sort", colors)
+                        Chips(DrawerSort.entries.map { it to it.label }, settings.drawerSort, colors) { vm.setDrawerSort(it) }
+                        Spacer(Modifier.height(10.dp))
+                        Lbl("Drawer Columns", colors)
+                        Chips((0..6).map { it to if (it == 0) "Auto" else it.toString() }, settings.drawerColumns, colors) { vm.setDrawerColumns(it) }
+                        Spacer(Modifier.height(10.dp))
+                        Lbl("Drawer Background", colors)
+                        Text("Opacity: ${settings.drawerOpacity}%", color = colors.text, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                        Slider(
+                            value = settings.drawerOpacity.toFloat(),
+                            onValueChange = { vm.setDrawerOpacity(it.toInt()) },
+                            valueRange = 50f..100f, steps = 49,
+                            colors = SliderDefaults.colors(thumbColor = colors.accent, activeTrackColor = colors.accent, inactiveTrackColor = colors.card),
+                        )
+                        Tog("Drawer Categories", settings.drawerCategories, colors) { vm.setDrawerCategories(it) }
+                        Tog("Drawer Section Headers", settings.drawerSectionHeaders, colors) { vm.setDrawerSectionHeaders(it) }
+                        Tog("Drawer Animation", settings.drawerAnimation, colors) { vm.setDrawerAnimation(it) }
+                        Tog("App Suggestions", settings.showSuggestions, colors) { vm.setShowSuggestions(it) }
+
+                        Lbl("Search Engine", colors)
+                        Chips(SearchEngine.entries.map { it to it.label }, settings.searchEngine, colors) { vm.setSearchEngine(it) }
+                        Spacer(Modifier.height(8.dp))
+                    }
+                }
+
+                // ── DOCK ──
+                SectionHeader("Dock", dockExpanded, colors) { dockExpanded = !dockExpanded }
+                AnimatedVisibility(dockExpanded) {
+                    Column {
+                        Lbl("Dock Icons", colors)
+                        Chips((3..7).map { it to it.toString() }, settings.dockCount, colors) { vm.setDockCount(it) }
+                        Spacer(Modifier.height(10.dp))
+                        Lbl("Dock Style", colors)
+                        Chips(DockStyle.entries.map { it to it.label }, settings.dockStyle, colors) { vm.setDockStyle(it) }
+                        Spacer(Modifier.height(10.dp))
+                        Lbl("Search Bar", colors)
+                        Chips(SearchBarStyle.entries.map { it to it.label }, settings.searchBarStyle, colors) { vm.setSearchBarStyle(it) }
+                        Tog("Dock Search Bar", settings.showDockSearch, colors) { vm.setShowDockSearch(it) }
+                        Tog("Hide Dock", settings.hideDock, colors) { vm.setHideDock(it) }
+                        Spacer(Modifier.height(8.dp))
+                    }
+                }
+
+                // ── GESTURES ──
+                SectionHeader("Gestures", gesturesExpanded, colors) { gesturesExpanded = !gesturesExpanded }
+                AnimatedVisibility(gesturesExpanded) {
+                    Column {
+                        GesturePicker("Double-Tap", settings.doubleTapAction, colors) { vm.setDoubleTapAction(it) }
+                        GesturePicker("Swipe Down", settings.swipeDownAction, colors) { vm.setSwipeDownAction(it) }
+                        GesturePicker("Triple-Tap", settings.tripleTapAction, colors) { vm.setTripleTapAction(it) }
+                        GesturePicker("Pinch In", settings.pinchAction, colors) { vm.setPinchAction(it) }
+                        GesturePicker("Dock Handle Tap", settings.dockTapAction, colors) { vm.setDockTapAction(it) }
+
+                        val adminEnabled = remember { mutableStateOf(vm.isDeviceAdminEnabled()) }
+                        if (listOf(settings.doubleTapAction, settings.swipeDownAction, settings.tripleTapAction, settings.pinchAction, settings.dockTapAction).any { it == GestureAction.LOCK_SCREEN }) {
+                            Spacer(Modifier.height(6.dp))
+                            if (!adminEnabled.value) {
+                                ActionBtn("Enable Lock Screen", "Requires Device Admin", colors) { vm.requestDeviceAdmin(); adminEnabled.value = vm.isDeviceAdminEnabled() }
+                            } else {
+                                Text("Device Admin: Enabled", color = colors.accent, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                            }
+                        }
+                        Spacer(Modifier.height(8.dp))
+                    }
+                }
+
+                // ── FEATURES ──
+                SectionHeader("Features", featuresExpanded, colors) { featuresExpanded = !featuresExpanded }
+                AnimatedVisibility(featuresExpanded) {
+                    Column {
+                        Tog("At-a-Glance Clock", settings.showClock, colors) { vm.setShowClock(it) }
+                        if (settings.showClock) {
+                            Lbl("Clock Style", colors)
+                            Chips(ClockStyle.entries.map { it to it.label }, settings.clockStyle, colors) { vm.setClockStyle(it) }
+                        }
+                        Tog("Auto-Place New Apps", settings.autoPlaceNew, colors) { vm.setAutoPlaceNew(it) }
+                        Tog("Notification Badges", settings.showNotifBadges, colors) { vm.setShowNotifBadges(it) }
+                        if (settings.showNotifBadges) {
+                            val notifConnected = remember { mutableStateOf(vm.isNotificationAccessGranted()) }
+                            if (!notifConnected.value) {
+                                Spacer(Modifier.height(4.dp))
+                                ActionBtn("Grant Notification Access", "Required for badges", colors) {
+                                    vm.openNotificationAccess()
+                                    notifConnected.value = vm.isNotificationAccessGranted()
+                                }
+                            } else {
+                                Spacer(Modifier.height(4.dp))
+                                Text("Notification Access: Granted", color = colors.accent, fontSize = 12.sp, fontWeight = FontWeight.Medium)
                             }
                             Spacer(Modifier.height(4.dp))
-                            Text(mode.label, color = if (sel) tc.accent else colors.textSecondary, fontSize = 10.sp, fontWeight = if (sel) FontWeight.Bold else FontWeight.Normal)
                         }
+                        Tog("Hide Status Bar", settings.hideStatusBar, colors) { vm.setHideStatusBar(it) }
+                        Tog("Lock Home Screen", settings.homeLocked, colors) { vm.setHomeLocked(it) }
+                        Tog("Wallpaper Parallax", settings.wallpaperParallax, colors) { vm.setWallpaperParallax(it) }
+
+                        Lbl("Haptic Feedback", colors)
+                        Chips(HapticLevel.entries.map { it to it.label }, settings.hapticLevel, colors) { vm.setHapticLevel(it) }
+                        Spacer(Modifier.height(8.dp))
                     }
                 }
 
-                // Wallpaper
-                Lbl("Wallpaper", colors)
-                ActionBtn("Change Wallpaper", "System Picker", colors) { vm.openWallpaperPicker() }
-                Spacer(Modifier.height(10.dp))
-                Text("Wallpaper Dim: ${settings.wallpaperDim}%", color = colors.text, fontSize = 13.sp, fontWeight = FontWeight.Medium)
-                Spacer(Modifier.height(4.dp))
-                Slider(
-                    value = settings.wallpaperDim.toFloat(),
-                    onValueChange = { vm.setWallpaperDim(it.toInt()) },
-                    valueRange = 0f..80f,
-                    steps = 15,
-                    colors = SliderDefaults.colors(
-                        thumbColor = colors.accent,
-                        activeTrackColor = colors.accent,
-                        inactiveTrackColor = colors.card,
-                    ),
-                )
+                // ── ADVANCED ──
+                SectionHeader("Advanced", advancedExpanded, colors) { advancedExpanded = !advancedExpanded }
+                AnimatedVisibility(advancedExpanded) {
+                    Column {
+                        Lbl("Quick Actions", colors)
+                        ActionBtn("Kill Background Apps", "Free memory", colors) { vm.killBackgroundApps() }
+                        Spacer(Modifier.height(8.dp))
+                        ActionBtn("Clear Search History", "Remove saved searches", colors) { vm.clearSearchHistory() }
+                        Spacer(Modifier.height(8.dp))
+                        ActionBtn("Reset All Settings", "Restore defaults", colors) { vm.resetAllSettings() }
 
-                // Icon
-                Lbl("Icon Shape", colors)
-                Chips(IconShape.entries.map { it to it.label }, settings.iconShape, colors) { vm.setShape(it) }
-                Spacer(Modifier.height(10.dp))
-                Lbl("Icon Size", colors)
-                Chips(IconSize.entries.map { it to it.label }, settings.iconSize, colors) { vm.setIconSize(it) }
+                        Lbl("Backup & Restore", colors)
+                        ActionBtn("Export Layout", "Save to file", colors) { exportLauncher.launch("lawnchair-lite-backup.json") }
+                        Spacer(Modifier.height(8.dp))
+                        ActionBtn("Restore Layout", "Load from file", colors) { importLauncher.launch(arrayOf("application/json", "*/*")) }
 
-                // Icon Pack
-                Lbl("Icon Pack", colors)
-                IconPackSection(settings, availablePacks, iconPackLoading, colors, vm)
-                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
-                    Spacer(Modifier.height(6.dp))
-                    Tog("Themed Icons (Android 13+)", settings.themedIcons, colors) { vm.setThemedIcons(it) }
-                }
-
-                // Labels
-                Lbl("Icon Labels", colors)
-                Chips(LabelStyle.entries.map { it to it.label }, settings.labelStyle, colors) { vm.setLabelStyle(it) }
-
-                // Drawer Sort
-                Lbl("Drawer Sort", colors)
-                Chips(DrawerSort.entries.map { it to it.label }, settings.drawerSort, colors) { vm.setDrawerSort(it) }
-
-                // Grid
-                Lbl("Grid Columns", colors)
-                Chips((3..8).map { it to it.toString() }, settings.gridColumns, colors) { vm.setGridCols(it) }
-                Spacer(Modifier.height(10.dp))
-                Lbl("Grid Rows", colors)
-                Chips((3..10).map { it to it.toString() }, settings.gridRows, colors) { vm.setGridRows(it) }
-                Spacer(Modifier.height(10.dp))
-                Lbl("Dock Icons", colors)
-                Chips((3..7).map { it to it.toString() }, settings.dockCount, colors) { vm.setDockCount(it) }
-
-                // Grid Padding
-                Lbl("Grid Padding", colors)
-                Text("Horizontal: ${settings.gridPaddingH}dp", color = colors.text, fontSize = 13.sp, fontWeight = FontWeight.Medium)
-                Slider(
-                    value = settings.gridPaddingH.toFloat(),
-                    onValueChange = { vm.setGridPaddingH(it.toInt()) },
-                    valueRange = 0f..24f, steps = 23,
-                    colors = SliderDefaults.colors(thumbColor = colors.accent, activeTrackColor = colors.accent, inactiveTrackColor = colors.card),
-                )
-                Text("Vertical: ${settings.gridPaddingV}dp", color = colors.text, fontSize = 13.sp, fontWeight = FontWeight.Medium)
-                Slider(
-                    value = settings.gridPaddingV.toFloat(),
-                    onValueChange = { vm.setGridPaddingV(it.toInt()) },
-                    valueRange = 0f..24f, steps = 23,
-                    colors = SliderDefaults.colors(thumbColor = colors.accent, activeTrackColor = colors.accent, inactiveTrackColor = colors.card),
-                )
-
-                // Drawer Columns
-                Lbl("Drawer Columns", colors)
-                Chips((0..6).map { it to if (it == 0) "Auto" else it.toString() }, settings.drawerColumns, colors) { vm.setDrawerColumns(it) }
-
-                // Page Transition
-                Lbl("Page Transition", colors)
-                Chips(PageTransition.entries.map { it to it.label }, settings.pageTransition, colors) { vm.setPageTransition(it) }
-
-                // Badge Style
-                Lbl("Badge Style", colors)
-                Chips(BadgeStyle.entries.map { it to it.label }, settings.badgeStyle, colors) { vm.setBadgeStyle(it) }
-
-                // Accent Color Override
-                Lbl("Accent Color", colors)
-                // Quick presets
-                val presetColors = listOf("#F44336", "#E91E63", "#9C27B0", "#673AB7", "#3F51B5", "#2196F3", "#00BCD4", "#4CAF50", "#FF9800", "#FF5722", "#795548", "#607D8B")
-                Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    presetColors.forEach { hex ->
-                        val parsed = try { Color(android.graphics.Color.parseColor(hex)) } catch (_: Exception) { colors.accent }
-                        val isSel = settings.accentOverride.equals(hex, ignoreCase = true)
-                        Box(Modifier.size(28.dp).clip(CircleShape).background(parsed)
-                            .border(if (isSel) 2.dp else 0.dp, if (isSel) colors.text else Color.Transparent, CircleShape)
-                            .clickable { vm.setAccentOverride(hex) })
-                    }
-                }
-                Spacer(Modifier.height(10.dp))
-                var accentInput by remember { mutableStateOf(settings.accentOverride) }
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    if (settings.accentOverride.isNotBlank()) {
-                        val parsed = try { Color(android.graphics.Color.parseColor(settings.accentOverride)) } catch (_: Exception) { colors.accent }
-                        Box(Modifier.size(28.dp).clip(CircleShape).background(parsed).border(1.dp, colors.border, CircleShape))
-                        Spacer(Modifier.width(10.dp))
-                    }
-                    TextField(
-                        value = accentInput, onValueChange = { accentInput = it.take(7) },
-                        modifier = Modifier.weight(1f).height(48.dp).clip(RoundedCornerShape(10.dp)),
-                        placeholder = { Text("#FF5722", color = colors.textSecondary, fontSize = 13.sp) },
-                        colors = TextFieldDefaults.colors(focusedTextColor = colors.text, unfocusedTextColor = colors.text, cursorColor = colors.accent, focusedContainerColor = colors.card, unfocusedContainerColor = colors.card, focusedIndicatorColor = Color.Transparent, unfocusedIndicatorColor = Color.Transparent),
-                        singleLine = true, textStyle = androidx.compose.ui.text.TextStyle(fontSize = 13.sp),
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Text("Apply", color = colors.accent, fontSize = 12.sp, fontWeight = FontWeight.Medium,
-                        modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(colors.accent.copy(alpha = 0.12f))
-                            .clickable { vm.setAccentOverride(accentInput.trim()) }.padding(horizontal = 10.dp, vertical = 6.dp))
-                    if (settings.accentOverride.isNotBlank()) {
-                        Spacer(Modifier.width(6.dp))
-                        Text("Reset", color = Color(0xFFEF5350), fontSize = 12.sp, fontWeight = FontWeight.Medium,
-                            modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(Color(0xFFEF5350).copy(alpha = 0.1f))
-                                .clickable { accentInput = ""; vm.setAccentOverride("") }.padding(horizontal = 10.dp, vertical = 6.dp))
-                    }
-                }
-
-                // Features
-                Lbl("Features", colors)
-                Tog("At-a-Glance Clock", settings.showClock, colors) { vm.setShowClock(it) }
-                if (settings.showClock) {
-                    Lbl("Clock Style", colors)
-                    Chips(ClockStyle.entries.map { it to it.label }, settings.clockStyle, colors) { vm.setClockStyle(it) }
-                }
-                Tog("Dock Search Bar", settings.showDockSearch, colors) { vm.setShowDockSearch(it) }
-                Tog("Auto-Place New Apps", settings.autoPlaceNew, colors) { vm.setAutoPlaceNew(it) }
-                Tog("Notification Badges", settings.showNotifBadges, colors) { vm.setShowNotifBadges(it) }
-                Tog("Hide Status Bar", settings.hideStatusBar, colors) { vm.setHideStatusBar(it) }
-                Tog("Icon Shadow", settings.iconShadow, colors) { vm.setIconShadow(it) }
-                Tog("Lock Home Screen", settings.homeLocked, colors) { vm.setHomeLocked(it) }
-                Tog("Drawer Categories", settings.drawerCategories, colors) { vm.setDrawerCategories(it) }
-                Tog("Drawer Section Headers", settings.drawerSectionHeaders, colors) { vm.setDrawerSectionHeaders(it) }
-                Tog("Wallpaper Parallax", settings.wallpaperParallax, colors) { vm.setWallpaperParallax(it) }
-                Tog("Drawer Animation", settings.drawerAnimation, colors) { vm.setDrawerAnimation(it) }
-                Tog("App Suggestions", settings.showSuggestions, colors) { vm.setShowSuggestions(it) }
-                Tog("Hide Dock", settings.hideDock, colors) { vm.setHideDock(it) }
-                Tog("Grayscale Icons", settings.grayscaleIcons, colors) { vm.setGrayscaleIcons(it) }
-
-                // Page Indicator
-                Lbl("Page Indicator", colors)
-                Chips(PageIndicatorStyle.entries.map { it to it.label }, settings.pageIndicatorStyle, colors) { vm.setPageIndicatorStyle(it) }
-
-                // Label Weight
-                Lbl("Label Weight", colors)
-                Chips(LabelWeight.entries.map { it to it.label }, settings.labelWeight, colors) { vm.setLabelWeight(it) }
-
-                // Dock Style
-                Lbl("Dock Style", colors)
-                Chips(DockStyle.entries.map { it to it.label }, settings.dockStyle, colors) { vm.setDockStyle(it) }
-
-                // Search Bar Style
-                Lbl("Search Bar", colors)
-                Chips(SearchBarStyle.entries.map { it to it.label }, settings.searchBarStyle, colors) { vm.setSearchBarStyle(it) }
-
-                // Haptic Feedback
-                Lbl("Haptic Feedback", colors)
-                Chips(HapticLevel.entries.map { it to it.label }, settings.hapticLevel, colors) { vm.setHapticLevel(it) }
-
-                // Label Size
-                Lbl("Label Size", colors)
-                Chips(LabelSize.entries.map { it to it.label }, settings.labelSize, colors) { vm.setLabelSize(it) }
-
-                // Folder Columns
-                Lbl("Folder Columns", colors)
-                Chips((3..5).map { it to it.toString() }, settings.folderColumns, colors) { vm.setFolderColumns(it) }
-
-                // Drawer Opacity
-                Lbl("Drawer Background", colors)
-                Text("Opacity: ${settings.drawerOpacity}%", color = colors.text, fontSize = 13.sp, fontWeight = FontWeight.Medium)
-                Slider(
-                    value = settings.drawerOpacity.toFloat(),
-                    onValueChange = { vm.setDrawerOpacity(it.toInt()) },
-                    valueRange = 50f..100f, steps = 49,
-                    colors = SliderDefaults.colors(thumbColor = colors.accent, activeTrackColor = colors.accent, inactiveTrackColor = colors.card),
-                )
-                if (settings.showNotifBadges) {
-                    val notifConnected = remember { mutableStateOf(vm.isNotificationAccessGranted()) }
-                    if (!notifConnected.value) {
-                        Spacer(Modifier.height(4.dp))
-                        ActionBtn("Grant Notification Access", "Required for badges", colors) {
-                            vm.openNotificationAccess()
-                            notifConnected.value = vm.isNotificationAccessGranted()
-                        }
-                    } else {
-                        Spacer(Modifier.height(4.dp))
-                        Text("Notification Access: Granted", color = colors.accent, fontSize = 12.sp, fontWeight = FontWeight.Medium)
-                    }
-                    Spacer(Modifier.height(4.dp))
-                }
-
-                // Gestures
-                Lbl("Gestures", colors)
-                GesturePicker("Double-Tap", settings.doubleTapAction, colors) { vm.setDoubleTapAction(it) }
-                GesturePicker("Swipe Down", settings.swipeDownAction, colors) { vm.setSwipeDownAction(it) }
-                GesturePicker("Triple-Tap", settings.tripleTapAction, colors) { vm.setTripleTapAction(it) }
-                GesturePicker("Pinch In", settings.pinchAction, colors) { vm.setPinchAction(it) }
-                GesturePicker("Dock Handle Tap", settings.dockTapAction, colors) { vm.setDockTapAction(it) }
-
-                val adminEnabled = remember { mutableStateOf(vm.isDeviceAdminEnabled()) }
-                if (listOf(settings.doubleTapAction, settings.swipeDownAction, settings.tripleTapAction, settings.pinchAction, settings.dockTapAction).any { it == GestureAction.LOCK_SCREEN }) {
-                    Spacer(Modifier.height(6.dp))
-                    if (!adminEnabled.value) {
-                        ActionBtn("Enable Lock Screen", "Requires Device Admin", colors) { vm.requestDeviceAdmin(); adminEnabled.value = vm.isDeviceAdminEnabled() }
-                    } else {
-                        Text("Device Admin: Enabled", color = colors.accent, fontSize = 12.sp, fontWeight = FontWeight.Medium)
-                    }
-                }
-
-                // Quick actions
-                Lbl("Quick Actions", colors)
-                ActionBtn("Kill Background Apps", "Free memory", colors) { vm.killBackgroundApps() }
-                Spacer(Modifier.height(8.dp))
-                ActionBtn("Clear Search History", "Remove saved searches", colors) { vm.clearSearchHistory() }
-                Spacer(Modifier.height(8.dp))
-                ActionBtn("Reset All Settings", "Restore defaults", colors) { vm.resetAllSettings() }
-
-                // Backup
-                Lbl("Backup & Restore", colors)
-                ActionBtn("Export Layout", "Save to file", colors) { exportLauncher.launch("lawnchair-lite-backup.json") }
-                Spacer(Modifier.height(8.dp))
-                ActionBtn("Restore Layout", "Load from file", colors) { importLauncher.launch(arrayOf("application/json", "*/*")) }
-
-                // Hidden apps
-                Lbl("Hidden Apps", colors)
-                val hiddenInfos = remember(hiddenApps, allAppsRaw) { allAppsRaw.filter { it.key in hiddenApps } }
-                if (hiddenInfos.isEmpty()) Text("No hidden apps", color = colors.textSecondary, fontSize = 13.sp, modifier = Modifier.padding(vertical = 8.dp))
-                else {
-                    hiddenInfos.forEach { app ->
-                        Row(
-                            modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(colors.card).clickable { vm.unhideApp(app.key) }.padding(horizontal = 12.dp, vertical = 10.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            if (app.icon != null) {
-                                Box(Modifier.size(36.dp).clip(iconClip(settings.iconShape)).background(colors.surface), Alignment.Center) {
-                                    Image(rememberDrawablePainter(app.icon), null, Modifier.fillMaxSize().padding(3.dp))
-                                }; Spacer(Modifier.width(10.dp))
+                        // Hidden apps
+                        Lbl("Hidden Apps", colors)
+                        val hiddenInfos = remember(hiddenApps, allAppsRaw) { allAppsRaw.filter { it.key in hiddenApps } }
+                        if (hiddenInfos.isEmpty()) Text("No hidden apps", color = colors.textSecondary, fontSize = 13.sp, modifier = Modifier.padding(vertical = 8.dp))
+                        else {
+                            hiddenInfos.forEach { app ->
+                                Row(
+                                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(colors.card).clickable { vm.unhideApp(app.key) }.padding(horizontal = 12.dp, vertical = 10.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    if (app.icon != null) {
+                                        Box(Modifier.size(36.dp).clip(iconClip(settings.iconShape)).background(colors.surface), Alignment.Center) {
+                                            Image(rememberDrawablePainter(app.icon), null, Modifier.fillMaxSize().padding(3.dp))
+                                        }; Spacer(Modifier.width(10.dp))
+                                    }
+                                    Column(Modifier.weight(1f)) { Text(app.label, color = colors.text, fontSize = 13.sp, fontWeight = FontWeight.Medium); Text(app.packageName, color = colors.textSecondary, fontSize = 10.sp) }
+                                    Icon(Icons.Default.Visibility, "Unhide", tint = colors.accent, modifier = Modifier.size(18.dp))
+                                }; Spacer(Modifier.height(6.dp))
                             }
-                            Column(Modifier.weight(1f)) { Text(app.label, color = colors.text, fontSize = 13.sp, fontWeight = FontWeight.Medium); Text(app.packageName, color = colors.textSecondary, fontSize = 10.sp) }
-                            Icon(Icons.Default.Visibility, "Unhide", tint = colors.accent, modifier = Modifier.size(18.dp))
-                        }; Spacer(Modifier.height(6.dp))
+                            Text("Tap to unhide", color = colors.textSecondary, fontSize = 10.sp, modifier = Modifier.padding(top = 2.dp))
+                        }
+
+                        Lbl("About", colors)
+                        Text("Lawnchair Lite v${app.lawnchairlite.BuildConfig.VERSION_NAME}", color = colors.text, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                        Text("Lightweight launcher inspired by Lawnchair/Pixel Launcher.", color = colors.textSecondary, fontSize = 12.sp, modifier = Modifier.padding(top = 2.dp, bottom = 32.dp))
                     }
-                    Text("Tap to unhide", color = colors.textSecondary, fontSize = 10.sp, modifier = Modifier.padding(top = 2.dp))
                 }
 
-                Lbl("About", colors)
-                Text("Lawnchair Lite v${app.lawnchairlite.BuildConfig.VERSION_NAME}", color = colors.text, fontSize = 14.sp, fontWeight = FontWeight.Medium)
-                Text("Lightweight launcher inspired by Lawnchair/Pixel Launcher.", color = colors.textSecondary, fontSize = 12.sp, modifier = Modifier.padding(top = 2.dp, bottom = 32.dp))
+                Spacer(Modifier.height(24.dp))
             }
         }
+    }
+}
+
+// ── Section Header ───────────────────────────────────────────────────
+
+@Composable
+private fun SectionHeader(title: String, expanded: Boolean, c: LauncherColors, onToggle: () -> Unit) {
+    Row(
+        Modifier.fillMaxWidth()
+            .padding(top = 16.dp, bottom = 4.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(c.card)
+            .border(0.5.dp, if (expanded) c.accent.copy(alpha = 0.3f) else c.border, RoundedCornerShape(12.dp))
+            .clickable { onToggle() }
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(title, color = if (expanded) c.accent else c.text, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+        Icon(
+            if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+            contentDescription = if (expanded) "Collapse" else "Expand",
+            tint = if (expanded) c.accent else c.textSecondary,
+            modifier = Modifier.size(20.dp),
+        )
     }
 }
 
@@ -407,6 +470,8 @@ private fun IconPackSection(
             } else {
                 packs.forEach { pack ->
                     val isActive = pack.packageName == activePack
+                    // Preview icons (loaded lazily)
+                    val previewIcons = remember(pack.packageName) { vm.getIconPackPreview(pack.packageName) }
                     Row(
                         Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
                             .background(if (isActive) c.accent.copy(alpha = 0.1f) else c.card)
@@ -424,6 +489,17 @@ private fun IconPackSection(
                         Column(Modifier.weight(1f)) {
                             Text(pack.label, color = if (isActive) c.accent else c.text, fontSize = 13.sp, fontWeight = if (isActive) FontWeight.Bold else FontWeight.Medium)
                             Text(pack.packageName, color = c.textSecondary, fontSize = 10.sp, maxLines = 1)
+                            // Icon preview row
+                            if (previewIcons.isNotEmpty()) {
+                                Spacer(Modifier.height(4.dp))
+                                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    previewIcons.forEach { drawable ->
+                                        if (drawable != null) {
+                                            Image(rememberDrawablePainter(drawable), null, Modifier.size(24.dp).clip(RoundedCornerShape(6.dp)))
+                                        }
+                                    }
+                                }
+                            }
                         }
                         if (isActive) {
                             Box(Modifier.size(8.dp).clip(CircleShape).background(c.accent))

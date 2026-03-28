@@ -17,7 +17,7 @@ import org.xmlpull.v1.XmlPullParser
 import org.xmlpull.v1.XmlPullParserFactory
 
 /**
- * Lawnchair Lite v2.12.0 - Icon Pack Support
+ * Lawnchair Lite - Icon Pack Support
  *
  * Stability improvements:
  * - LruCache with size limit (prevents OOM on large icon packs)
@@ -141,6 +141,19 @@ class IconPackManager(private val context: Context) {
 
     fun mappedCount(): Int = filterMap.size
     fun isLoaded(): Boolean = loadedPack != null && filterMap.isNotEmpty()
+
+    /** Load a few sample icons from an icon pack for preview (without fully loading it). */
+    fun previewIcons(packageName: String, count: Int = 4): List<Drawable?> {
+        return try {
+            val res = pm.getResourcesForApplication(packageName)
+            val map = mutableMapOf<String, String>()
+            tryParseXmlResource(packageName, res, map) || tryParseAssets(packageName, res, map)
+            map.values.take(count).mapNotNull { name -> loadDrawable(res, packageName, name) }
+        } catch (e: Exception) {
+            Log.w(TAG, "previewIcons failed for $packageName", e)
+            emptyList()
+        }
+    }
 
     private fun tryParseXmlResource(packageName: String, res: Resources, map: MutableMap<String, String>): Boolean {
         return try {

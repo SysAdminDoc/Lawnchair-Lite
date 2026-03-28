@@ -8,6 +8,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
@@ -67,7 +68,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-/** Lawnchair Lite v2.12.0 - UI Components */
+/** Lawnchair Lite - UI Components */
 
 private val GrayscaleColorFilter = androidx.compose.ui.graphics.ColorFilter.colorMatrix(
     androidx.compose.ui.graphics.ColorMatrix(
@@ -495,6 +496,34 @@ fun HomeContextMenu(
             if (cell is GridCell.App && app != null) {
                 CtxItem("Rename", c) { vm.startLabelEdit(cell.appKey) }
                 CtxItem("Rearrange Icons", c) { vm.enterEditMode() }
+                if (menuState.source == DragSource.DOCK) {
+                    val hasDockSwipe = vm.settings.collectAsState().value.dockSwipeApps.containsKey(menuState.index)
+                    if (hasDockSwipe) {
+                        CtxItem("Clear Swipe App", c) { vm.clearDockSwipeApp(menuState.index); onDismiss() }
+                    }
+                    // Show dock swipe app picker
+                    var showSwipePicker by remember { mutableStateOf(false) }
+                    CtxItem("Set Swipe-Up App", c) { showSwipePicker = !showSwipePicker }
+                    if (showSwipePicker) {
+                        val allAppsForPicker by vm.allApps.collectAsState()
+                        Column(Modifier.heightIn(max = 200.dp).verticalScroll(rememberScrollState()).padding(horizontal = 8.dp)) {
+                            allAppsForPicker.forEach { pickApp ->
+                                Row(
+                                    Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp))
+                                        .clickable { vm.setDockSwipeApp(menuState.index, pickApp.key); onDismiss() }
+                                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    if (pickApp.icon != null) {
+                                        Image(rememberDrawablePainter(pickApp.icon), null, Modifier.size(24.dp).clip(RoundedCornerShape(6.dp)))
+                                        Spacer(Modifier.width(8.dp))
+                                    }
+                                    Text(pickApp.label, color = c.text, fontSize = 12.sp, maxLines = 1)
+                                }
+                            }
+                        }
+                    }
+                }
                 Divider(color = c.border.copy(alpha = 0.3f), thickness = 0.5.dp)
                 CtxItem("App Info", c) { vm.appInfo(app); onDismiss() }
                 CtxItem("Remove from $sourceLabel", c) { vm.removeFromGrid(menuState.source, menuState.index) }
@@ -643,6 +672,46 @@ fun DrawerContextMenu(app: AppInfo, shape: IconShape, vm: LauncherViewModel, sho
             CtxItem("Hide from Drawer", c, onClick = onHide); CtxItem("App Info", c, onClick = onAppInfo)
             if (!app.isSystemApp) { Divider(color = c.border.copy(alpha = 0.3f), thickness = 0.5.dp); CtxItem("Uninstall", c, isRed = true, onClick = onUninstall) }
         }
+    }
+}
+
+// ── Home Space Long-Press Menu (Pixel Launcher-style) ────────────────
+
+@Composable
+fun HomeSpaceMenuOverlay(
+    onEditMode: () -> Unit,
+    onAddWidget: () -> Unit,
+    onWallpaper: () -> Unit,
+    onSettings: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val c = LocalLauncherColors.current
+    Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.5f)).pointerInput(Unit) { detectTapGestures { onDismiss() } }, Alignment.Center) {
+        Column(
+            Modifier.widthIn(min = 220.dp, max = 260.dp).clip(RoundedCornerShape(20.dp))
+                .background(c.surface).border(0.5.dp, c.border, RoundedCornerShape(20.dp))
+                .pointerInput(Unit) { detectTapGestures { } }.padding(vertical = 8.dp),
+        ) {
+            HomeSpaceMenuItem("Rearrange Icons", Icons.Default.GridView, c, onClick = onEditMode)
+            Divider(color = c.border.copy(alpha = 0.2f), thickness = 0.5.dp)
+            HomeSpaceMenuItem("Add Widget", Icons.Default.Widgets, c, onClick = onAddWidget)
+            Divider(color = c.border.copy(alpha = 0.2f), thickness = 0.5.dp)
+            HomeSpaceMenuItem("Wallpaper", Icons.Default.Wallpaper, c, onClick = onWallpaper)
+            Divider(color = c.border.copy(alpha = 0.2f), thickness = 0.5.dp)
+            HomeSpaceMenuItem("Settings", Icons.Default.Settings, c, onClick = onSettings)
+        }
+    }
+}
+
+@Composable
+private fun HomeSpaceMenuItem(label: String, icon: androidx.compose.ui.graphics.vector.ImageVector, c: LauncherColors, onClick: () -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().clickable { onClick() }.padding(horizontal = 20.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(icon, null, tint = c.accent, modifier = Modifier.size(20.dp))
+        Spacer(Modifier.width(14.dp))
+        Text(label, color = c.text, fontSize = 14.sp, fontWeight = FontWeight.Medium)
     }
 }
 

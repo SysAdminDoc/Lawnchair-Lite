@@ -12,15 +12,15 @@ JAVA_HOME="C:/Program Files/Android/Android Studio/jbr" ANDROID_HOME="$HOME/AppD
 ```
 Sign: `jarsigner` with `lawnchair-lite.jks` (alias: lawnchair-lite), then `zipalign -v 4`.
 
-## Key Files (5,375 lines total, 17 files)
-- `LauncherViewModel.kt` (1,223) - Central state, gestures, search, calculator, unit converter, drag-drop, widgets
-- `HomeScreen.kt` (766) - Home surface, Launcher3 drawer transition, pager, widget overlays, overlays
-- `Components.kt` (900) - Icons, badges, menus, folders, clock, search, fast scroller, widget picker
-- `AppDrawer.kt` (413) - Grid with nested scroll dismiss, recent apps, categories, web search
-- `SettingsScreen.kt` (487) - All settings UI, icon pack picker, backup/restore, hidden apps
-- `data/LauncherPrefs.kt` (539) - DataStore, settings flow, serialization, backup export/import, atomic reset
-- `data/IconPackManager.kt` (200) - Icon pack XML parsing, LRU cache, Mutex thread safety
-- `data/AppModel.kt` (169) - Data types, GridCell sealed class, serialization, escaping
+## Key Files (17 files)
+- `LauncherViewModel.kt` (~1,240) - Central state, gestures, search, calculator, unit converter, drag-drop, widgets
+- `HomeScreen.kt` (~780) - Home surface, Launcher3 drawer transition, pager, widget overlays, dock swipe, home space menu
+- `Components.kt` (~930) - Icons, badges, menus, folders, clock, search, fast scroller, widget picker, HomeSpaceMenuOverlay
+- `AppDrawer.kt` (~415) - Grid with nested scroll dismiss, recent apps, categories, web search
+- `SettingsScreen.kt` (~540) - Collapsible section settings UI, icon pack picker with preview, backup/restore, hidden apps
+- `data/LauncherPrefs.kt` (~545) - DataStore, settings flow, serialization, backup export/import, atomic reset
+- `data/IconPackManager.kt` (~215) - Icon pack XML parsing, LRU cache, Mutex thread safety, preview icons
+- `data/AppModel.kt` (~180) - Data types, GridCell sealed class, serialization, SearchEngine enum
 - `data/AppRepository.kt` (139) - PackageManager wrapper, defensive loading
 - `data/AppCategorizer.kt` (74) - Word-boundary tokenized auto-categorization
 - `data/ShortcutRepository.kt` (78) - LauncherApps shortcut queries
@@ -42,6 +42,7 @@ Sign: `jarsigner` with `lawnchair-lite.jks` (alias: lawnchair-lite), then `zipal
 - CameraManager.TorchCallback syncs flashlight state with external toggles
 
 ## Version History
+- v2.16.0: Collapsible settings sections (8 groups), search engine picker (Google/DDG/Bing/Brave/Startpage), home space long-press menu (Pixel Launcher-style: Edit/Widget/Wallpaper/Settings), dock swipe-up gesture (launches configured app), icon pack preview (4 sample icons in picker), dock swipe app config in context menu, stale version comments cleaned
 - v2.15.7: suggestFolderName tokenized, unit converter regex hoisted, flashlight TorchCallback sync, drawer columns range 0-6
 - v2.15.6: atomic resetAllSettings (30+ writes -> 1), widget picker toast feedback, all drawer close paths reset category, hasOpenOverlay covers widgetPicker+editMode
 - v2.15.5: zero compiler warnings, web search at bottom of results, drawer search auto-focus
@@ -75,13 +76,14 @@ Sign: `jarsigner` with `lawnchair-lite.jks` (alias: lawnchair-lite), then `zipal
 - Triple-tap: 400ms window after last double-tap
 - Pinch threshold: zoom < 0.7 (pinch-in only)
 - Lambda param `app` inside onAppClick shadows package name - use `clickedApp`
+- Dock swipe-up: detectVerticalDragGestures with totalDragY < -80px threshold
 
 ### Drawer & Category State
 - selectedCategory MUST reset to DrawerCategory.ALL on every drawer close path:
   - settleDrawer(), external close (vmDrawerOpen), closeDrawer(), closeAllOverlays()
   - AND: app click, contact tap/call, shortcut click, pin home/dock lambdas in HomeScreen
-- hasOpenOverlay() must include _widgetPickerOpen and _editMode
-- closeAllOverlays() must close _widgetPickerOpen
+- hasOpenOverlay() must include _widgetPickerOpen, _editMode, and _homeSpaceMenu
+- closeAllOverlays() must close _widgetPickerOpen and _homeSpaceMenu
 
 ### Icons & Styling
 - GrayscaleColorFilter: top-level private val - do NOT recreate per recomposition
@@ -90,7 +92,7 @@ Sign: `jarsigner` with `lawnchair-lite.jks` (alias: lawnchair-lite), then `zipal
 - HexagonShape/DiamondShape: top-level GenericShape constants
 
 ### Data & Backup
-- Backup must include: suggestion_usage, app_usage, widgets_v1
+- Backup must include: suggestion_usage, app_usage, widgets_v1, search_engine
 - resetAllSettings: use prefs.resetToDefaults() single atomic transaction, NOT individual set() calls
 - Search history terms escaped for pipe delimiter (escapeSearchTerm/unescapeSearchTerm)
 - Launch tracking: batched DataStore write (saveLaunchTracking) - 3 writes -> 1
@@ -112,6 +114,7 @@ Sign: `jarsigner` with `lawnchair-lite.jks` (alias: lawnchair-lite), then `zipal
 - Unit converter regex: class-level val, NOT inline Regex() (recompiles on every keystroke)
 - Flashlight: TorchCallback in init, unregister in onCleared - keeps state accurate
 - Drawer columns: range 0-6 everywhere (setter, prefs, settings UI, backup import)
+- Compose BOM 2024.01.00: `HorizontalDivider` NOT available - must use deprecated `Divider`
 
 ### Platform
 - Themed icons: API 33+ only (Build.VERSION_CODES.TIRAMISU)
@@ -120,3 +123,9 @@ Sign: `jarsigner` with `lawnchair-lite.jks` (alias: lawnchair-lite), then `zipal
 - BatteryManager.BATTERY_PROPERTY_CAPACITY can return -1
 - AlarmManager.nextAlarmClock can return null
 - Fast scroller: letters/letterIndex from displayApps (not apps), headerAdjustedLetterIndex for section headers
+- Keystore: `lawnchair-lite.jks` (alias: lawnchair-lite, pass: lawnchair2025), gitignored
+
+### Settings UI
+- Settings organized into 8 collapsible sections: Theme & Wallpaper, Icons & Labels, Grid & Layout, Drawer, Dock, Gestures, Features, Advanced
+- Icon pack picker shows 4 preview icons per pack via IconPackManager.previewIcons()
+- Dock swipe app config accessible from HomeContextMenu (dock source only)

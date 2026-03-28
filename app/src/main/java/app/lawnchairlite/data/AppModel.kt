@@ -5,7 +5,7 @@ import android.graphics.drawable.Drawable
 import android.util.Log
 
 /**
- * Lawnchair Lite v2.12.0 - Data Model
+ * Lawnchair Lite - Data Model
  *
  * Stability: Deserialization never throws. Malformed data returns null.
  */
@@ -69,6 +69,13 @@ enum class HapticLevel(val label: String, val ms: Long) {
 }
 enum class LabelSize(val label: String, val sp: Int) {
     SMALL("Small", 9), MEDIUM("Medium", 11), LARGE("Large", 13);
+}
+enum class SearchEngine(val label: String, val urlTemplate: String) {
+    GOOGLE("Google", "https://www.google.com/search?q=%s"),
+    DUCKDUCKGO("DuckDuckGo", "https://duckduckgo.com/?q=%s"),
+    BING("Bing", "https://www.bing.com/search?q=%s"),
+    BRAVE("Brave", "https://search.brave.com/search?q=%s"),
+    STARTPAGE("Startpage", "https://www.startpage.com/do/dsearch?query=%s");
 }
 
 sealed class GridCell {
