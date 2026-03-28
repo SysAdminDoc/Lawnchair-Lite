@@ -104,7 +104,7 @@ fun SettingsPanel(
             Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                 TextField(
                     value = settingsSearch, onValueChange = { settingsSearch = it },
-                    modifier = Modifier.weight(1f).height(44.dp).clip(RoundedCornerShape(22.dp)),
+                    modifier = Modifier.weight(1f).clip(RoundedCornerShape(22.dp)),
                     placeholder = { Text("Search settings\u2026", color = colors.textSecondary, fontSize = 13.sp) },
                     leadingIcon = { Icon(Icons.Default.Search, null, tint = colors.textSecondary, modifier = Modifier.size(16.dp)) },
                     trailingIcon = if (settingsSearch.isNotBlank()) {{ IconButton(onClick = { settingsSearch = "" }, modifier = Modifier.size(28.dp)) { Icon(Icons.Default.Close, "Clear", tint = colors.textSecondary, modifier = Modifier.size(14.dp)) } }} else null,
