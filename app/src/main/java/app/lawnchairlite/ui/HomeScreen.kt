@@ -338,25 +338,19 @@ fun HomeScreen(vm: LauncherViewModel) {
                     }
                 }
 
-                // Top bar
-                if (!isDragging) Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
-                    if (editMode) {
-                        Text("Done", color = colors.accent, fontSize = 14.sp, fontWeight = FontWeight.SemiBold,
-                            modifier = Modifier.clip(RoundedCornerShape(10.dp))
-                                .background(colors.accent.copy(alpha = 0.12f))
-                                .clickable { vm.exitEditMode() }
-                                .padding(horizontal = 14.dp, vertical = 6.dp))
-                        Spacer(Modifier.width(8.dp))
-                        Text("Widgets", color = colors.text, fontSize = 14.sp, fontWeight = FontWeight.Medium,
-                            modifier = Modifier.clip(RoundedCornerShape(10.dp))
-                                .background(colors.card)
-                                .clickable { vm.openWidgetPicker() }
-                                .padding(horizontal = 14.dp, vertical = 6.dp))
-                    }
-                    Spacer(Modifier.weight(1f))
-                    IconButton(onClick = { vm.openSettings() }, Modifier.size(36.dp)) {
-                        Icon(Icons.Default.Settings, "Settings", tint = colors.text.copy(alpha = 0.4f), modifier = Modifier.size(16.dp))
-                    }
+                // Top bar (edit mode only)
+                if (!isDragging && editMode) Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text("Done", color = colors.accent, fontSize = 14.sp, fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.clip(RoundedCornerShape(10.dp))
+                            .background(colors.accent.copy(alpha = 0.12f))
+                            .clickable { vm.exitEditMode() }
+                            .padding(horizontal = 14.dp, vertical = 6.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("Widgets", color = colors.text, fontSize = 14.sp, fontWeight = FontWeight.Medium,
+                        modifier = Modifier.clip(RoundedCornerShape(10.dp))
+                            .background(colors.card)
+                            .clickable { vm.openWidgetPicker() }
+                            .padding(horizontal = 14.dp, vertical = 6.dp))
                 }
 
                 if (settings.showClock && !isDragging && !editMode) AtAGlanceClock(clockStyle = settings.clockStyle, onDateClick = { vm.openCalendarApp() }, onTimeClick = { vm.openClockApp() }, onCycleStyle = { vm.cycleClockStyle() })
