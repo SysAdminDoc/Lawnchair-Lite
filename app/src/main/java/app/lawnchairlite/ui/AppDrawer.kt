@@ -116,9 +116,13 @@ fun AppDrawer(
 
     val nestedScrollConnection = remember {
         object : NestedScrollConnection {
+            // Dismiss multiplier: 2.5x makes overscroll-to-dismiss feel snappy
+            // instead of requiring a full screen-height drag.
+            private val dismissMultiplier = 2.5f
+
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
                 if (displaced && currentProgress < 0.99f) {
-                    val delta = -available.y / currentScreenHeight
+                    val delta = -available.y / currentScreenHeight * dismissMultiplier
                     val newP = (currentProgress + delta).coerceIn(0f, 1f)
                     currentOnProgressChange(newP)
                     if (newP > 0.99f) displaced = false
@@ -128,8 +132,8 @@ fun AppDrawer(
             }
 
             override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset {
-                if (available.y > 0f && atTop && currentProgress > 0.5f) {
-                    val delta = -available.y / currentScreenHeight
+                if (available.y > 0f && atTop) {
+                    val delta = -available.y / currentScreenHeight * dismissMultiplier
                     val newP = (currentProgress + delta).coerceIn(0f, 1f)
                     currentOnProgressChange(newP)
                     displaced = true

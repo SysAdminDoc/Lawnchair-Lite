@@ -183,8 +183,8 @@ fun HomeScreen(vm: LauncherViewModel) {
                 )) else drawerProgress.snapTo(1f)
             } else {
                 if (animated) drawerProgress.animateTo(0f, spring(
-                    dampingRatio = Spring.DampingRatioLowBouncy,
-                    stiffness = if (isFling) Spring.StiffnessMediumLow else Spring.StiffnessMedium,
+                    dampingRatio = Spring.DampingRatioNoBouncy,
+                    stiffness = if (isFling) Spring.StiffnessLow else Spring.StiffnessMedium,
                 )) else drawerProgress.snapTo(0f)
                 vm.setSearch("")
                 vm.setSelectedCategory(app.lawnchairlite.data.DrawerCategory.ALL)
