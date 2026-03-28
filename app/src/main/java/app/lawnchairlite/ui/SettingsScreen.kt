@@ -11,8 +11,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -48,8 +50,32 @@ fun SettingsPanel(
     }
     val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
         uri ?: return@rememberLauncherForActivityResult
-        scope.launch { val json = runCatching { context.contentResolver.openInputStream(uri)?.bufferedReader()?.readText() }.getOrNull() ?: return@launch; vm.importBackup(json) }
+        scope.launch { val json = runCatching { context.contentResolver.openInputStream(uri)?.bufferedReader()?.readText() }.getOrNull(); if (json == null) { android.widget.Toast.makeText(context, "Import failed — invalid file", android.widget.Toast.LENGTH_SHORT).show(); return@launch }; vm.importBackup(json) }
     }
+
+    // Settings search
+    var settingsSearch by remember { mutableStateOf("") }
+    val sq = settingsSearch.lowercase()
+    // Keywords per section for search matching
+    val themeKeywords = "theme wallpaper dim accent color midnight glass oled mocha aurora neon"
+    val iconsKeywords = "icon shape size pack themed shadow grayscale label weight squircle circle square teardrop hexagon diamond"
+    val gridKeywords = "grid columns rows padding page transition indicator badge folder cube stack fade depth carousel slide dots line"
+    val drawerKeywords = "drawer sort columns opacity categories section headers animation suggestions search engine"
+    val dockKeywords = "dock icons style search bar pill floating transparent hide"
+    val gesturesKeywords = "gesture double tap swipe down swipe up triple pinch dock lock screen notification flashlight edit mode recent app launch"
+    val featuresKeywords = "clock at a glance auto place notification badges status bar home lock parallax haptic feedback"
+    val advancedKeywords = "kill background apps clear search history reset settings backup restore export import hidden apps about"
+    fun sectionMatches(keywords: String): Boolean = sq.isBlank() || keywords.contains(sq) || sq.split(" ").all { w -> keywords.contains(w) }
+    val showTheme = sectionMatches(themeKeywords)
+    val showIcons = sectionMatches(iconsKeywords)
+    val showGrid = sectionMatches(gridKeywords)
+    val showDrawer = sectionMatches(drawerKeywords)
+    val showDock = sectionMatches(dockKeywords)
+    val showGestures = sectionMatches(gesturesKeywords)
+    val showFeatures = sectionMatches(featuresKeywords)
+    val showAdvanced = sectionMatches(advancedKeywords)
+    // Auto-expand matching sections when searching
+    val searching = sq.isNotBlank()
 
     // Section expanded state
     var themeExpanded by remember { mutableStateOf(true) }
@@ -74,11 +100,25 @@ fun SettingsPanel(
             }
             Divider(color = colors.border, thickness = 0.5.dp)
 
+            // Settings search bar
+            Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                TextField(
+                    value = settingsSearch, onValueChange = { settingsSearch = it },
+                    modifier = Modifier.weight(1f).height(44.dp).clip(RoundedCornerShape(22.dp)),
+                    placeholder = { Text("Search settings\u2026", color = colors.textSecondary, fontSize = 13.sp) },
+                    leadingIcon = { Icon(Icons.Default.Search, null, tint = colors.textSecondary, modifier = Modifier.size(16.dp)) },
+                    trailingIcon = if (settingsSearch.isNotBlank()) {{ IconButton(onClick = { settingsSearch = "" }, modifier = Modifier.size(28.dp)) { Icon(Icons.Default.Close, "Clear", tint = colors.textSecondary, modifier = Modifier.size(14.dp)) } }} else null,
+                    colors = TextFieldDefaults.colors(focusedTextColor = colors.text, unfocusedTextColor = colors.text, cursorColor = colors.accent, focusedContainerColor = colors.card, unfocusedContainerColor = colors.card, focusedIndicatorColor = Color.Transparent, unfocusedIndicatorColor = Color.Transparent),
+                    singleLine = true, textStyle = androidx.compose.ui.text.TextStyle(fontSize = 13.sp),
+                )
+            }
+
             Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp).navigationBarsPadding()) {
 
                 // ── THEME & WALLPAPER ──
-                SectionHeader("Theme & Wallpaper", themeExpanded, colors, summary = if (!themeExpanded) settings.themeMode.label else null) { themeExpanded = !themeExpanded }
-                AnimatedVisibility(themeExpanded) {
+                if (showTheme) {
+                SectionHeader("Theme & Wallpaper", searching || themeExpanded, colors, summary = if (!searching && !themeExpanded) settings.themeMode.label else null) { themeExpanded = !themeExpanded }
+                AnimatedVisibility(searching || themeExpanded) {
                     Column {
                         Lbl("Theme", colors)
                         Row(
@@ -95,7 +135,7 @@ fun SettingsPanel(
                                     horizontalAlignment = Alignment.CenterHorizontally,
                                 ) {
                                     Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
-                                        listOf(tc.accent, tc.card, tc.text).forEach { Box(Modifier.size(10.dp).clip(CircleShape).background(it)) }
+                                        listOf(tc.background, tc.accent, tc.card, tc.text).forEach { Box(Modifier.size(10.dp).clip(CircleShape).background(it).border(0.5.dp, tc.border, CircleShape)) }
                                     }
                                     Spacer(Modifier.height(4.dp))
                                     Text(mode.label, color = if (sel) tc.accent else colors.textSecondary, fontSize = 10.sp, fontWeight = if (sel) FontWeight.Bold else FontWeight.Normal)
@@ -119,6 +159,14 @@ fun SettingsPanel(
                         Lbl("Accent Color", colors)
                         val presetColors = listOf("#F44336", "#E91E63", "#9C27B0", "#673AB7", "#3F51B5", "#2196F3", "#00BCD4", "#4CAF50", "#FF9800", "#FF5722", "#795548", "#607D8B")
                         Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            // Default (theme native accent) chip
+                            val themeAccent = themeColors(settings.themeMode).accent
+                            val isDefault = settings.accentOverride.isBlank()
+                            Box(Modifier.size(28.dp).clip(CircleShape).background(themeAccent)
+                                .border(if (isDefault) 2.dp else 0.dp, if (isDefault) colors.text else Color.Transparent, CircleShape)
+                                .clickable { vm.setAccentOverride("") }) {
+                                if (isDefault) Box(Modifier.size(10.dp).clip(CircleShape).background(colors.text).align(Alignment.Center))
+                            }
                             presetColors.forEach { hex ->
                                 val parsed = try { Color(android.graphics.Color.parseColor(hex)) } catch (_: Exception) { colors.accent }
                                 val isSel = settings.accentOverride.equals(hex, ignoreCase = true)
@@ -148,8 +196,8 @@ fun SettingsPanel(
                                     .clickable { vm.setAccentOverride(accentInput.trim()) }.padding(horizontal = 10.dp, vertical = 6.dp))
                             if (settings.accentOverride.isNotBlank()) {
                                 Spacer(Modifier.width(6.dp))
-                                Text("Reset", color = Color(0xFFEF5350), fontSize = 12.sp, fontWeight = FontWeight.Medium,
-                                    modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(Color(0xFFEF5350).copy(alpha = 0.1f))
+                                Text("Reset", color = colors.error, fontSize = 12.sp, fontWeight = FontWeight.Medium,
+                                    modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(colors.error.copy(alpha = 0.1f))
                                         .clickable { accentInput = ""; vm.setAccentOverride("") }.padding(horizontal = 10.dp, vertical = 6.dp))
                             }
                         }
@@ -157,9 +205,11 @@ fun SettingsPanel(
                     }
                 }
 
+                }
                 // ── ICONS & LABELS ──
-                SectionHeader("Icons & Labels", iconsExpanded, colors, summary = if (!iconsExpanded) "${settings.iconShape.label} · ${settings.iconSize.label}" else null) { iconsExpanded = !iconsExpanded }
-                AnimatedVisibility(iconsExpanded) {
+                if (showIcons) {
+                SectionHeader("Icons & Labels", searching || iconsExpanded, colors, summary = if (!searching && !iconsExpanded) "${settings.iconShape.label} · ${settings.iconSize.label}" else null) { iconsExpanded = !iconsExpanded }
+                AnimatedVisibility(searching || iconsExpanded) {
                     Column {
                         Lbl("Icon Shape", colors)
                         Chips(IconShape.entries.map { it to it.label }, settings.iconShape, colors) { vm.setShape(it) }
@@ -189,9 +239,11 @@ fun SettingsPanel(
                     }
                 }
 
+                }
                 // ── GRID & LAYOUT ──
-                SectionHeader("Grid & Layout", gridExpanded, colors, summary = if (!gridExpanded) "${settings.gridColumns}x${settings.gridRows} · ${settings.pageTransition.label}" else null) { gridExpanded = !gridExpanded }
-                AnimatedVisibility(gridExpanded) {
+                if (showGrid) {
+                SectionHeader("Grid & Layout", searching || gridExpanded, colors, summary = if (!searching && !gridExpanded) "${settings.gridColumns}x${settings.gridRows} · ${settings.pageTransition.label}" else null) { gridExpanded = !gridExpanded }
+                AnimatedVisibility(searching || gridExpanded) {
                     Column {
                         Lbl("Grid Columns", colors)
                         Chips((3..8).map { it to it.toString() }, settings.gridColumns, colors) { vm.setGridCols(it) }
@@ -230,9 +282,11 @@ fun SettingsPanel(
                     }
                 }
 
+                }
                 // ── DRAWER ──
-                SectionHeader("Drawer", drawerExpanded, colors, summary = if (!drawerExpanded) "${settings.drawerSort.label} · ${settings.searchEngine.label}" else null) { drawerExpanded = !drawerExpanded }
-                AnimatedVisibility(drawerExpanded) {
+                if (showDrawer) {
+                SectionHeader("Drawer", searching || drawerExpanded, colors, summary = if (!searching && !drawerExpanded) "${settings.drawerSort.label} · ${settings.searchEngine.label}" else null) { drawerExpanded = !drawerExpanded }
+                AnimatedVisibility(searching || drawerExpanded) {
                     Column {
                         Lbl("Drawer Sort", colors)
                         Chips(DrawerSort.entries.map { it to it.label }, settings.drawerSort, colors) { vm.setDrawerSort(it) }
@@ -259,9 +313,11 @@ fun SettingsPanel(
                     }
                 }
 
+                }
                 // ── DOCK ──
-                SectionHeader("Dock", dockExpanded, colors, summary = if (!dockExpanded) "${settings.dockCount} icons · ${settings.dockStyle.label}" else null) { dockExpanded = !dockExpanded }
-                AnimatedVisibility(dockExpanded) {
+                if (showDock) {
+                SectionHeader("Dock", searching || dockExpanded, colors, summary = if (!searching && !dockExpanded) "${settings.dockCount} icons · ${settings.dockStyle.label}" else null) { dockExpanded = !dockExpanded }
+                AnimatedVisibility(searching || dockExpanded) {
                     Column {
                         Lbl("Dock Icons", colors)
                         Chips((3..7).map { it to it.toString() }, settings.dockCount, colors) { vm.setDockCount(it) }
@@ -277,18 +333,21 @@ fun SettingsPanel(
                     }
                 }
 
+                }
                 // ── GESTURES ──
-                SectionHeader("Gestures", gesturesExpanded, colors) { gesturesExpanded = !gesturesExpanded }
-                AnimatedVisibility(gesturesExpanded) {
+                if (showGestures) {
+                SectionHeader("Gestures", searching || gesturesExpanded, colors) { gesturesExpanded = !gesturesExpanded }
+                AnimatedVisibility(searching || gesturesExpanded) {
                     Column {
                         GesturePicker("Double-Tap", settings.doubleTapAction, colors, vm = vm, gestureSource = "double_tap") { vm.setDoubleTapAction(it) }
                         GesturePicker("Swipe Down", settings.swipeDownAction, colors, vm = vm, gestureSource = "swipe_down") { vm.setSwipeDownAction(it) }
                         GesturePicker("Triple-Tap", settings.tripleTapAction, colors, vm = vm, gestureSource = "triple_tap") { vm.setTripleTapAction(it) }
                         GesturePicker("Pinch In", settings.pinchAction, colors, vm = vm, gestureSource = "pinch") { vm.setPinchAction(it) }
+                        GesturePicker("Swipe Up", settings.swipeUpAction, colors, vm = vm, gestureSource = "swipe_up") { vm.setSwipeUpAction(it) }
                         GesturePicker("Dock Handle Tap", settings.dockTapAction, colors, vm = vm, gestureSource = "dock_tap") { vm.setDockTapAction(it) }
 
                         val adminEnabled = remember { mutableStateOf(vm.isDeviceAdminEnabled()) }
-                        if (listOf(settings.doubleTapAction, settings.swipeDownAction, settings.tripleTapAction, settings.pinchAction, settings.dockTapAction).any { it == GestureAction.LOCK_SCREEN }) {
+                        if (listOf(settings.doubleTapAction, settings.swipeDownAction, settings.swipeUpAction, settings.tripleTapAction, settings.pinchAction, settings.dockTapAction).any { it == GestureAction.LOCK_SCREEN }) {
                             Spacer(Modifier.height(6.dp))
                             if (!adminEnabled.value) {
                                 ActionBtn("Enable Lock Screen", "Requires Device Admin", colors) { vm.requestDeviceAdmin(); adminEnabled.value = vm.isDeviceAdminEnabled() }
@@ -300,9 +359,11 @@ fun SettingsPanel(
                     }
                 }
 
+                }
                 // ── FEATURES ──
-                SectionHeader("Features", featuresExpanded, colors) { featuresExpanded = !featuresExpanded }
-                AnimatedVisibility(featuresExpanded) {
+                if (showFeatures) {
+                SectionHeader("Features", searching || featuresExpanded, colors) { featuresExpanded = !featuresExpanded }
+                AnimatedVisibility(searching || featuresExpanded) {
                     Column {
                         Tog("At-a-Glance Clock", settings.showClock, colors) { vm.setShowClock(it) }
                         if (settings.showClock) {
@@ -335,16 +396,37 @@ fun SettingsPanel(
                     }
                 }
 
+                }
                 // ── ADVANCED ──
-                SectionHeader("Advanced", advancedExpanded, colors) { advancedExpanded = !advancedExpanded }
-                AnimatedVisibility(advancedExpanded) {
+                if (showAdvanced) {
+                SectionHeader("Advanced", searching || advancedExpanded, colors) { advancedExpanded = !advancedExpanded }
+                AnimatedVisibility(searching || advancedExpanded) {
                     Column {
                         Lbl("Quick Actions", colors)
                         ActionBtn("Kill Background Apps", "Free memory", colors) { vm.killBackgroundApps() }
                         Spacer(Modifier.height(8.dp))
                         ActionBtn("Clear Search History", "Remove saved searches", colors) { vm.clearSearchHistory() }
                         Spacer(Modifier.height(8.dp))
-                        ActionBtn("Reset All Settings", "Restore defaults", colors) { vm.resetAllSettings() }
+                        var showResetConfirm by remember { mutableStateOf(false) }
+                        ActionBtn("Reset All Settings", "Restore defaults", colors) { showResetConfirm = true }
+                        if (showResetConfirm) {
+                            androidx.compose.ui.window.Dialog(onDismissRequest = { showResetConfirm = false }) {
+                                Column(Modifier.clip(RoundedCornerShape(20.dp)).background(colors.surface)
+                                    .border(0.5.dp, colors.border, RoundedCornerShape(20.dp)).padding(24.dp)) {
+                                    Text("Reset All Settings", color = colors.text, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+                                    Spacer(Modifier.height(10.dp))
+                                    Text("This will restore all settings to defaults. Your home screen layout will be preserved.", color = colors.textSecondary, fontSize = 14.sp)
+                                    Spacer(Modifier.height(18.dp))
+                                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                                        TextButton(onClick = { showResetConfirm = false }) { Text("Cancel", color = colors.textSecondary) }
+                                        Spacer(Modifier.width(8.dp))
+                                        Button(onClick = { showResetConfirm = false; vm.resetAllSettings() },
+                                            colors = ButtonDefaults.buttonColors(containerColor = colors.error),
+                                            shape = RoundedCornerShape(12.dp)) { Text("Reset", color = Color.White) }
+                                    }
+                                }
+                            }
+                        }
 
                         Lbl("Backup & Restore", colors)
                         ActionBtn("Export Layout", "Save to file", colors) { exportLauncher.launch("lawnchair-lite-backup.json") }
@@ -356,6 +438,12 @@ fun SettingsPanel(
                         val hiddenInfos = remember(hiddenApps, allAppsRaw) { allAppsRaw.filter { it.key in hiddenApps } }
                         if (hiddenInfos.isEmpty()) Text("No hidden apps", color = colors.textSecondary, fontSize = 13.sp, modifier = Modifier.padding(vertical = 8.dp))
                         else {
+                            if (hiddenInfos.size > 1) {
+                                Text("Unhide All (${hiddenInfos.size})", color = colors.accent, fontSize = 12.sp, fontWeight = FontWeight.Medium,
+                                    modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(colors.accent.copy(alpha = 0.12f))
+                                        .clickable { hiddenInfos.forEach { vm.unhideApp(it.key) } }.padding(horizontal = 12.dp, vertical = 6.dp))
+                                Spacer(Modifier.height(8.dp))
+                            }
                             hiddenInfos.forEach { app ->
                                 Row(
                                     modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(colors.card).clickable { vm.unhideApp(app.key) }.padding(horizontal = 12.dp, vertical = 10.dp),
@@ -376,6 +464,14 @@ fun SettingsPanel(
                         Lbl("About", colors)
                         Text("Lawnchair Lite v${app.lawnchairlite.BuildConfig.VERSION_NAME}", color = colors.text, fontSize = 14.sp, fontWeight = FontWeight.Medium)
                         Text("Lightweight launcher inspired by Lawnchair/Pixel Launcher.", color = colors.textSecondary, fontSize = 12.sp, modifier = Modifier.padding(top = 2.dp, bottom = 32.dp))
+                    }
+                }
+                }
+
+                // No results
+                if (searching && !showTheme && !showIcons && !showGrid && !showDrawer && !showDock && !showGestures && !showFeatures && !showAdvanced) {
+                    Box(Modifier.fillMaxWidth().padding(vertical = 40.dp), Alignment.Center) {
+                        Text("No settings match \"$settingsSearch\"", color = colors.textSecondary, fontSize = 13.sp)
                     }
                 }
 
@@ -443,8 +539,8 @@ private fun IconPackSection(
             Text(activeLabel, color = if (activePack.isNotBlank()) c.accent else c.textSecondary, fontSize = 12.sp)
         }
         if (activePack.isNotBlank()) {
-            Text("Reset", color = Color(0xFFEF5350), fontSize = 12.sp, fontWeight = FontWeight.Medium,
-                modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(Color(0xFFEF5350).copy(alpha = 0.1f))
+            Text("Reset", color = colors.error, fontSize = 12.sp, fontWeight = FontWeight.Medium,
+                modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(colors.error.copy(alpha = 0.1f))
                     .clickable { vm.clearIconPack(); expanded = false }.padding(horizontal = 10.dp, vertical = 4.dp))
             Spacer(Modifier.width(8.dp))
         }
@@ -561,6 +657,10 @@ private fun IconPackSection(
     Column(Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
         Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(c.card).border(0.5.dp, c.border, RoundedCornerShape(10.dp)).clickable { expanded = !expanded }.padding(horizontal = 14.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
             Text(label, color = c.text, fontSize = 14.sp, fontWeight = FontWeight.Medium); Spacer(Modifier.weight(1f))
+            if (current == GestureAction.LAUNCH_APP && currentAppKey.isNotBlank()) {
+                val gestureAppIcon = vm?.resolveApp(currentAppKey)?.icon
+                if (gestureAppIcon != null) { Image(rememberDrawablePainter(gestureAppIcon), null, Modifier.size(18.dp).clip(RoundedCornerShape(4.dp))); Spacer(Modifier.width(6.dp)) }
+            }
             Text(if (current == GestureAction.LAUNCH_APP) "Launch: $currentAppLabel" else current.label, color = c.accent, fontSize = 13.sp)
         }
         AnimatedVisibility(expanded) {

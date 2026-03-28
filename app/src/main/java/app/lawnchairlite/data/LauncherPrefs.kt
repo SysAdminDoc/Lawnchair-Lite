@@ -85,6 +85,8 @@ data class LauncherSettings(
     val gestureAppTripleTap: String = "",
     val gestureAppPinch: String = "",
     val gestureAppDockTap: String = "",
+    val swipeUpAction: GestureAction = GestureAction.APP_DRAWER,
+    val gestureAppSwipeUp: String = "",
 )
 
 class LauncherPrefs(private val context: Context) {
@@ -152,6 +154,8 @@ class LauncherPrefs(private val context: Context) {
         val GESTURE_APP_TRIPLE_TAP = stringPreferencesKey("gesture_app_triple_tap")
         val GESTURE_APP_PINCH = stringPreferencesKey("gesture_app_pinch")
         val GESTURE_APP_DOCK_TAP = stringPreferencesKey("gesture_app_dock_tap")
+        val SWIPE_UP_ACTION = stringPreferencesKey("swipe_up_action")
+        val GESTURE_APP_SWIPE_UP = stringPreferencesKey("gesture_app_swipe_up")
     }
 
     // Safe data flow: catches IOException (disk errors) and emits defaults
@@ -216,6 +220,8 @@ class LauncherPrefs(private val context: Context) {
             gestureAppTripleTap = p[GESTURE_APP_TRIPLE_TAP] ?: "",
             gestureAppPinch = p[GESTURE_APP_PINCH] ?: "",
             gestureAppDockTap = p[GESTURE_APP_DOCK_TAP] ?: "",
+            swipeUpAction = p[SWIPE_UP_ACTION]?.let { runCatching { GestureAction.valueOf(it) }.getOrNull() } ?: GestureAction.APP_DRAWER,
+            gestureAppSwipeUp = p[GESTURE_APP_SWIPE_UP] ?: "",
         )
     }
 
@@ -289,6 +295,7 @@ class LauncherPrefs(private val context: Context) {
                 p[TRIPLE_TAP_ACTION] = d.tripleTapAction.name; p[PINCH_ACTION] = d.pinchAction.name
                 p[DOCK_TAP_ACTION] = d.dockTapAction.name
                 p[SEARCH_ENGINE] = d.searchEngine.name
+                p[SWIPE_UP_ACTION] = d.swipeUpAction.name
             }
         }.onFailure { Log.e(TAG, "resetToDefaults failed", it) }
     }
@@ -479,6 +486,7 @@ class LauncherPrefs(private val context: Context) {
             put("page_indicator_style", p[PAGE_INDICATOR_STYLE] ?: "DOTS")
             put("label_weight", p[LABEL_WEIGHT] ?: "REGULAR")
             put("search_engine", p[SEARCH_ENGINE] ?: "GOOGLE")
+            put("swipe_up_action", p[SWIPE_UP_ACTION] ?: "APP_DRAWER")
             put("search_history", p[SEARCH_HISTORY] ?: "")
             put("suggestion_usage", p[SUGGESTION_USAGE] ?: "")
             put("app_usage", p[APP_USAGE] ?: "")
@@ -535,6 +543,7 @@ class LauncherPrefs(private val context: Context) {
             j.optString("triple_tap").takeIf { it.isNotBlank() && runCatching { GestureAction.valueOf(it) }.isSuccess }?.let { p[TRIPLE_TAP_ACTION] = it }
             j.optString("pinch_action").takeIf { it.isNotBlank() && runCatching { GestureAction.valueOf(it) }.isSuccess }?.let { p[PINCH_ACTION] = it }
             j.optString("dock_tap_action").takeIf { it.isNotBlank() && runCatching { GestureAction.valueOf(it) }.isSuccess }?.let { p[DOCK_TAP_ACTION] = it }
+            j.optString("swipe_up_action").takeIf { it.isNotBlank() && runCatching { GestureAction.valueOf(it) }.isSuccess }?.let { p[SWIPE_UP_ACTION] = it }
             if (j.has("show_suggestions")) p[SHOW_SUGGESTIONS] = j.getBoolean("show_suggestions")
             j.optString("clock_style").takeIf { it.isNotBlank() && runCatching { ClockStyle.valueOf(it) }.isSuccess }?.let { p[CLOCK_STYLE] = it }
             if (j.has("hide_dock")) p[HIDE_DOCK] = j.getBoolean("hide_dock")

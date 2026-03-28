@@ -221,6 +221,19 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     private val _homeMenu = MutableStateFlow<HomeMenuState?>(null)
     val homeMenu: StateFlow<HomeMenuState?> = _homeMenu.asStateFlow()
 
+    // Uninstall confirmation
+    data class UninstallConfirm(val app: AppInfo, val source: DragSource?, val sourceIndex: Int?)
+    private val _uninstallConfirm = MutableStateFlow<UninstallConfirm?>(null)
+    val uninstallConfirm: StateFlow<UninstallConfirm?> = _uninstallConfirm.asStateFlow()
+    fun requestUninstall(app: AppInfo, source: DragSource? = null, sourceIndex: Int? = null) { _uninstallConfirm.value = UninstallConfirm(app, source, sourceIndex) }
+    fun dismissUninstall() { _uninstallConfirm.value = null }
+    fun confirmUninstall() {
+        val confirm = _uninstallConfirm.value ?: return
+        uninstall(confirm.app)
+        if (confirm.source != null && confirm.sourceIndex != null) removeFromGrid(confirm.source, confirm.sourceIndex)
+        _uninstallConfirm.value = null; _homeMenu.value = null; _shortcuts.value = emptyList()
+    }
+
     private val _editMode = MutableStateFlow(false)
     val editMode: StateFlow<Boolean> = _editMode.asStateFlow()
 
@@ -460,6 +473,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
                         "triple_tap" -> settings.value.gestureAppTripleTap
                         "pinch" -> settings.value.gestureAppPinch
                         "dock_tap" -> settings.value.gestureAppDockTap
+                        "swipe_up" -> settings.value.gestureAppSwipeUp
                         else -> ""
                     }
                     if (appKey.isNotBlank()) resolveApp(appKey)?.let { launch(it) }
@@ -586,6 +600,22 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         _homeGrid.value = grid; prefs.saveHome(grid)
         toast("Page added")
     }}
+    fun removePage(pageIndex: Int) { viewModelScope.launch {
+        val ps = pageSize(); val np = numPages()
+        if (np <= 1) { toast("Can't remove the last page"); return@launch }
+        val start = pageIndex * ps; val end = (start + ps).coerceAtMost(_homeGrid.value.size)
+        val pageSlice = _homeGrid.value.subList(start, end)
+        if (pageSlice.any { it != null }) { toast("Page is not empty — clear it first"); return@launch }
+        val grid = _homeGrid.value.toMutableList()
+        grid.subList(start, end).clear()
+        _homeGrid.value = grid; prefs.saveHome(grid)
+        // Remove widgets on this page and shift widgets on later pages
+        val updated = _widgets.value.mapNotNull { w ->
+            when { w.page == pageIndex -> null; w.page > pageIndex -> w.copy(page = w.page - 1); else -> w }
+        }
+        _widgets.value = updated; prefs.saveWidgets(updated)
+        toast("Page removed")
+    }}
 
     private fun padGrid(grid: List<GridCell?>, ps: Int): List<GridCell?> {
         if (ps <= 0) return grid
@@ -687,7 +717,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             try {
                 when {
-                    _hoverUninstall.value -> { if (drag.item is GridCell.App) { clearSourceCell(drag); drag.appInfo?.let { uninstall(it) } } }
+                    _hoverUninstall.value -> { if (drag.item is GridCell.App) { clearSourceCell(drag); drag.appInfo?.let { requestUninstall(it) } } }
                     _hoverRemove.value -> clearSourceCell(drag)
                     hi >= 0 && isDock -> dropOnGrid(drag, hi, DragSource.DOCK)
                     hi >= 0 -> dropOnGrid(drag, hi, DragSource.HOME)
@@ -888,6 +918,14 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    fun clearRecentApps() {
+        viewModelScope.launch {
+            _appUsage.value = emptyMap()
+            prefs.saveAppUsage(emptyMap())
+            toast("Recents cleared")
+        }
+    }
+
     // -- Settings --
 
     fun setTheme(t: ThemeMode) = pref(LauncherPrefs.THEME, t.name)
@@ -925,6 +963,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     fun setTripleTapAction(a: GestureAction) = pref(LauncherPrefs.TRIPLE_TAP_ACTION, a.name)
     fun setPinchAction(a: GestureAction) = pref(LauncherPrefs.PINCH_ACTION, a.name)
     fun setDockTapAction(a: GestureAction) = pref(LauncherPrefs.DOCK_TAP_ACTION, a.name)
+    fun setSwipeUpAction(a: GestureAction) = pref(LauncherPrefs.SWIPE_UP_ACTION, a.name)
     fun setShowSuggestions(v: Boolean) = pref(LauncherPrefs.SHOW_SUGGESTIONS, v)
     fun setClockStyle(s: ClockStyle) = pref(LauncherPrefs.CLOCK_STYLE, s.name)
     fun setHideDock(v: Boolean) = pref(LauncherPrefs.HIDE_DOCK, v)
@@ -939,6 +978,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
             "triple_tap" -> LauncherPrefs.GESTURE_APP_TRIPLE_TAP
             "pinch" -> LauncherPrefs.GESTURE_APP_PINCH
             "dock_tap" -> LauncherPrefs.GESTURE_APP_DOCK_TAP
+            "swipe_up" -> LauncherPrefs.GESTURE_APP_SWIPE_UP
             else -> return
         }
         pref(key, appKey)
@@ -949,6 +989,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         "triple_tap" -> settings.value.gestureAppTripleTap
         "pinch" -> settings.value.gestureAppPinch
         "dock_tap" -> settings.value.gestureAppDockTap
+        "swipe_up" -> settings.value.gestureAppSwipeUp
         else -> ""
     }
     fun cycleClockStyle() {
@@ -968,8 +1009,8 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     fun getAppSizeInfo(packageName: String): String? {
         return try {
             val ai = ctx.packageManager.getApplicationInfo(packageName, 0)
-            val file = java.io.File(ai.sourceDir)
-            val bytes = file.length()
+            var bytes = java.io.File(ai.sourceDir).length()
+            ai.splitSourceDirs?.forEach { bytes += java.io.File(it).length() }
             when {
                 bytes >= 1_000_000_000 -> String.format("%.1f GB", bytes / 1_000_000_000.0)
                 bytes >= 1_000_000 -> String.format("%.1f MB", bytes / 1_000_000.0)
