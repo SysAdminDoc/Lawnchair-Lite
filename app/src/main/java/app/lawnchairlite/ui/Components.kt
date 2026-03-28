@@ -27,6 +27,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -320,31 +321,34 @@ fun AtAGlanceClock(modifier: Modifier = Modifier, clockStyle: app.lawnchairlite.
         }
     }
 
+    // Text shadow for wallpaper readability
+    val clockShadow = Shadow(color = Color.Black.copy(alpha = 0.6f), offset = Offset(0f, 1f), blurRadius = 4f)
+
     when (clockStyle) {
         app.lawnchairlite.data.ClockStyle.LARGE -> Column(modifier.padding(horizontal = 24.dp, vertical = 12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clickable { onDateClick() }) {
-                Text(dateStr, color = c.text.copy(alpha = 0.7f), fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                Text(dateStr, color = c.text.copy(alpha = 0.7f), fontSize = 14.sp, fontWeight = FontWeight.Medium, style = TextStyle(shadow = clockShadow))
                 if (batteryPct in 0..100) {
                     val batteryLow = batteryPct <= 15
-                    Text("  |  ", color = c.textSecondary.copy(alpha = 0.4f), fontSize = 12.sp)
+                    Text("  |  ", color = c.textSecondary.copy(alpha = 0.4f), fontSize = 12.sp, style = TextStyle(shadow = clockShadow))
                     Icon(if (batteryLow) Icons.Default.BatteryAlert else Icons.Default.BatteryFull,
                         null, tint = if (batteryLow) c.error else c.accent.copy(alpha = 0.7f),
                         modifier = Modifier.size(14.dp))
-                    Text("$batteryPct%", color = c.textSecondary, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                    Text("$batteryPct%", color = c.textSecondary, fontSize = 12.sp, fontWeight = FontWeight.Medium, style = TextStyle(shadow = clockShadow))
                 }
             }
             if (nextAlarmStr != null) {
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 1.dp)) {
                     Icon(Icons.Default.Alarm, null, tint = c.accent.copy(alpha = 0.5f), modifier = Modifier.size(12.dp))
                     Spacer(Modifier.width(4.dp))
-                    Text(nextAlarmStr, color = c.textSecondary.copy(alpha = 0.7f), fontSize = 11.sp)
+                    Text(nextAlarmStr, color = c.textSecondary.copy(alpha = 0.7f), fontSize = 11.sp, style = TextStyle(shadow = clockShadow))
                 }
             }
             Spacer(Modifier.height(2.dp))
             Box(Modifier.clickable { clockTapHandler() }) {
                 Row(verticalAlignment = Alignment.Bottom) {
-                    Text(timeStr, color = c.text, fontSize = 52.sp, fontWeight = FontWeight.Thin, lineHeight = 52.sp)
-                    if (ampm != null) { Spacer(Modifier.width(6.dp)); Text(ampm, color = c.accent, fontSize = 16.sp, fontWeight = FontWeight.Medium, modifier = Modifier.padding(bottom = 9.dp)) }
+                    Text(timeStr, color = c.text, fontSize = 52.sp, fontWeight = FontWeight.Thin, lineHeight = 52.sp, style = TextStyle(shadow = clockShadow))
+                    if (ampm != null) { Spacer(Modifier.width(6.dp)); Text(ampm, color = c.accent, fontSize = 16.sp, fontWeight = FontWeight.Medium, modifier = Modifier.padding(bottom = 9.dp), style = TextStyle(shadow = clockShadow)) }
                 }
             }
         }
@@ -352,17 +356,17 @@ fun AtAGlanceClock(modifier: Modifier = Modifier, clockStyle: app.lawnchairlite.
             modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 10.dp).clickable { clockTapHandler() },
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(dateStr, color = c.textSecondary, fontSize = 13.sp, fontWeight = FontWeight.Medium, modifier = Modifier.clickable { onDateClick() })
-            Text("  ·  ", color = c.textSecondary.copy(alpha = 0.4f), fontSize = 13.sp)
-            Text(timeStr, color = c.text, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-            if (ampm != null) { Spacer(Modifier.width(3.dp)); Text(ampm, color = c.accent, fontSize = 10.sp, fontWeight = FontWeight.Medium) }
+            Text(dateStr, color = c.textSecondary, fontSize = 13.sp, fontWeight = FontWeight.Medium, modifier = Modifier.clickable { onDateClick() }, style = TextStyle(shadow = clockShadow))
+            Text("  ·  ", color = c.textSecondary.copy(alpha = 0.4f), fontSize = 13.sp, style = TextStyle(shadow = clockShadow))
+            Text(timeStr, color = c.text, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, style = TextStyle(shadow = clockShadow))
+            if (ampm != null) { Spacer(Modifier.width(3.dp)); Text(ampm, color = c.accent, fontSize = 10.sp, fontWeight = FontWeight.Medium, style = TextStyle(shadow = clockShadow)) }
             if (batteryPct in 0..100) {
                 val compactBatteryLow = batteryPct <= 15
-                Text("  ·  ", color = c.textSecondary.copy(alpha = 0.4f), fontSize = 13.sp)
+                Text("  ·  ", color = c.textSecondary.copy(alpha = 0.4f), fontSize = 13.sp, style = TextStyle(shadow = clockShadow))
                 Icon(if (compactBatteryLow) Icons.Default.BatteryAlert else Icons.Default.BatteryFull,
                     null, tint = if (compactBatteryLow) c.error else c.textSecondary.copy(alpha = 0.5f),
                     modifier = Modifier.size(12.dp))
-                Text("$batteryPct%", color = if (compactBatteryLow) c.error else c.textSecondary, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                Text("$batteryPct%", color = if (compactBatteryLow) c.error else c.textSecondary, fontSize = 12.sp, fontWeight = FontWeight.Medium, style = TextStyle(shadow = clockShadow))
             }
         }
         app.lawnchairlite.data.ClockStyle.MINIMAL -> Box(
@@ -370,8 +374,8 @@ fun AtAGlanceClock(modifier: Modifier = Modifier, clockStyle: app.lawnchairlite.
             Alignment.CenterStart,
         ) {
             Row(verticalAlignment = Alignment.Bottom) {
-                Text(timeStr, color = c.text, fontSize = 64.sp, fontWeight = FontWeight.ExtraLight, lineHeight = 64.sp)
-                if (ampm != null) { Spacer(Modifier.width(6.dp)); Text(ampm, color = c.accent, fontSize = 18.sp, fontWeight = FontWeight.Medium, modifier = Modifier.padding(bottom = 12.dp)) }
+                Text(timeStr, color = c.text, fontSize = 64.sp, fontWeight = FontWeight.ExtraLight, lineHeight = 64.sp, style = TextStyle(shadow = clockShadow))
+                if (ampm != null) { Spacer(Modifier.width(6.dp)); Text(ampm, color = c.accent, fontSize = 18.sp, fontWeight = FontWeight.Medium, modifier = Modifier.padding(bottom = 12.dp), style = TextStyle(shadow = clockShadow)) }
             }
         }
     }
