@@ -161,10 +161,39 @@ fun deserializeGrid(s: String): List<GridCell?> = if (s.isBlank()) emptyList() e
 
 // Each inner list = one dock slot (first match wins, rest are fallbacks for that slot)
 val DEFAULT_DOCK_SLOTS = listOf(
-    listOf("com.google.android.dialer", "com.android.dialer", "com.samsung.android.dialer"),
-    listOf("com.google.android.apps.messaging", "com.android.mms", "com.samsung.android.messaging"),
-    listOf("com.android.chrome", "com.brave.browser", "org.mozilla.firefox", "com.samsung.android.app.sbrowser", "com.opera.browser"),
-    listOf("com.google.android.GoogleCamera", "com.android.camera", "com.android.camera2", "com.sec.android.app.camera", "com.samsung.android.camera"),
+    // Slot 1: Phone / Dialer
+    listOf(
+        "com.google.android.dialer", "com.samsung.android.dialer", "com.android.dialer",
+        "com.android.phone", "com.sec.phone",
+        "com.truecaller", "com.hiya.star",
+    ),
+    // Slot 2: Messaging / SMS
+    listOf(
+        "com.google.android.apps.messaging", "com.samsung.android.messaging", "com.android.mms",
+        "com.textra", "org.thoughtcrime.securesms", "com.facebook.orca",
+        "org.telegram.messenger", "com.whatsapp",
+    ),
+    // Slot 3: Browser (center)
+    listOf(
+        "com.android.chrome", "com.brave.browser", "org.mozilla.firefox", "org.mozilla.fenix",
+        "com.opera.browser", "com.opera.mini.native", "com.opera.gx",
+        "com.vivaldi.browser", "com.microsoft.emmx", "com.kiwibrowser.browser",
+        "com.duckduckgo.mobile.android", "com.ecosia.android",
+        "org.chromium.chrome", "com.sec.android.app.sbrowser",
+        "io.github.nicewithcheese.nicewithcheese", "org.torproject.torbrowser",
+        "com.UCMobile.intl", "mark.via", "acr.browser.barebones",
+    ),
+    // Slot 4: Camera + Gallery
+    listOf(
+        "com.google.android.GoogleCamera", "com.sec.android.app.camera",
+        "com.android.camera", "com.android.camera2", "com.samsung.android.camera",
+        "com.oneplus.camera", "com.sonyericsson.android.camera",
+        "com.huawei.camera", "org.codeaurora.snapcam",
+        "com.google.android.apps.photos", "com.samsung.android.gallery",
+        "com.sec.android.gallery3d", "com.android.gallery3d",
+        "com.simplemobiletools.gallery.pro", "com.google.android.apps.photosgo",
+    ),
+    // Slot 5: Settings
     listOf("com.android.settings"),
 )
 
