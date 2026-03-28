@@ -130,7 +130,7 @@ fun AppIconContent(app: AppInfo, shape: IconShape, iconSizeDp: Dp = 50.dp, modif
                 }
             }
         }
-        if (showLabel) { Spacer(Modifier.height(3.dp)); Text(customLabel ?: app.label, color = c.text, fontSize = labelSizeSp.sp, fontWeight = labelWeight, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, modifier = Modifier.widthIn(max = 68.dp)) }
+        if (showLabel) { Spacer(Modifier.height(3.dp)); Text(customLabel ?: app.label, color = c.text, fontSize = labelSizeSp.sp, fontWeight = labelWeight, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, modifier = Modifier.widthIn(max = 76.dp), style = TextStyle(shadow = Shadow(color = Color.Black.copy(alpha = 0.5f), offset = Offset(0f, 1f), blurRadius = 3f))) }
     }
 }
 
@@ -159,7 +159,7 @@ fun TappableAppIcon(app: AppInfo, shape: IconShape, iconSizeDp: Dp = 50.dp, modi
                 }
             }
         }
-        if (showLabel) { Spacer(Modifier.height(3.dp)); Text(customLabel ?: app.label, color = c.text, fontSize = labelSizeSp.sp, fontWeight = labelWeight, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, modifier = Modifier.widthIn(max = 68.dp)) }
+        if (showLabel) { Spacer(Modifier.height(3.dp)); Text(customLabel ?: app.label, color = c.text, fontSize = labelSizeSp.sp, fontWeight = labelWeight, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, modifier = Modifier.widthIn(max = 76.dp), style = TextStyle(shadow = Shadow(color = Color.Black.copy(alpha = 0.5f), offset = Offset(0f, 1f), blurRadius = 3f))) }
     }
 }
 
@@ -384,7 +384,7 @@ fun AtAGlanceClock(modifier: Modifier = Modifier, clockStyle: app.lawnchairlite.
 @Composable
 fun SearchPill(onClick: () -> Unit, modifier: Modifier = Modifier, searchEngineLabel: String = "Google") {
     val c = LocalLauncherColors.current
-    Row(modifier.fillMaxWidth().height(44.dp).clip(RoundedCornerShape(22.dp)).background(c.searchBg).border(0.5.dp, c.border, RoundedCornerShape(22.dp)).clickable { onClick() }.padding(horizontal = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(modifier.fillMaxWidth().height(44.dp).clip(RoundedCornerShape(22.dp)).background(Color.Black.copy(alpha = 0.35f)).border(0.5.dp, c.textSecondary.copy(alpha = 0.25f), RoundedCornerShape(22.dp)).clickable { onClick() }.padding(horizontal = 14.dp), verticalAlignment = Alignment.CenterVertically) {
         Icon(Icons.Default.Search, null, tint = c.textSecondary, modifier = Modifier.size(18.dp))
         Spacer(Modifier.width(10.dp)); Text("Search apps\u2026", color = c.textSecondary, fontSize = 14.sp); Spacer(Modifier.weight(1f))
     }
@@ -434,8 +434,8 @@ fun FastScrollerRail(letters: List<Char>, onLetterSelected: (Char) -> Unit, onVi
         verticalArrangement = Arrangement.SpaceEvenly,
     ) {
         letters.forEach { ch ->
-            Text(ch.toString(), color = c.accent, fontSize = 9.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center,
-                modifier = Modifier.size(16.dp).wrapContentSize(Alignment.Center))
+            Text(ch.toString(), color = c.accent, fontSize = 10.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center,
+                modifier = Modifier.width(20.dp).height(18.dp).wrapContentSize(Alignment.Center))
         }
     }
 }
