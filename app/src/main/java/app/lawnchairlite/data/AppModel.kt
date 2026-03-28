@@ -31,7 +31,8 @@ enum class IconSize(val label: String, val dp: Int) {
 enum class GestureAction(val label: String) {
     NONE("None"), LOCK_SCREEN("Lock Screen"), NOTIFICATION_SHADE("Notification Shade"),
     APP_DRAWER("App Drawer"), SETTINGS("Settings"), KILL_APPS("Kill Background Apps"),
-    FLASHLIGHT("Flashlight"), EDIT_MODE("Edit Mode"), RECENT_APP("Recent App");
+    FLASHLIGHT("Flashlight"), EDIT_MODE("Edit Mode"), RECENT_APP("Recent App"),
+    LAUNCH_APP("Launch App");
 }
 enum class PageIndicatorStyle(val label: String) {
     DOTS("Dots"), LINE("Line"), HIDDEN("Hidden");

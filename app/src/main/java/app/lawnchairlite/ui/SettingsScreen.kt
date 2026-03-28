@@ -77,7 +77,7 @@ fun SettingsPanel(
             Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp).navigationBarsPadding()) {
 
                 // ── THEME & WALLPAPER ──
-                SectionHeader("Theme & Wallpaper", themeExpanded, colors) { themeExpanded = !themeExpanded }
+                SectionHeader("Theme & Wallpaper", themeExpanded, colors, summary = if (!themeExpanded) settings.themeMode.label else null) { themeExpanded = !themeExpanded }
                 AnimatedVisibility(themeExpanded) {
                     Column {
                         Lbl("Theme", colors)
@@ -158,7 +158,7 @@ fun SettingsPanel(
                 }
 
                 // ── ICONS & LABELS ──
-                SectionHeader("Icons & Labels", iconsExpanded, colors) { iconsExpanded = !iconsExpanded }
+                SectionHeader("Icons & Labels", iconsExpanded, colors, summary = if (!iconsExpanded) "${settings.iconShape.label} · ${settings.iconSize.label}" else null) { iconsExpanded = !iconsExpanded }
                 AnimatedVisibility(iconsExpanded) {
                     Column {
                         Lbl("Icon Shape", colors)
@@ -190,7 +190,7 @@ fun SettingsPanel(
                 }
 
                 // ── GRID & LAYOUT ──
-                SectionHeader("Grid & Layout", gridExpanded, colors) { gridExpanded = !gridExpanded }
+                SectionHeader("Grid & Layout", gridExpanded, colors, summary = if (!gridExpanded) "${settings.gridColumns}x${settings.gridRows} · ${settings.pageTransition.label}" else null) { gridExpanded = !gridExpanded }
                 AnimatedVisibility(gridExpanded) {
                     Column {
                         Lbl("Grid Columns", colors)
@@ -231,7 +231,7 @@ fun SettingsPanel(
                 }
 
                 // ── DRAWER ──
-                SectionHeader("Drawer", drawerExpanded, colors) { drawerExpanded = !drawerExpanded }
+                SectionHeader("Drawer", drawerExpanded, colors, summary = if (!drawerExpanded) "${settings.drawerSort.label} · ${settings.searchEngine.label}" else null) { drawerExpanded = !drawerExpanded }
                 AnimatedVisibility(drawerExpanded) {
                     Column {
                         Lbl("Drawer Sort", colors)
@@ -260,7 +260,7 @@ fun SettingsPanel(
                 }
 
                 // ── DOCK ──
-                SectionHeader("Dock", dockExpanded, colors) { dockExpanded = !dockExpanded }
+                SectionHeader("Dock", dockExpanded, colors, summary = if (!dockExpanded) "${settings.dockCount} icons · ${settings.dockStyle.label}" else null) { dockExpanded = !dockExpanded }
                 AnimatedVisibility(dockExpanded) {
                     Column {
                         Lbl("Dock Icons", colors)
@@ -281,11 +281,11 @@ fun SettingsPanel(
                 SectionHeader("Gestures", gesturesExpanded, colors) { gesturesExpanded = !gesturesExpanded }
                 AnimatedVisibility(gesturesExpanded) {
                     Column {
-                        GesturePicker("Double-Tap", settings.doubleTapAction, colors) { vm.setDoubleTapAction(it) }
-                        GesturePicker("Swipe Down", settings.swipeDownAction, colors) { vm.setSwipeDownAction(it) }
-                        GesturePicker("Triple-Tap", settings.tripleTapAction, colors) { vm.setTripleTapAction(it) }
-                        GesturePicker("Pinch In", settings.pinchAction, colors) { vm.setPinchAction(it) }
-                        GesturePicker("Dock Handle Tap", settings.dockTapAction, colors) { vm.setDockTapAction(it) }
+                        GesturePicker("Double-Tap", settings.doubleTapAction, colors, vm = vm, gestureSource = "double_tap") { vm.setDoubleTapAction(it) }
+                        GesturePicker("Swipe Down", settings.swipeDownAction, colors, vm = vm, gestureSource = "swipe_down") { vm.setSwipeDownAction(it) }
+                        GesturePicker("Triple-Tap", settings.tripleTapAction, colors, vm = vm, gestureSource = "triple_tap") { vm.setTripleTapAction(it) }
+                        GesturePicker("Pinch In", settings.pinchAction, colors, vm = vm, gestureSource = "pinch") { vm.setPinchAction(it) }
+                        GesturePicker("Dock Handle Tap", settings.dockTapAction, colors, vm = vm, gestureSource = "dock_tap") { vm.setDockTapAction(it) }
 
                         val adminEnabled = remember { mutableStateOf(vm.isDeviceAdminEnabled()) }
                         if (listOf(settings.doubleTapAction, settings.swipeDownAction, settings.tripleTapAction, settings.pinchAction, settings.dockTapAction).any { it == GestureAction.LOCK_SCREEN }) {
@@ -388,7 +388,7 @@ fun SettingsPanel(
 // ── Section Header ───────────────────────────────────────────────────
 
 @Composable
-private fun SectionHeader(title: String, expanded: Boolean, c: LauncherColors, onToggle: () -> Unit) {
+private fun SectionHeader(title: String, expanded: Boolean, c: LauncherColors, summary: String? = null, onToggle: () -> Unit) {
     Row(
         Modifier.fillMaxWidth()
             .padding(top = 16.dp, bottom = 4.dp)
@@ -399,7 +399,12 @@ private fun SectionHeader(title: String, expanded: Boolean, c: LauncherColors, o
             .padding(horizontal = 16.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(title, color = if (expanded) c.accent else c.text, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+        Column(Modifier.weight(1f)) {
+            Text(title, color = if (expanded) c.accent else c.text, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+            if (summary != null) {
+                Text(summary, color = c.textSecondary, fontSize = 11.sp, maxLines = 1)
+            }
+        }
         Icon(
             if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
             contentDescription = if (expanded) "Collapse" else "Expand",
@@ -545,18 +550,50 @@ private fun IconPackSection(
     }
 }
 
-@Composable private fun GesturePicker(label: String, current: GestureAction, c: LauncherColors, onChange: (GestureAction) -> Unit) {
+@Composable private fun GesturePicker(label: String, current: GestureAction, c: LauncherColors, vm: LauncherViewModel? = null, gestureSource: String = "", onChange: (GestureAction) -> Unit) {
     var expanded by remember { mutableStateOf(false) }
+    var showAppPicker by remember { mutableStateOf(false) }
+    val currentAppKey = if (vm != null && gestureSource.isNotBlank()) vm.getGestureApp(gestureSource) else ""
+    val currentAppLabel = if (current == GestureAction.LAUNCH_APP && currentAppKey.isNotBlank()) {
+        vm?.resolveApp(currentAppKey)?.label ?: "App"
+    } else current.label
+
     Column(Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
         Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(c.card).border(0.5.dp, c.border, RoundedCornerShape(10.dp)).clickable { expanded = !expanded }.padding(horizontal = 14.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text(label, color = c.text, fontSize = 14.sp, fontWeight = FontWeight.Medium); Spacer(Modifier.weight(1f)); Text(current.label, color = c.accent, fontSize = 13.sp)
+            Text(label, color = c.text, fontSize = 14.sp, fontWeight = FontWeight.Medium); Spacer(Modifier.weight(1f))
+            Text(if (current == GestureAction.LAUNCH_APP) "Launch: $currentAppLabel" else current.label, color = c.accent, fontSize = 13.sp)
         }
         AnimatedVisibility(expanded) {
             Column(Modifier.padding(start = 8.dp, top = 4.dp)) {
                 GestureAction.entries.forEach { action -> val sel = action == current
                     Text(action.label, color = if (sel) c.accent else c.text, fontSize = 13.sp, fontWeight = if (sel) FontWeight.Bold else FontWeight.Normal,
                         modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).background(if (sel) c.accent.copy(alpha = 0.1f) else Color.Transparent)
-                            .clickable { onChange(action); expanded = false }.padding(horizontal = 12.dp, vertical = 10.dp))
+                            .clickable {
+                                onChange(action)
+                                if (action == GestureAction.LAUNCH_APP) showAppPicker = true
+                                else { expanded = false; showAppPicker = false }
+                            }.padding(horizontal = 12.dp, vertical = 10.dp))
+                }
+            }
+        }
+        // App picker for LAUNCH_APP
+        if (showAppPicker && vm != null && gestureSource.isNotBlank()) {
+            val allAppsForPicker by vm.allApps.collectAsState()
+            Column(Modifier.padding(start = 16.dp, top = 4.dp).heightIn(max = 200.dp).verticalScroll(rememberScrollState())) {
+                Text("Select app:", color = c.textSecondary, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 4.dp))
+                allAppsForPicker.forEach { pickApp ->
+                    Row(
+                        Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp))
+                            .clickable { vm.setGestureApp(gestureSource, pickApp.key); showAppPicker = false; expanded = false }
+                            .padding(horizontal = 12.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        if (pickApp.icon != null) {
+                            Image(com.google.accompanist.drawablepainter.rememberDrawablePainter(pickApp.icon), null, Modifier.size(24.dp).clip(RoundedCornerShape(6.dp)))
+                            Spacer(Modifier.width(8.dp))
+                        }
+                        Text(pickApp.label, color = c.text, fontSize = 12.sp, maxLines = 1)
+                    }
                 }
             }
         }

@@ -681,6 +681,7 @@ fun DrawerContextMenu(app: AppInfo, shape: IconShape, vm: LauncherViewModel, sho
 fun HomeSpaceMenuOverlay(
     onEditMode: () -> Unit,
     onAddWidget: () -> Unit,
+    onAddPage: () -> Unit,
     onWallpaper: () -> Unit,
     onSettings: () -> Unit,
     onDismiss: () -> Unit,
@@ -695,6 +696,8 @@ fun HomeSpaceMenuOverlay(
             HomeSpaceMenuItem("Rearrange Icons", Icons.Default.GridView, c, onClick = onEditMode)
             Divider(color = c.border.copy(alpha = 0.2f), thickness = 0.5.dp)
             HomeSpaceMenuItem("Add Widget", Icons.Default.Widgets, c, onClick = onAddWidget)
+            Divider(color = c.border.copy(alpha = 0.2f), thickness = 0.5.dp)
+            HomeSpaceMenuItem("Add Page", Icons.Default.Add, c, onClick = onAddPage)
             Divider(color = c.border.copy(alpha = 0.2f), thickness = 0.5.dp)
             HomeSpaceMenuItem("Wallpaper", Icons.Default.Wallpaper, c, onClick = onWallpaper)
             Divider(color = c.border.copy(alpha = 0.2f), thickness = 0.5.dp)

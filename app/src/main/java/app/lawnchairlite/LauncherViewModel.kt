@@ -433,7 +433,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
 
     // -- Gestures --
 
-    fun executeGesture(action: GestureAction) {
+    fun executeGesture(action: GestureAction, gestureSource: String = "") {
         try {
             when (action) {
                 GestureAction.NONE -> {}
@@ -452,6 +452,18 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
                         .drop(1) // skip the most recent (current) app
                         .firstOrNull()
                     lastUsed?.let { resolveApp(it.key)?.let { app -> launch(app) } }
+                }
+                GestureAction.LAUNCH_APP -> {
+                    val appKey = when (gestureSource) {
+                        "double_tap" -> settings.value.gestureAppDoubleTap
+                        "swipe_down" -> settings.value.gestureAppSwipeDown
+                        "triple_tap" -> settings.value.gestureAppTripleTap
+                        "pinch" -> settings.value.gestureAppPinch
+                        "dock_tap" -> settings.value.gestureAppDockTap
+                        else -> ""
+                    }
+                    if (appKey.isNotBlank()) resolveApp(appKey)?.let { launch(it) }
+                    else toast("No app configured for this gesture")
                 }
             }
         } catch (e: Exception) {
@@ -567,6 +579,13 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
 
     fun pageSize(): Int { val s = settings.value; return (s.gridColumns * s.gridRows).coerceAtLeast(1) }
     fun numPages(): Int { val ps = pageSize(); return max(1, (_homeGrid.value.size + ps - 1) / ps) }
+    fun addPage() { viewModelScope.launch {
+        val ps = pageSize()
+        val grid = _homeGrid.value.toMutableList()
+        grid.addAll(List(ps) { null })
+        _homeGrid.value = grid; prefs.saveHome(grid)
+        toast("Page added")
+    }}
 
     private fun padGrid(grid: List<GridCell?>, ps: Int): List<GridCell?> {
         if (ps <= 0) return grid
@@ -913,6 +932,25 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     fun setPageIndicatorStyle(s: PageIndicatorStyle) = pref(LauncherPrefs.PAGE_INDICATOR_STYLE, s.name)
     fun setLabelWeight(w: LabelWeight) = pref(LauncherPrefs.LABEL_WEIGHT, w.name)
     fun setSearchEngine(e: SearchEngine) = pref(LauncherPrefs.SEARCH_ENGINE, e.name)
+    fun setGestureApp(gestureSource: String, appKey: String) {
+        val key = when (gestureSource) {
+            "double_tap" -> LauncherPrefs.GESTURE_APP_DOUBLE_TAP
+            "swipe_down" -> LauncherPrefs.GESTURE_APP_SWIPE_DOWN
+            "triple_tap" -> LauncherPrefs.GESTURE_APP_TRIPLE_TAP
+            "pinch" -> LauncherPrefs.GESTURE_APP_PINCH
+            "dock_tap" -> LauncherPrefs.GESTURE_APP_DOCK_TAP
+            else -> return
+        }
+        pref(key, appKey)
+    }
+    fun getGestureApp(gestureSource: String): String = when (gestureSource) {
+        "double_tap" -> settings.value.gestureAppDoubleTap
+        "swipe_down" -> settings.value.gestureAppSwipeDown
+        "triple_tap" -> settings.value.gestureAppTripleTap
+        "pinch" -> settings.value.gestureAppPinch
+        "dock_tap" -> settings.value.gestureAppDockTap
+        else -> ""
+    }
     fun cycleClockStyle() {
         val styles = ClockStyle.entries
         val next = styles[(styles.indexOf(settings.value.clockStyle) + 1) % styles.size]

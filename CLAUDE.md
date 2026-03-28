@@ -42,6 +42,7 @@ Sign: `jarsigner` with `lawnchair-lite.jks` (alias: lawnchair-lite), then `zipal
 - CameraManager.TorchCallback syncs flashlight state with external toggles
 
 ## Version History
+- v2.17.0: LAUNCH_APP gesture action (bind any gesture to open a specific app), "Add Page" in home space menu, settings section summaries (show current values when collapsed), drawer shows "X results" during search, gesture app picker UI in settings
 - v2.16.1: Audit fixes — SearchPill shows configured engine initial+name, haptic on home space menu, dock swipe indicator dot, categorizedApps skips during search (perf), contact search permission chip in drawer, icon pack preview loads async (off compose thread), stale ViewModel changelog cleaned
 - v2.16.0: Collapsible settings sections (8 groups), search engine picker (Google/DDG/Bing/Brave/Startpage), home space long-press menu (Pixel Launcher-style: Edit/Widget/Wallpaper/Settings), dock swipe-up gesture (launches configured app), icon pack preview (4 sample icons in picker), dock swipe app config in context menu, stale version comments cleaned
 - v2.15.7: suggestFolderName tokenized, unit converter regex hoisted, flashlight TorchCallback sync, drawer columns range 0-6

@@ -80,6 +80,11 @@ data class LauncherSettings(
     val pageIndicatorStyle: PageIndicatorStyle = PageIndicatorStyle.DOTS,
     val labelWeight: LabelWeight = LabelWeight.REGULAR,
     val searchEngine: SearchEngine = SearchEngine.GOOGLE,
+    val gestureAppDoubleTap: String = "",
+    val gestureAppSwipeDown: String = "",
+    val gestureAppTripleTap: String = "",
+    val gestureAppPinch: String = "",
+    val gestureAppDockTap: String = "",
 )
 
 class LauncherPrefs(private val context: Context) {
@@ -142,6 +147,11 @@ class LauncherPrefs(private val context: Context) {
         val SEARCH_HISTORY = stringPreferencesKey("search_history")
         val SUGGESTION_USAGE = stringPreferencesKey("suggestion_usage")
         val SEARCH_ENGINE = stringPreferencesKey("search_engine")
+        val GESTURE_APP_DOUBLE_TAP = stringPreferencesKey("gesture_app_double_tap")
+        val GESTURE_APP_SWIPE_DOWN = stringPreferencesKey("gesture_app_swipe_down")
+        val GESTURE_APP_TRIPLE_TAP = stringPreferencesKey("gesture_app_triple_tap")
+        val GESTURE_APP_PINCH = stringPreferencesKey("gesture_app_pinch")
+        val GESTURE_APP_DOCK_TAP = stringPreferencesKey("gesture_app_dock_tap")
     }
 
     // Safe data flow: catches IOException (disk errors) and emits defaults
@@ -201,6 +211,11 @@ class LauncherPrefs(private val context: Context) {
             pageIndicatorStyle = p[PAGE_INDICATOR_STYLE]?.let { runCatching { PageIndicatorStyle.valueOf(it) }.getOrNull() } ?: PageIndicatorStyle.DOTS,
             labelWeight = p[LABEL_WEIGHT]?.let { runCatching { LabelWeight.valueOf(it) }.getOrNull() } ?: LabelWeight.REGULAR,
             searchEngine = p[SEARCH_ENGINE]?.let { runCatching { SearchEngine.valueOf(it) }.getOrNull() } ?: SearchEngine.GOOGLE,
+            gestureAppDoubleTap = p[GESTURE_APP_DOUBLE_TAP] ?: "",
+            gestureAppSwipeDown = p[GESTURE_APP_SWIPE_DOWN] ?: "",
+            gestureAppTripleTap = p[GESTURE_APP_TRIPLE_TAP] ?: "",
+            gestureAppPinch = p[GESTURE_APP_PINCH] ?: "",
+            gestureAppDockTap = p[GESTURE_APP_DOCK_TAP] ?: "",
         )
     }
 
