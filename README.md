@@ -1,4 +1,4 @@
-# Lawnchair Lite v2.19.0
+# Lawnchair Lite v2.20.0
 
 Minimal, fast Android launcher with professional-grade stability and smooth Compose-powered animations.
 
