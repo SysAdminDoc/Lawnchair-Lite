@@ -381,8 +381,8 @@ fun AtAGlanceClock(modifier: Modifier = Modifier, clockStyle: app.lawnchairlite.
 fun SearchPill(onClick: () -> Unit, modifier: Modifier = Modifier, searchEngineLabel: String = "Google") {
     val c = LocalLauncherColors.current
     Row(modifier.fillMaxWidth().height(44.dp).clip(RoundedCornerShape(22.dp)).background(c.searchBg).border(0.5.dp, c.border, RoundedCornerShape(22.dp)).clickable { onClick() }.padding(horizontal = 14.dp), verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.size(22.dp).clip(CircleShape).background(c.accent.copy(alpha = 0.15f)), Alignment.Center) { Text(searchEngineLabel.take(1), color = c.accent, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
-        Spacer(Modifier.width(10.dp)); Text("Search $searchEngineLabel\u2026", color = c.textSecondary, fontSize = 14.sp); Spacer(Modifier.weight(1f)); Icon(Icons.Default.Search, null, tint = c.textSecondary, modifier = Modifier.size(18.dp))
+        Icon(Icons.Default.Search, null, tint = c.textSecondary, modifier = Modifier.size(18.dp))
+        Spacer(Modifier.width(10.dp)); Text("Search apps\u2026", color = c.textSecondary, fontSize = 14.sp); Spacer(Modifier.weight(1f))
     }
 }
 
