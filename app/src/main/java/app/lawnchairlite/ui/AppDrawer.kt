@@ -15,6 +15,9 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.SearchOff
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -68,6 +71,7 @@ fun AppDrawer(
     onAppClick: (AppInfo) -> Unit,
     onAppLongClick: (AppInfo) -> Unit,
     contactResults: List<app.lawnchairlite.LauncherViewModel.ContactResult> = emptyList(),
+    autoFocusSearch: Boolean = false,
     contactPermissionGranted: Boolean = true,
     onRequestContactPermission: () -> Unit = {},
     onContactTap: (String) -> Unit = {},
@@ -79,6 +83,8 @@ fun AppDrawer(
     onSearchHistoryRemove: (String) -> Unit = {},
     onSearchHistoryClear: () -> Unit = {},
     searchEngineLabel: String = "Google",
+    onVibrate: () -> Unit = {},
+    onClearRecents: () -> Unit = {},
     onProgressChange: (Float) -> Unit,
     onSettle: (velocityPxPerSec: Float) -> Unit,
 ) {
@@ -101,7 +107,7 @@ fun AppDrawer(
     LaunchedEffect(progress) {
         if (progress > 0.99f) {
             displaced = false
-            try { searchFocusRequester.requestFocus() } catch (_: Exception) {}
+            if (autoFocusSearch) try { searchFocusRequester.requestFocus() } catch (_: Exception) {}
         }
     }
     LaunchedEffect(progress < 0.01f) {
@@ -293,6 +299,10 @@ fun AppDrawer(
             if (displayApps.isEmpty()) {
                 Box(Modifier.fillMaxWidth().weight(1f), Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(Icons.Default.SearchOff, null,
+                            tint = colors.textSecondary.copy(alpha = 0.5f),
+                            modifier = Modifier.size(48.dp))
+                        Spacer(Modifier.height(8.dp))
                         Text("No apps found", color = colors.textSecondary, fontSize = 14.sp)
                         if (searchQuery.isNotBlank()) {
                             Spacer(Modifier.height(12.dp))
@@ -324,11 +334,20 @@ fun AppDrawer(
                         if (showRecent) {
                             item(span = { GridItemSpan(columns) }, key = "__recent__") {
                                 Column(Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
-                                    Text(
-                                        "RECENT", color = colors.accent, fontSize = 11.sp,
-                                        fontWeight = FontWeight.Bold, letterSpacing = 1.sp,
-                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                                    )
+                                    Row(
+                                        Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
+                                        Text(
+                                            "RECENT", color = colors.accent, fontSize = 11.sp,
+                                            fontWeight = FontWeight.Bold, letterSpacing = 1.sp,
+                                        )
+                                        Spacer(Modifier.weight(1f))
+                                        Text("Clear", color = colors.textSecondary, fontSize = 11.sp,
+                                            modifier = Modifier.clip(RoundedCornerShape(8.dp))
+                                                .clickable { onClearRecents() }
+                                                .padding(horizontal = 8.dp, vertical = 4.dp))
+                                    }
                                     LazyRow(
                                         contentPadding = PaddingValues(horizontal = 4.dp),
                                         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -341,7 +360,7 @@ fun AppDrawer(
                                                 iconShadow = iconShadow, grayscale = grayscale, labelWeight = labelWeight,
                                                 onClick = { onAppClick(app) },
                                                 onLongClick = { onAppLongClick(app) },
-                                                modifier = Modifier.width(70.dp),
+                                                modifier = Modifier.width(iconSizeDp + 20.dp),
                                             )
                                         }
                                     }
@@ -375,7 +394,7 @@ fun AppDrawer(
                                             iconShadow = iconShadow, grayscale = grayscale, labelWeight = labelWeight,
                                             onClick = { onAppClick(app) },
                                             onLongClick = { onAppLongClick(app) },
-                                            modifier = Modifier.width(70.dp),
+                                            modifier = Modifier.width(iconSizeDp + 20.dp),
                                         )
                                     }
                                 }
@@ -390,7 +409,7 @@ fun AppDrawer(
                                         iconShadow = iconShadow, grayscale = grayscale, labelWeight = labelWeight,
                                         onClick = { onAppClick(app) },
                                         onLongClick = { onAppLongClick(app) },
-                                        modifier = Modifier.width(70.dp),
+                                        modifier = Modifier.width(iconSizeDp + 20.dp),
                                     )
                                 }
                             }
@@ -423,7 +442,7 @@ fun AppDrawer(
                                 appIdx / columns * columns + (if (showRecent) 1 else 0)
                             }
                             scope.launch { gridState.animateScrollToItem(scrollIdx) }
-                        })
+                        }, onVibrate = onVibrate)
                     }
                 }
             }

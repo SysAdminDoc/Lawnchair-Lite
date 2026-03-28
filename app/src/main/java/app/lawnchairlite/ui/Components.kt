@@ -136,7 +136,7 @@ fun AppIconContent(app: AppInfo, shape: IconShape, iconSizeDp: Dp = 50.dp, modif
 @Composable
 fun TappableAppIcon(app: AppInfo, shape: IconShape, iconSizeDp: Dp = 50.dp, modifier: Modifier = Modifier, showLabel: Boolean = true, customLabel: String? = null, badgeCount: Int = 0, badgeDotOnly: Boolean = false, iconShadow: Boolean = false, grayscale: Boolean = false, labelSizeSp: Int = 11, labelWeight: FontWeight = FontWeight.Normal, onClick: () -> Unit = {}, onLongClick: () -> Unit = {}) {
     val c = LocalLauncherColors.current; var pressed by remember { mutableStateOf(false) }
-    val scale by animateFloatAsState(if (pressed) 0.9f else 1f, spring(dampingRatio = 0.6f, stiffness = 500f), label = "s")
+    val scale by animateFloatAsState(if (pressed) 0.92f else 1f, spring(dampingRatio = 1f, stiffness = 800f), label = "s")
     Column(modifier.graphicsLayer(scaleX = scale, scaleY = scale).pointerInput(app.key) { detectTapGestures(onPress = { pressed = true; tryAwaitRelease(); pressed = false }, onTap = { onClick() }, onLongPress = { onLongClick() }) }, horizontalAlignment = Alignment.CenterHorizontally) {
         Box(Modifier.size(iconSizeDp).then(if (iconShadow) Modifier.shadow(6.dp, iconClip(shape)) else Modifier)) {
             Box(Modifier.fillMaxSize().clip(iconClip(shape)).background(c.card), Alignment.Center) {
@@ -168,12 +168,16 @@ fun FolderIconContent(folder: GridCell.Folder, shape: IconShape, resolveApp: (St
     Column(modifier.graphicsLayer(alpha = if (dimmed) 0.25f else 1f), horizontalAlignment = Alignment.CenterHorizontally) {
         Box(Modifier.size(iconSizeDp)) {
             Box(Modifier.fillMaxSize().clip(iconClip(shape)).background(c.card).border(0.5.dp, c.accent.copy(alpha = 0.3f), iconClip(shape)), Alignment.Center) {
-                val p = folder.appKeys.take(4).mapNotNull { resolveApp(it) }
+                val use3x3 = folder.appKeys.size > 4
+                val previewCount = if (use3x3) 9 else 4
+                val gridSize = if (use3x3) 3 else 2
+                val thumbSize = if (use3x3) 12.dp else 17.dp
+                val p = folder.appKeys.take(previewCount).mapNotNull { resolveApp(it) }
                 if (p.isEmpty()) Icon(Icons.Default.Folder, null, tint = c.accent, modifier = Modifier.size(26.dp))
-                else Column(Modifier.padding(6.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    p.chunked(2).take(2).forEach { row ->
+                else Column(Modifier.padding(if (use3x3) 5.dp else 6.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    p.chunked(gridSize).take(gridSize).forEach { row ->
                         Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                            row.forEach { a -> if (a.icon != null) Image(rememberDrawablePainter(a.icon), null, Modifier.size(17.dp).clip(RoundedCornerShape(4.dp))) else Box(Modifier.size(17.dp).clip(RoundedCornerShape(4.dp)).background(c.border)) }
+                            row.forEach { a -> if (a.icon != null) Image(rememberDrawablePainter(a.icon), null, Modifier.size(thumbSize).clip(RoundedCornerShape(if (use3x3) 3.dp else 4.dp))) else Box(Modifier.size(thumbSize).clip(RoundedCornerShape(if (use3x3) 3.dp else 4.dp)).background(c.border)) }
                         }
                     }
                 }
@@ -215,7 +219,7 @@ fun DragGhost(cell: GridCell?, app: AppInfo?, shape: IconShape, offset: Offset, 
 
 @Composable
 fun RemoveZone(hovering: Boolean, modifier: Modifier = Modifier) {
-    val c = LocalLauncherColors.current; val bg by animateColorAsState(if (hovering) Color(0xFFEF5350) else c.surface.copy(alpha = 0.85f), label = "rz")
+    val c = LocalLauncherColors.current; val bg by animateColorAsState(if (hovering) c.error else c.surface.copy(alpha = 0.85f), label = "rz")
     val scale by animateFloatAsState(if (hovering) 1.08f else 1f, spring(stiffness = 300f), label = "rzs")
     Box(modifier.fillMaxWidth(0.5f).height(52.dp).graphicsLayer(scaleX = scale, scaleY = scale).background(bg, RoundedCornerShape(bottomStart = 14.dp)), Alignment.Center) {
         Row(verticalAlignment = Alignment.CenterVertically) { Icon(Icons.Default.Close, null, tint = if (hovering) Color.White else c.textSecondary, modifier = Modifier.size(16.dp)); Spacer(Modifier.width(5.dp)); Text("Remove", color = if (hovering) Color.White else c.textSecondary, fontSize = 12.sp, fontWeight = FontWeight.Medium) }
@@ -324,7 +328,7 @@ fun AtAGlanceClock(modifier: Modifier = Modifier, clockStyle: app.lawnchairlite.
                     val batteryLow = batteryPct <= 15
                     Text("  |  ", color = c.textSecondary.copy(alpha = 0.4f), fontSize = 12.sp)
                     Icon(if (batteryLow) Icons.Default.BatteryAlert else Icons.Default.BatteryFull,
-                        null, tint = if (batteryLow) Color(0xFFEF5350) else c.accent.copy(alpha = 0.7f),
+                        null, tint = if (batteryLow) c.error else c.accent.copy(alpha = 0.7f),
                         modifier = Modifier.size(14.dp))
                     Text("$batteryPct%", color = c.textSecondary, fontSize = 12.sp, fontWeight = FontWeight.Medium)
                 }
@@ -356,9 +360,9 @@ fun AtAGlanceClock(modifier: Modifier = Modifier, clockStyle: app.lawnchairlite.
                 val compactBatteryLow = batteryPct <= 15
                 Text("  ·  ", color = c.textSecondary.copy(alpha = 0.4f), fontSize = 13.sp)
                 Icon(if (compactBatteryLow) Icons.Default.BatteryAlert else Icons.Default.BatteryFull,
-                    null, tint = if (compactBatteryLow) Color(0xFFEF5350) else c.textSecondary.copy(alpha = 0.5f),
+                    null, tint = if (compactBatteryLow) c.error else c.textSecondary.copy(alpha = 0.5f),
                     modifier = Modifier.size(12.dp))
-                Text("$batteryPct%", color = if (compactBatteryLow) Color(0xFFEF5350) else c.textSecondary, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                Text("$batteryPct%", color = if (compactBatteryLow) c.error else c.textSecondary, fontSize = 12.sp, fontWeight = FontWeight.Medium)
             }
         }
         app.lawnchairlite.data.ClockStyle.MINIMAL -> Box(
@@ -397,7 +401,7 @@ fun DrawerSearch(query: String, onQueryChange: (String) -> Unit, modifier: Modif
 }
 
 @Composable
-fun FastScrollerRail(letters: List<Char>, onLetterSelected: (Char) -> Unit, modifier: Modifier = Modifier) {
+fun FastScrollerRail(letters: List<Char>, onLetterSelected: (Char) -> Unit, onVibrate: () -> Unit = {}, modifier: Modifier = Modifier) {
     val c = LocalLauncherColors.current
     var dragging by remember { mutableStateOf(false) }
     val bgAlpha by animateFloatAsState(if (dragging) 0.12f else 0f, label = "fsa")
@@ -409,14 +413,15 @@ fun FastScrollerRail(letters: List<Char>, onLetterSelected: (Char) -> Unit, modi
                 awaitEachGesture {
                     val down = awaitFirstDown()
                     dragging = true
+                    var lastIdx = -1
                     val idx = (down.position.y / size.height * letters.size).toInt().coerceIn(0, letters.lastIndex)
-                    onLetterSelected(letters[idx])
+                    onLetterSelected(letters[idx]); lastIdx = idx; onVibrate()
                     while (true) {
                         val event = awaitPointerEvent()
                         if (event.changes.all { !it.pressed }) { dragging = false; break }
                         val pos = event.changes.first().position
                         val newIdx = (pos.y / size.height * letters.size).toInt().coerceIn(0, letters.lastIndex)
-                        onLetterSelected(letters[newIdx])
+                        if (newIdx != lastIdx) { onLetterSelected(letters[newIdx]); lastIdx = newIdx; onVibrate() }
                         event.changes.forEach { it.consume() }
                     }
                 }
@@ -529,7 +534,7 @@ fun HomeContextMenu(
                 CtxItem("Remove from $sourceLabel", c) { vm.removeFromGrid(menuState.source, menuState.index) }
                 if (!app.isSystemApp) {
                     Divider(color = c.border.copy(alpha = 0.3f), thickness = 0.5.dp)
-                    CtxItem("Uninstall", c, isRed = true) { vm.uninstall(app); vm.removeFromGrid(menuState.source, menuState.index) }
+                    CtxItem("Uninstall", c, isRed = true) { vm.requestUninstall(app, menuState.source, menuState.index) }
                 }
             } else if (isFolder) {
                 val folder = cell as GridCell.Folder
@@ -627,7 +632,7 @@ fun FolderOverlay(folder: GridCell.Folder, shape: IconShape, iconSizeDp: Dp, res
                                                 if (isSelectedForRemoval) {
                                                     Box(
                                                         Modifier.align(Alignment.TopEnd).offset(x = 6.dp, y = (-4).dp).size(20.dp)
-                                                            .shadow(4.dp, CircleShape).clip(CircleShape).background(Color(0xFFEF5350))
+                                                            .shadow(4.dp, CircleShape).clip(CircleShape).background(c.error)
                                                             .clickable { onRemoveApp(key); selectedForRemoval = null },
                                                         Alignment.Center,
                                                     ) { Icon(Icons.Default.Close, null, tint = Color.White, modifier = Modifier.size(12.dp)) }
@@ -682,6 +687,8 @@ fun HomeSpaceMenuOverlay(
     onEditMode: () -> Unit,
     onAddWidget: () -> Unit,
     onAddPage: () -> Unit,
+    onRemovePage: () -> Unit,
+    canRemovePage: Boolean,
     onWallpaper: () -> Unit,
     onSettings: () -> Unit,
     onDismiss: () -> Unit,
@@ -699,6 +706,8 @@ fun HomeSpaceMenuOverlay(
             Divider(color = c.border.copy(alpha = 0.2f), thickness = 0.5.dp)
             HomeSpaceMenuItem("Add Page", Icons.Default.Add, c, onClick = onAddPage)
             Divider(color = c.border.copy(alpha = 0.2f), thickness = 0.5.dp)
+            HomeSpaceMenuItem("Remove Page", Icons.Default.Remove, c, enabled = canRemovePage, onClick = onRemovePage)
+            Divider(color = c.border.copy(alpha = 0.2f), thickness = 0.5.dp)
             HomeSpaceMenuItem("Wallpaper", Icons.Default.Wallpaper, c, onClick = onWallpaper)
             Divider(color = c.border.copy(alpha = 0.2f), thickness = 0.5.dp)
             HomeSpaceMenuItem("Settings", Icons.Default.Settings, c, onClick = onSettings)
@@ -707,19 +716,20 @@ fun HomeSpaceMenuOverlay(
 }
 
 @Composable
-private fun HomeSpaceMenuItem(label: String, icon: androidx.compose.ui.graphics.vector.ImageVector, c: LauncherColors, onClick: () -> Unit) {
+private fun HomeSpaceMenuItem(label: String, icon: androidx.compose.ui.graphics.vector.ImageVector, c: LauncherColors, enabled: Boolean = true, onClick: () -> Unit) {
+    val alpha = if (enabled) 1f else 0.35f
     Row(
-        Modifier.fillMaxWidth().clickable { onClick() }.padding(horizontal = 20.dp, vertical = 14.dp),
+        Modifier.fillMaxWidth().then(if (enabled) Modifier.clickable { onClick() } else Modifier).padding(horizontal = 20.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(icon, null, tint = c.accent, modifier = Modifier.size(20.dp))
+        Icon(icon, null, tint = c.accent.copy(alpha = alpha), modifier = Modifier.size(20.dp))
         Spacer(Modifier.width(14.dp))
-        Text(label, color = c.text, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+        Text(label, color = c.text.copy(alpha = alpha), fontSize = 14.sp, fontWeight = FontWeight.Medium)
     }
 }
 
 @Composable private fun CtxItem(label: String, c: LauncherColors, isRed: Boolean = false, onClick: () -> Unit) {
-    Text(label, color = if (isRed) Color(0xFFEF5350) else c.text, fontSize = 14.sp, fontWeight = if (isRed) FontWeight.SemiBold else FontWeight.Normal,
+    Text(label, color = if (isRed) c.error else c.text, fontSize = 14.sp, fontWeight = if (isRed) FontWeight.SemiBold else FontWeight.Normal,
         modifier = Modifier.fillMaxWidth().clickable { onClick() }.padding(horizontal = 24.dp, vertical = 13.dp))
 }
 
@@ -751,6 +761,26 @@ fun RenameDialog(currentName: String, title: String = "Rename Folder", onConfirm
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                 TextButton(onClick = onDismiss) { Text("Cancel", color = c.textSecondary) }; Spacer(Modifier.width(8.dp))
                 Button(onClick = { onConfirm(name.trim()) }, colors = ButtonDefaults.buttonColors(containerColor = c.accent), shape = RoundedCornerShape(12.dp)) { Text("Save", color = Color.White) }
+            }
+        }
+    }
+}
+
+// ── Uninstall Confirmation ─────────────────────────────────────────────
+
+@Composable
+fun UninstallConfirmDialog(appName: String, onConfirm: () -> Unit, onDismiss: () -> Unit) {
+    val c = LocalLauncherColors.current
+    Dialog(onDismissRequest = onDismiss) {
+        Column(Modifier.clip(RoundedCornerShape(20.dp)).background(c.surface).border(0.5.dp, c.border, RoundedCornerShape(20.dp)).padding(24.dp)) {
+            Text("Uninstall App", color = c.text, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+            Spacer(Modifier.height(10.dp))
+            Text("Are you sure you want to uninstall $appName?", color = c.textSecondary, fontSize = 14.sp)
+            Spacer(Modifier.height(18.dp))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                TextButton(onClick = onDismiss) { Text("Cancel", color = c.textSecondary) }
+                Spacer(Modifier.width(8.dp))
+                Button(onClick = onConfirm, colors = ButtonDefaults.buttonColors(containerColor = c.error), shape = RoundedCornerShape(12.dp)) { Text("Uninstall", color = Color.White) }
             }
         }
     }
@@ -812,7 +842,9 @@ fun WidgetPickerDialog(
                             Column(Modifier.weight(1f)) {
                                 Text(label, color = c.text, fontSize = 13.sp, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                 Text(appLabel, color = c.textSecondary, fontSize = 10.sp, maxLines = 1)
-                                Text("${minW}x${minH}dp", color = c.textSecondary.copy(alpha = 0.6f), fontSize = 9.sp)
+                                val spanCols = ((minW + 72) / 73).coerceIn(1, 5)
+                                val spanRows = ((minH + 72) / 73).coerceIn(1, 5)
+                                Text("${spanCols}×${spanRows} cells", color = c.textSecondary.copy(alpha = 0.6f), fontSize = 9.sp)
                             }
                         }
                         Divider(color = c.border.copy(alpha = 0.2f), thickness = 0.5.dp)
@@ -917,26 +949,31 @@ fun SearchHistoryChips(
                     .padding(horizontal = 8.dp, vertical = 4.dp))
         }
         Spacer(Modifier.height(6.dp))
-        Row(
-            Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            history.forEach { term ->
-                Row(
-                    Modifier.clip(RoundedCornerShape(16.dp))
-                        .background(c.card)
-                        .border(0.5.dp, c.border, RoundedCornerShape(16.dp))
-                        .clickable { onTap(term) }
-                        .padding(start = 12.dp, end = 4.dp, top = 6.dp, bottom = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(term, color = c.text, fontSize = 12.sp, maxLines = 1)
-                    Spacer(Modifier.width(2.dp))
-                    Icon(Icons.Default.Close, "Remove", tint = c.textSecondary.copy(alpha = 0.5f),
-                        modifier = Modifier.size(16.dp).clip(CircleShape)
-                            .clickable { onRemove(term) }.padding(2.dp))
+        Box(Modifier.fillMaxWidth()) {
+            Row(
+                Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                history.forEach { term ->
+                    Row(
+                        Modifier.clip(RoundedCornerShape(16.dp))
+                            .background(c.card)
+                            .border(0.5.dp, c.border, RoundedCornerShape(16.dp))
+                            .clickable { onTap(term) }
+                            .padding(start = 12.dp, end = 4.dp, top = 6.dp, bottom = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(term, color = c.text, fontSize = 12.sp, maxLines = 1)
+                        Spacer(Modifier.width(2.dp))
+                        Icon(Icons.Default.Close, "Remove", tint = c.textSecondary.copy(alpha = 0.5f),
+                            modifier = Modifier.size(16.dp).clip(CircleShape)
+                                .clickable { onRemove(term) }.padding(2.dp))
+                    }
                 }
             }
+            // Right-edge fade gradient hint
+            Box(Modifier.align(Alignment.CenterEnd).width(24.dp).matchParentSize()
+                .background(androidx.compose.ui.graphics.Brush.horizontalGradient(listOf(Color.Transparent, c.background))))
         }
         Spacer(Modifier.height(8.dp))
     }

@@ -31,6 +31,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.input.pointer.PointerEventPass
@@ -74,8 +75,7 @@ import kotlinx.coroutines.launch
  * Our Compose equivalent:
  *   Opening: commit when progress > 0.4 OR fling velocity > 500 dp/s upward
  *   Closing: commit when progress < 0.6 OR fling velocity > 500 dp/s downward
- *   Fling threshold: 500 dp/s (Launcher3 uses ~1dp but has VelocityTracker;
- *     500dp/s is the sweet spot for Compose gesture detection without VelocityTracker)
+ *   Fling threshold: 200 dp/s with Compose VelocityTracker for accurate velocity
  */
 @Composable
 fun HomeScreen(vm: LauncherViewModel) {
@@ -122,6 +122,18 @@ fun HomeScreen(vm: LauncherViewModel) {
     val pagerState = rememberPagerState(initialPage = 0, pageCount = { numPages })
     val currentPage by remember { derivedStateOf { pagerState.currentPage } }
 
+    // Haptic feedback on page limits
+    var lastHapticPage by remember { mutableIntStateOf(-1) }
+    LaunchedEffect(pagerState.isScrollInProgress, pagerState.currentPage) {
+        if (pagerState.isScrollInProgress) {
+            val atStart = pagerState.currentPage == 0 && pagerState.currentPageOffsetFraction < -0.02f
+            val atEnd = pagerState.currentPage == numPages - 1 && pagerState.currentPageOffsetFraction > 0.02f
+            if ((atStart || atEnd) && lastHapticPage != pagerState.currentPage) {
+                vm.vibrate(); lastHapticPage = pagerState.currentPage
+            }
+        } else { lastHapticPage = -1 }
+    }
+
     // ═══════════════════════════════════════════════════════════════════
     // DRAWER TRANSITION STATE (Launcher3 port)
     // ═══════════════════════════════════════════════════════════════════
@@ -133,6 +145,7 @@ fun HomeScreen(vm: LauncherViewModel) {
     val flingThresholdPx = with(density) { 200.dp.toPx() }
     val scope = rememberCoroutineScope()
     val drawerProgress = remember { Animatable(0f) }
+    var openedViaSearch by remember { mutableStateOf(false) }
     val dpVal = drawerProgress.value
     val drawerVisible = dpVal > 0.01f
     val drawerFullyOpen = dpVal > 0.95f
@@ -182,7 +195,7 @@ fun HomeScreen(vm: LauncherViewModel) {
     // Keep ViewModel in sync for back-press handling
     LaunchedEffect(dpVal) {
         if (dpVal > 0.5f && !vm.drawerOpen.value) vm.openDrawer()
-        else if (dpVal < 0.01f && vm.drawerOpen.value) vm.closeDrawer()
+        else if (dpVal < 0.01f && vm.drawerOpen.value) { vm.closeDrawer(); openedViaSearch = false }
     }
 
     // ViewModel can request close externally (back press, home button)
@@ -241,42 +254,39 @@ fun HomeScreen(vm: LauncherViewModel) {
                 .pointerInput(isDragging, settingsOpen) {
                     if (!isDragging && !settingsOpen) {
                         var totalDrag = 0f
-                        var velocityPxPerSec = 0f
-                        var prevTime = 0L
+                        val velocityTracker = VelocityTracker()
                         detectVerticalDragGestures(
                             onDragStart = {
-                                totalDrag = 0f; velocityPxPerSec = 0f
-                                prevTime = System.nanoTime()
+                                totalDrag = 0f
+                                velocityTracker.resetTracking()
                             },
                             onDragEnd = {
+                                val velocity = velocityTracker.calculateVelocity()
+                                // velocity.y: positive = downward, negative = upward
+                                // settleDrawer: positive = open (upward), negative = close
+                                val settleVelocity = -velocity.y
                                 if (drawerProgress.value > 0.01f) {
-                                    // Was opening drawer - settle with tracked velocity
-                                    // velocityPxPerSec is already positive for upward movement
-                                    settleDrawer(velocityPxPerSec)
+                                    settleDrawer(settleVelocity)
+                                } else if (totalDrag < -80f && settings.swipeUpAction != GestureAction.APP_DRAWER) {
+                                    vm.executeGesture(settings.swipeUpAction, "swipe_up")
                                 } else if (totalDrag > 40f) {
-                                    // Swipe down on home (notifications, etc.)
                                     vm.executeGesture(settings.swipeDownAction, "swipe_down")
                                 }
                             },
                             onDragCancel = {
                                 if (drawerProgress.value > 0f) settleDrawer(0f)
                             },
-                        ) { _, amount ->
-                            // If drawer is fully open, don't process home-layer drags
+                        ) { change, amount ->
                             if (currentDrawerFullyOpen) return@detectVerticalDragGestures
                             totalDrag += amount
-                            // Velocity: track instantaneous. Negate because
-                            // negative amount (upward) = positive velocity (opening)
-                            val now = System.nanoTime()
-                            val dt = ((now - prevTime) / 1_000_000_000f).coerceAtLeast(0.001f)
-                            velocityPxPerSec = -amount / dt
-                            prevTime = now
+                            velocityTracker.addPosition(change.uptimeMillis, change.position)
 
-                            // Upward swipe (amount < 0) increases progress
                             if (amount < 0f || drawerProgress.value > 0f) {
-                                val delta = -amount / screenHeightPx
-                                val newP = (drawerProgress.value + delta).coerceIn(0f, 1f)
-                                scope.launch { drawerProgress.snapTo(newP) }
+                                if (settings.swipeUpAction == GestureAction.APP_DRAWER || drawerProgress.value > 0f) {
+                                    val delta = -amount / screenHeightPx
+                                    val newP = (drawerProgress.value + delta).coerceIn(0f, 1f)
+                                    scope.launch { drawerProgress.snapTo(newP) }
+                                }
                             }
                         }
                     }
@@ -367,7 +377,7 @@ fun HomeScreen(vm: LauncherViewModel) {
 
                 val gridPadH = settings.gridPaddingH.dp
                 val gridPadV = settings.gridPaddingV.dp
-                HorizontalPager(state = pagerState, modifier = Modifier.fillMaxWidth().weight(1f), userScrollEnabled = !isDragging) { page ->
+                HorizontalPager(state = pagerState, modifier = Modifier.fillMaxWidth().weight(1f), userScrollEnabled = !isDragging && !drawerVisible) { page ->
                     val ps = page * pageSize
                     val pageCells = paddedGrid.subList(ps.coerceAtMost(paddedGrid.size), (ps + pageSize).coerceAtMost(paddedGrid.size))
                     LaunchedEffect(page) { if (page == currentPage) homeBounds.clear() }
@@ -506,7 +516,7 @@ fun HomeScreen(vm: LauncherViewModel) {
                 if (!isDragging) when (settings.pageIndicatorStyle) {
                     app.lawnchairlite.data.PageIndicatorStyle.DOTS -> PageDots(numPages, currentPage, Modifier.padding(vertical = 6.dp))
                     app.lawnchairlite.data.PageIndicatorStyle.LINE -> PageLineIndicator(numPages, currentPage, Modifier.padding(vertical = 6.dp))
-                    app.lawnchairlite.data.PageIndicatorStyle.HIDDEN -> Spacer(Modifier.height(6.dp))
+                    app.lawnchairlite.data.PageIndicatorStyle.HIDDEN -> {}
                 }
 
                 // Dock
@@ -514,12 +524,12 @@ fun HomeScreen(vm: LauncherViewModel) {
                     if (settings.showDockSearch && settings.searchBarStyle != app.lawnchairlite.data.SearchBarStyle.HIDDEN && !isDragging) {
                         when (settings.searchBarStyle) {
                             app.lawnchairlite.data.SearchBarStyle.PILL -> SearchPill(
-                                onClick = { scope.launch { drawerProgress.animateTo(1f, spring(stiffness = Spring.StiffnessMedium)) } },
+                                onClick = { openedViaSearch = true; scope.launch { drawerProgress.animateTo(1f, spring(stiffness = Spring.StiffnessMedium)) } },
                                 modifier = Modifier.padding(horizontal = 18.dp, vertical = 5.dp),
                                 searchEngineLabel = settings.searchEngine.label,
                             )
                             app.lawnchairlite.data.SearchBarStyle.BAR -> SearchPill(
-                                onClick = { scope.launch { drawerProgress.animateTo(1f, spring(stiffness = Spring.StiffnessMedium)) } },
+                                onClick = { openedViaSearch = true; scope.launch { drawerProgress.animateTo(1f, spring(stiffness = Spring.StiffnessMedium)) } },
                                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 5.dp),
                                 searchEngineLabel = settings.searchEngine.label,
                             )
@@ -619,9 +629,10 @@ fun HomeScreen(vm: LauncherViewModel) {
         }
 
         // ═════════════════════════════════════════════════════════════
-        // DRAWER LAYER (always composed when visible, translation-based)
+        // DRAWER LAYER (always composed, hidden via graphicsLayer when closed
+        // to preserve scroll position and avoid recomposition on open/close)
         // ═════════════════════════════════════════════════════════════
-        if (drawerVisible) {
+        Box(Modifier.graphicsLayer { alpha = if (dpVal > 0.005f) 1f else 0f }) {
             AppDrawer(
                 progress = dpVal,
                 screenHeightPx = screenHeightPx,
@@ -654,6 +665,7 @@ fun HomeScreen(vm: LauncherViewModel) {
                     vm.setSelectedCategory(app.lawnchairlite.data.DrawerCategory.ALL)
                 },
                 onAppLongClick = { vm.showDrawerMenu(it) },
+                autoFocusSearch = openedViaSearch,
                 contactResults = vm.contactResults.collectAsState().value,
                 contactPermissionGranted = contactPermGranted,
                 onRequestContactPermission = { contactPermLauncher.launch(android.Manifest.permission.READ_CONTACTS) },
@@ -666,6 +678,8 @@ fun HomeScreen(vm: LauncherViewModel) {
                 onSearchHistoryRemove = { vm.removeSearchHistoryItem(it) },
                 onSearchHistoryClear = { vm.clearSearchHistory() },
                 searchEngineLabel = settings.searchEngine.label,
+                onVibrate = { vm.vibrate() },
+                onClearRecents = { vm.clearRecentApps() },
                 onProgressChange = { newP ->
                     scope.launch { drawerProgress.snapTo(newP) }
                 },
@@ -686,15 +700,16 @@ fun HomeScreen(vm: LauncherViewModel) {
         if (widgetPickerOpen) {
             val availableWidgets = remember { vm.getAvailableWidgets() }
             val widgetContext = androidx.compose.ui.platform.LocalContext.current
+            val widgetCellW = (LocalConfiguration.current.screenWidthDp - settings.gridPaddingH * 2) / cols
             WidgetPickerDialog(
                 widgets = availableWidgets,
                 onSelect = { providerInfo ->
                     val widgetId = vm.allocateWidgetId()
                     val bound = vm.canBindWidget(widgetId, providerInfo.provider)
                     if (bound) {
-                        // Find first empty span for widget
-                        val minCols = ((providerInfo.minWidth + 72) / 73).coerceIn(1, cols)
-                        val minRows = ((providerInfo.minHeight + 72) / 73).coerceIn(1, rows)
+                        // Find first empty span for widget — derive cell size from actual grid
+                        val minCols = ((providerInfo.minWidth + widgetCellW - 1) / widgetCellW).coerceIn(1, cols)
+                        val minRows = ((providerInfo.minHeight + widgetCellW - 1) / widgetCellW).coerceIn(1, rows)
                         val span = vm.findFirstEmptySpan(currentPage, minCols, minRows)
                         if (span != null) {
                             vm.addWidget(WidgetInfo(widgetId, currentPage, span.first, span.second, minCols, minRows, providerInfo.provider.flattenToString()))
@@ -718,6 +733,8 @@ fun HomeScreen(vm: LauncherViewModel) {
                 onEditMode = { vm.dismissHomeSpaceMenu(); vm.enterEditMode() },
                 onAddWidget = { vm.dismissHomeSpaceMenu(); vm.enterEditMode(); vm.openWidgetPicker() },
                 onAddPage = { vm.dismissHomeSpaceMenu(); vm.addPage() },
+                onRemovePage = { vm.dismissHomeSpaceMenu(); vm.removePage(currentPage) },
+                canRemovePage = vm.numPages() > 1,
                 onWallpaper = { vm.dismissHomeSpaceMenu(); vm.openWallpaperPicker() },
                 onSettings = { vm.dismissHomeSpaceMenu(); vm.openSettings() },
                 onDismiss = { vm.dismissHomeSpaceMenu() },
@@ -737,8 +754,18 @@ fun HomeScreen(vm: LauncherViewModel) {
         val le = labelEdit
         if (le != null) RenameDialog(le.current, "Rename Shortcut", onConfirm = { vm.saveCustomLabel(le.appKey, it) }, onDismiss = { vm.dismissLabelEdit() })
 
+        // Uninstall confirmation dialog
+        val uninstallApp by vm.uninstallConfirm.collectAsState()
+        uninstallApp?.let { confirm ->
+            UninstallConfirmDialog(
+                appName = confirm.app.label,
+                onConfirm = { vm.confirmUninstall() },
+                onDismiss = { vm.dismissUninstall() },
+            )
+        }
+
         val menuApp = drawerMenuApp
-        if (menuApp != null) DrawerContextMenu(menuApp, settings.iconShape, vm = vm, shortcuts = appShortcuts, onShortcutClick = { vm.launchShortcut(it); scope.launch { drawerProgress.animateTo(0f, tween(200)) }; vm.setSearch(""); vm.setSelectedCategory(app.lawnchairlite.data.DrawerCategory.ALL) }, onPinHome = { vm.pinToHome(menuApp); scope.launch { drawerProgress.animateTo(0f, tween(200)) }; vm.setSearch(""); vm.setSelectedCategory(app.lawnchairlite.data.DrawerCategory.ALL) }, onPinDock = { vm.pinToDock(menuApp); scope.launch { drawerProgress.animateTo(0f, tween(200)) }; vm.setSearch(""); vm.setSelectedCategory(app.lawnchairlite.data.DrawerCategory.ALL) }, onHide = { vm.hideApp(menuApp.key) }, onAppInfo = { vm.appInfo(menuApp); vm.dismissDrawerMenu() }, onUninstall = { vm.uninstall(menuApp); vm.dismissDrawerMenu() }, onDismiss = { vm.dismissDrawerMenu() })
+        if (menuApp != null) DrawerContextMenu(menuApp, settings.iconShape, vm = vm, shortcuts = appShortcuts, onShortcutClick = { vm.launchShortcut(it); scope.launch { drawerProgress.animateTo(0f, tween(200)) }; vm.setSearch(""); vm.setSelectedCategory(app.lawnchairlite.data.DrawerCategory.ALL) }, onPinHome = { vm.pinToHome(menuApp); scope.launch { drawerProgress.animateTo(0f, tween(200)) }; vm.setSearch(""); vm.setSelectedCategory(app.lawnchairlite.data.DrawerCategory.ALL) }, onPinDock = { vm.pinToDock(menuApp); scope.launch { drawerProgress.animateTo(0f, tween(200)) }; vm.setSearch(""); vm.setSelectedCategory(app.lawnchairlite.data.DrawerCategory.ALL) }, onHide = { vm.hideApp(menuApp.key) }, onAppInfo = { vm.appInfo(menuApp); vm.dismissDrawerMenu() }, onUninstall = { vm.requestUninstall(menuApp); vm.dismissDrawerMenu() }, onDismiss = { vm.dismissDrawerMenu() })
     }
 }
 

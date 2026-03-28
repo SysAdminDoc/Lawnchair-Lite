@@ -1,6 +1,6 @@
-# Lawnchair Lite v2.15.0
+# Lawnchair Lite v2.19.0
 
-Minimal, fast Android launcher with professional-grade stability.
+Minimal, fast Android launcher with professional-grade stability and smooth Compose-powered animations.
 
 ## Stability Architecture
 
@@ -19,149 +19,196 @@ Built on crash patterns identified across Lawnchair v14-v15 beta releases:
 
 ## Features
 
-- Multiple home pages with swipe navigation
-- App drawer with alphabetical fast scroller
-- Folder creation via drag-and-drop
-- Icon pack support (ADW/Nova format)
-- Custom icon labels
-- Hide apps from drawer
-- 5 theme modes (Midnight, Glass, OLED, Mocha, Aurora)
-- Configurable grid (3-8 cols, 3-10 rows), dock (3-7 icons), icon sizes
-- Double-tap and swipe-down gestures (lock, notifications, drawer, settings, kill apps)
-- Auto-place newly installed apps on home screen
-- Backup/restore layout as JSON
-- Device admin for screen lock gesture
-- Context menu on home/dock icons (rename, rearrange, remove, uninstall, app info)
-- Edit mode with wiggle animation for rearranging
-- Notification badge dots with count
-- App shortcuts in long-press menus (LauncherApps API)
-- Wallpaper dimming (0-80%)
-- Recent apps row in drawer
-- Search by app name or package name
+- Multiple home pages with swipe navigation, add/remove pages from long-press menu
+- App drawer with alphabetical fast scroller (haptic feedback on letter changes)
+- Folder creation via drag-and-drop with 3x3 preview for large folders
+- Icon pack support (ADW/Nova format) with 4-icon preview per pack
+- Custom icon labels, hide apps from drawer with batch unhide
+- 6 theme modes (Midnight, Glass, OLED, Mocha, Aurora, Neon) with per-theme error colors
+- Custom accent color with 12 presets + hex input + theme-default reset chip
+- Configurable grid (3-8 cols, 3-10 rows), dock (3-7 icons), icon sizes (S/M/L/XL)
+- 9 gesture actions: double-tap, triple-tap, swipe-down, swipe-up, pinch, dock-tap, dock-swipe
+- Gesture app binding: assign any gesture to launch a specific app (with icon preview in settings)
+- Smart fuzzy search with relevance scoring (exact > starts > word > contains > pkg > subsequence)
+- Inline calculator and unit converter in drawer search
+- Time-aware app suggestions (morning/afternoon/evening/night usage patterns)
+- Search history chips with fade gradient, recent apps row with clear button
+- Home screen widgets via AppWidgetHost with grid-cell-based sizing
+- Contact search with permission chip, web search fallback
+- Notification badges (count/dot/hidden), app shortcuts via LauncherApps API
+- 5 page transitions (Slide, Cube, Stack, Fade, Depth, Carousel)
+- Wallpaper dimming (0-80%) with parallax effect
+- Backup/restore layout as JSON with import error feedback
+- Uninstall confirmation dialog (all paths: D&D, home menu, drawer menu)
+- Reset all settings with confirmation dialog
+- Settings search filter across 8 collapsible sections
+- Device admin for screen lock gesture, flashlight toggle gesture
+
+## Smoothness
+
+- **Compose VelocityTracker** for accurate drawer fling velocity (no manual nanoTime)
+- **Always-composed drawer** preserves scroll position, eliminates recomposition on open/close
+- **Material 3 icon press** - crisp no-bounce spring animation (dampingRatio 1.0, stiffness 800)
+- **Memoized theme computation** - `remember`-cached, no recompute per recomposition
+- **Conditional auto-focus** - keyboard only opens when drawer opened via search bar, not swipe
+- **Pager scroll guard** - horizontal paging disabled during drawer transition
+
+### v2.19.0
+
+- **VelocityTracker drawer fling** - Replaced manual nanoTime velocity with Compose VelocityTracker for consistent, accurate flings
+- **Always-composed drawer** - Drawer stays in composition tree, hidden via graphicsLayer alpha; preserves scroll position
+- **Remove Page** - "Remove Page" in home long-press menu (checks empty, shifts widgets, greyed out on last page)
+- **Clear Recents** - "Clear" button on the RECENT row header in the app drawer
+- **Reset confirmation** - "Reset All Settings" guarded by confirmation dialog
+- **Fast scroller haptics** - Light vibration on each letter change while dragging
+- **3x3 folder preview** - Folders with 5+ apps show 9 icons in a 3x3 grid
+- **Error color slot** - `LauncherColors.error` with per-theme tuning (rose for Mocha, coral for Neon/Aurora)
+- **Accent reset chip** - "Default" chip at start of accent palette to revert to theme native accent
+- **Theme preview 4-swatch** - Adds background color dot for better theme differentiation
+- **Gesture picker app icon** - Shows small app icon inline when gesture is LAUNCH_APP
+- **Search history fade gradient** - Right-edge gradient hint for scrollable chip row
+- **Conditional auto-focus** - Keyboard only auto-focuses when opened via search bar tap
+- **Pager scroll guard** - HorizontalPager disabled while drawer is partially open
+- **Hidden indicator zero height** - HIDDEN page indicator no longer wastes 6dp
+- **Adaptive icon widths** - Drawer icon items scale with icon size setting
+- **App size split APKs** - Sums sourceDir + splitSourceDirs for accurate size
+- **Widget picker cell sizes** - Shows "2x1 cells" instead of raw dp dimensions
+- **Widget span actual cell width** - Uses real grid cell width instead of hardcoded 73dp
+- **Import failure toast** - Error message instead of silent failure
+- **No-bounce icon press** - Material 3 spring animation (dampingRatio 1.0, stiffness 800)
+- **Memoized theme** - `themeColorsWithAccent` cached via `remember`
+- **Theme.kt reformatted** - Named-parameter multi-line constructors for all 6 themes
+- **SearchOff empty state** - Icon above "No apps found" in drawer
+
+### v2.18.0
+
+- **Settings search filter** - Keyword search across all 8 sections, auto-expands matching sections
+- **Uninstall confirmation dialog** - All uninstall paths (D&D, home menu, drawer menu) go through confirmation
+- **Swipe-up home gesture** - Configurable, separate from drawer open (default: APP_DRAWER)
+- **Haptic feedback on page limits** - Vibration when swiping past first/last page
+- **Hidden apps "Unhide All"** - Batch unhide button when >1 hidden app
+- **Settings sections auto-expand** during search
+
+### v2.17.0
+
+- **LAUNCH_APP gesture action** - Bind any gesture to open a specific app
+- **"Add Page" in home space menu** - Pixel Launcher-style long-press menu
+- **Settings section summaries** - Show current values when collapsed
+- **Drawer shows "X results"** during search
+- **Gesture app picker UI** in settings
+
+### v2.16.1
+
+- Audit fixes: SearchPill shows engine initial+name, haptic on home space menu, dock swipe indicator dot, categorizedApps perf skip during search, contact search permission chip, icon pack preview async loading
+
+### v2.16.0
+
+- Collapsible settings sections (8 groups), search engine picker (Google/DDG/Bing/Brave/Startpage), home space long-press menu, dock swipe-up gesture, icon pack preview (4 sample icons)
+
+### v2.15.7
+
+- suggestFolderName tokenized, unit converter regex hoisted, flashlight TorchCallback sync, drawer columns range 0-6
+
+### v2.15.6
+
+- Atomic resetAllSettings, widget picker toast feedback, all drawer close paths reset category
+
+### v2.15.5
+
+- Zero compiler warnings, web search at bottom of results, drawer search auto-focus
+
+### v2.15.4
+
+- AppCategorizer word-boundary tokenization, ProGuard tightened (APK 18.6->3.3MB), widget data in backup
+
+### v2.15.3
+
+- RECENT_APP skips current app, resetAllSettings covers all prefs, backup includes suggestion/app usage
+
+### v2.15.2
+
+- Folder columns setting, category reset, RECENT_APP hidden filter, drawer icon styling parity
+
+### v2.15.1
+
+- Widget BoxWithConstraints, clock pending-job pattern, fast scroller from displayApps
 
 ### v2.15.0
 
-- **Hide Dock** - Toggle to completely remove the dock and search bar from the home screen
-- **Recent App Gesture** - 9th gesture action: opens the most recently used app from usage history
-- **Grayscale Icon Mode** - Desaturates all app icons to monochrome via ColorMatrix for a clean aesthetic
-- **Page Line Indicator** - Animated accent-colored bar alternative to dots, shows page position proportionally
-- **Label Font Weight** - Light/Regular/Bold options for icon label text weight
-- **Page Indicator Hidden** - Option to hide page indicators entirely
+- Hide dock, Recent App gesture, grayscale icons, page line indicator, label weight
 
 ### v2.14.0
 
-- **Reverse Sort (Z-A)** - Descending alphabetical ordering in drawer sort options
-- **Depth Page Transition** - 6th transition: behind-page shrinks to 0.75x with fade while front page slides over (parallax depth)
-- **Dock Handle Pulse** - Breathing accent-colored glow animation (2s cycle) on the dock handle bar
-- **Scroll-to-Top** - Tap the drawer drag handle to instantly scroll the app list to the top
-- **XL Icon Size** - Extra Large (66dp) icons for better visibility and larger touch targets
+- Z-A sort, Depth transition, dock pulse, scroll-to-top, XL icons
 
 ### v2.13.0
 
-- **Accent Color Presets** - 12 popular colors as tappable circles for quick accent selection (Red, Pink, Purple, Indigo, Blue, Cyan, Green, Orange, and more)
-- **Search Clear Button** - X icon in drawer search field to instantly clear text (appears when search is non-empty)
-- **Carousel Page Transition** - New 3D rotating carousel effect for home screen pages (5th transition option)
-- **App Size in Context Menu** - Shows installed APK size alongside version and launch count (e.g., "Chrome v125 · 45.2 MB · 142 launches")
-- **Reset All Settings** - One-tap button in Quick Actions to restore all preferences to factory defaults
+- Accent presets, search clear, Carousel transition, app size, reset all
 
 ### v2.12.0
 
-- **Neon Theme** - Hot pink/magenta cyberpunk dark theme with pure white text and deep black background
-- **Tap-to-Copy Results** - Tap calculator or unit converter results to copy to clipboard with toast confirmation
-- **Folder Notification Badges** - Folders show total notification count from all apps inside (uses accent color)
-- **Drawer Entrance Scale** - Subtle 0.95x to 1.0x scale-up effect as the drawer opens for a premium feel
-- **Double-Tap Clock Cycling** - Double-tap the clock time to cycle through Large/Compact/Minimal styles with haptic feedback
+- Neon theme, copy results, folder badges, drawer scale, clock cycling
 
 ### v2.11.0
 
-- **Clock Styles** - Large (full At-a-Glance with date, time, battery, alarm), Compact (single-line date/time/battery), Minimal (oversized time only)
-- **Unit Converter** - Type unit conversions in drawer search: "10km" → 6.21 mi, "100F" → 37.78 C, "5lb" → 2.27 kg. Supports km/mi, m/ft, cm/in, lb/kg, oz/g, gal/L, F/C
-- **Edit Mode Gesture** - "Edit Mode" added to gesture actions, assignable to double-tap, triple-tap, pinch, or dock handle
-- **Long-Press Empty Cell** - Long-pressing an empty home grid cell enters edit mode for rearranging
-- **App Launch Count** - Context menu shows total launch count per app (e.g., "142 launches")
+- Clock styles, unit converter, Edit Mode gesture, launch counts
 
 ### v2.10.0
 
-- **Smart Fuzzy Search** - Relevance-scored search: exact match > starts with > word match > contains > package name > subsequence (fuzzy). Typing "chr" finds Chrome, "sett" finds Settings
-- **Inline Calculator** - Type math expressions in drawer search (e.g., "2+3", "15*4.5", "(100-20)/3") and see the result instantly. Supports +, -, *, /, %, parentheses
-- **New Icon Shapes** - Hexagon and Diamond shapes added to the existing 4 (Squircle, Circle, Square, Teardrop)
-- **Draggable Fast-Scroller** - Drag along the letter rail in the drawer to rapidly scroll through the alphabet (previously tap-only)
+- Fuzzy search, inline calculator, hexagon/diamond shapes, fast scroller
 
 ### v2.9.0
 
-- **App Suggestions** - Smart time-aware suggestion row on home screen, predicts apps based on morning/afternoon/evening/night usage patterns
-- **Search History** - Recent search terms shown as chips in drawer, tap to re-search, individual remove, clear all
-- **Themed Notification Badges** - Badge colors now use the theme accent color instead of hardcoded red
+- Suggestions row, search history, themed badges
 
 ### v2.8.0
 
-- **Home Screen Widgets** - Add widgets to home screen via AppWidgetHost, picker dialog, render + remove in edit mode
-- **Contact Search** - Search drawer finds matching contacts with call buttons
-- **Staggered Drawer Animation** - Improved drawer open/close animation
+- Widgets (AppWidgetHost), contact search, staggered animation
 
 ### v2.7.0
 
-- **Flashlight Gesture** - Toggle flashlight via gesture action
-- **Triple-Tap Gesture** - Configurable triple-tap action (400ms window)
-- **Pinch-In Gesture** - Pinch to trigger action (zoom < 0.7 threshold)
-- **Dock Handle Tap** - Configurable action on dock handle tap
-- **Wallpaper Parallax** - Subtle parallax scrolling on multi-page
-- **Drawer Animation Toggle** - Enable/disable drawer transition animation
+- Flashlight/triple-tap/pinch gestures, dock handle tap, parallax
 
 ### v2.6.0
 
-- **Alphabetic section headers** - Letter dividers in drawer grid (A, B, C...)
-- **Dock styles** - Solid, Pill, Floating, Transparent dock backgrounds
-- **Search bar styles** - Pill, Bar, Minimal (icon only), Hidden
-- **Haptic feedback intensity** - Off, Light, Medium, Strong
-- **Drawer background opacity** - Adjustable 50-100% opacity
-- **Icon label font size** - Small (9sp), Medium (11sp), Large (13sp)
-- **Folder grid columns** - Configurable 3-5 columns per folder
-- **App version in context menu** - Shows version info on long-press
+- Section headers, dock/search/haptic styles, drawer opacity, folder columns
 
 ### v2.5.0
 
-- **Drawer categories** - Smart auto-categorized tabs (All, Games, Social, Media, Tools, Work, Other)
-- **Home screen lock** - Prevent accidental drag/remove/edit with toast feedback
-- **Drawer column count** - Separate column count from home grid (Auto or 1-6)
-- **Custom accent color** - Hex color picker overrides theme accent globally
-- **Icon shadow** - Toggleable drop shadow/elevation on app icons
-- **App categorizer** - Heuristic-based categorization by package name and label
+- Categories, home lock, drawer columns, accent color, icon shadow
 
 ### v2.4.0
 
-- **Page transitions** - Slide, Cube, Stack, and Fade effects when swiping between home pages
-- **Dock swipe-up actions** - Assign a secondary app to each dock slot, launch on swipe up
-- **Badge style options** - Count (default), Dot Only, or Hidden
-- **Grid padding controls** - Adjustable horizontal and vertical icon spacing (0-24dp)
-- **Clock tap actions** - Tap date to open calendar, tap time to open clock app
-- **Status bar hide** - Option to hide status bar on home screen for more space
+- Page transitions, dock swipe, badge styles, grid padding, clock tap
 
 ### v2.3.0
 
-- **Themed icons** - Android 13+ Material You monochrome icon support
-- **Drawer sort options** - Sort by name (A-Z), most used, or recently installed
-- **Icon label styles** - Shown, Hidden, Home Only, or Drawer Only
-- **At-a-Glance battery + alarm** - Battery percentage and next alarm in clock widget
-- **Search web fallback** - "Search Google" button when no apps match in drawer
-- **Install date tracking** - Apps track first install time for sort-by-recent
+- Themed icons, drawer sort, label styles, At-a-Glance, web search
 
 ### v2.2.0
 
-- Notification badge dots, app shortcuts, wallpaper dimming
-- Recent apps row, search by package name, app usage tracking
+- Notification badges, shortcuts, wallpaper dim, recent apps
+
+### v2.1.0
+
+- Icon packs, folders, custom labels, hidden apps, gestures, backup
+
+### v2.0.0
+
+- Stability architecture, crash handler, DataStore corruption recovery
 
 ## Architecture
 
 ```
 LauncherApplication    - Global crash handler + notification reporter
-MainActivity           - Lifecycle, debounced package receiver
+MainActivity           - Lifecycle, debounced package receiver, widget host
 LauncherViewModel      - State management, debounced operations, package validation
 LauncherPrefs          - DataStore with corruption handler, atomic writes
 AppRepository          - Hardened PM calls, package existence checks, themed icons
-IconPackManager        - LruCache, defensive XML parsing
+IconPackManager        - LruCache, defensive XML parsing, preview icons
 ShortcutRepository     - LauncherApps shortcut queries + launching
 NotificationListener   - NotificationListenerService for badge counts
+AppCategorizer         - Word-boundary tokenized auto-categorization
 AppModel               - Safe deserialization, data types, enums
 UI (Compose)           - HomeScreen, AppDrawer, Components, Settings, Theme
 ```
@@ -169,7 +216,9 @@ UI (Compose)           - HomeScreen, AppDrawer, Components, Settings, Theme
 ## Build
 
 ```bash
-./gradlew assembleDebug
+JAVA_HOME="C:/Program Files/Android/Android Studio/jbr" ANDROID_HOME="$HOME/AppData/Local/Android/Sdk" ./gradlew assembleRelease
 ```
+
+Debug build: `./gradlew assembleDebug`
 
 Requires Android SDK 28+ (Android 9), targets SDK 34 (Android 14).
