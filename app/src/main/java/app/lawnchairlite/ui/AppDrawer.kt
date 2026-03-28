@@ -224,8 +224,8 @@ fun AppDrawer(
                 Box(Modifier.fillMaxWidth().padding(vertical = 14.dp).clickable {
                     scope.launch { gridState.animateScrollToItem(0) }
                 }, Alignment.Center) {
-                    Box(Modifier.width(40.dp).height(4.dp).clip(RoundedCornerShape(2.dp))
-                        .background(colors.textSecondary.copy(alpha = 0.5f)))
+                    Box(Modifier.width(48.dp).height(4.dp).clip(RoundedCornerShape(2.dp))
+                        .background(colors.textSecondary.copy(alpha = 0.7f)))
                 }
                 DrawerSearch(searchQuery, onSearchChange, Modifier.padding(horizontal = 20.dp, vertical = 4.dp), focusRequester = searchFocusRequester)
                 if (searchQuery.isBlank() && searchHistory.isNotEmpty()) {
@@ -263,7 +263,7 @@ fun AppDrawer(
                 }
                 Spacer(Modifier.height(6.dp))
                 Row(Modifier.padding(horizontal = 24.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text(if (searchQuery.isNotBlank()) "${displayApps.size} results" else "${displayApps.size} apps", color = colors.textSecondary, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                    Text(if (searchQuery.isNotBlank()) "${displayApps.size} results" else "${displayApps.size} apps", color = colors.textSecondary.copy(alpha = 0.8f), fontSize = 12.sp, fontWeight = FontWeight.Medium)
                     if (searchQuery.isBlank() && drawerSort != app.lawnchairlite.data.DrawerSort.NAME) {
                         Text("  ·  ${drawerSort.label}", color = colors.accent.copy(alpha = 0.6f), fontSize = 11.sp, fontWeight = FontWeight.Medium)
                     }
