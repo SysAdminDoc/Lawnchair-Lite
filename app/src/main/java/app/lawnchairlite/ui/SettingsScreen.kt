@@ -539,8 +539,8 @@ private fun IconPackSection(
             Text(activeLabel, color = if (activePack.isNotBlank()) c.accent else c.textSecondary, fontSize = 12.sp)
         }
         if (activePack.isNotBlank()) {
-            Text("Reset", color = colors.error, fontSize = 12.sp, fontWeight = FontWeight.Medium,
-                modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(colors.error.copy(alpha = 0.1f))
+            Text("Reset", color = c.error, fontSize = 12.sp, fontWeight = FontWeight.Medium,
+                modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(c.error.copy(alpha = 0.1f))
                     .clickable { vm.clearIconPack(); expanded = false }.padding(horizontal = 10.dp, vertical = 4.dp))
             Spacer(Modifier.width(8.dp))
         }
