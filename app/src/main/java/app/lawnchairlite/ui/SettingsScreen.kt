@@ -21,9 +21,16 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.lawnchairlite.LauncherViewModel
@@ -87,13 +94,55 @@ fun SettingsPanel(
     var featuresExpanded by remember { mutableStateOf(false) }
     var advancedExpanded by remember { mutableStateOf(false) }
 
+    // Swipe-down-to-dismiss: track overscroll at top
+    val scrollState = rememberScrollState()
+    var dismissDrag by remember { mutableFloatStateOf(0f) }
+    val dismissThreshold = with(LocalDensity.current) { 120.dp.toPx() }
+    val dismissNestedScroll = remember {
+        object : NestedScrollConnection {
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                // If dragging back up while in dismiss state, consume to reduce offset
+                if (dismissDrag > 0f && available.y < 0f) {
+                    dismissDrag = (dismissDrag + available.y).coerceAtLeast(0f)
+                    return Offset(0f, available.y)
+                }
+                return Offset.Zero
+            }
+            override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset {
+                if (available.y > 0f && scrollState.value == 0) {
+                    dismissDrag += available.y
+                    return Offset(0f, available.y)
+                }
+                return Offset.Zero
+            }
+            override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
+                if (dismissDrag > 0f) {
+                    val shouldClose = dismissDrag > dismissThreshold || available.y > 800f
+                    dismissDrag = 0f
+                    if (shouldClose) onClose()
+                }
+                return Velocity.Zero
+            }
+        }
+    }
+    // Reset dismiss drag when panel closes
+    LaunchedEffect(visible) { if (!visible) dismissDrag = 0f }
+
     AnimatedVisibility(
         visible = visible,
         enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(350, easing = FastOutSlowInEasing)) + fadeIn(tween(200)),
         exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(300)) + fadeOut(tween(150)),
     ) {
-        Column(Modifier.fillMaxSize().background(colors.background.copy(alpha = 0.97f)).statusBarsPadding()) {
-            Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+        Column(
+            Modifier.fillMaxSize().background(colors.background.copy(alpha = 0.97f)).statusBarsPadding()
+                .nestedScroll(dismissNestedScroll)
+                .graphicsLayer { translationY = dismissDrag * 0.5f; alpha = 1f - (dismissDrag / dismissThreshold * 0.3f).coerceIn(0f, 0.3f) }
+        ) {
+            // Drag handle
+            Box(Modifier.fillMaxWidth().padding(top = 10.dp, bottom = 4.dp), Alignment.Center) {
+                Box(Modifier.width(48.dp).height(4.dp).clip(RoundedCornerShape(2.dp)).background(colors.textSecondary.copy(alpha = 0.5f)))
+            }
+            Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = onClose) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = colors.textSecondary, modifier = Modifier.size(22.dp)) }
                 Spacer(Modifier.weight(1f)); Text("Settings", color = colors.text, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
                 Spacer(Modifier.weight(1f)); Spacer(Modifier.size(48.dp))
@@ -113,7 +162,7 @@ fun SettingsPanel(
                 )
             }
 
-            Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp).navigationBarsPadding()) {
+            Column(Modifier.fillMaxSize().verticalScroll(scrollState).padding(horizontal = 20.dp).navigationBarsPadding()) {
 
                 // ── THEME & WALLPAPER ──
                 if (showTheme) {
