@@ -594,7 +594,7 @@ fun HomeScreen(vm: LauncherViewModel) {
                                 val dockFolderBadge = if (settings.showNotifBadges && settings.badgeStyle != app.lawnchairlite.data.BadgeStyle.HIDDEN && cell is GridCell.Folder) cell.appKeys.sumOf { notifCounts[it.substringBefore("/")] ?: 0 } else 0
                                 GridCellView(
                                     cell, settings.iconShape, iconDp, { vm.resolveApp(it) }, customLabels,
-                                    isDS, homeLabels, editMode,
+                                    isDS, false, editMode,
                                     badgeCount = dockBadge, badgeDotOnly = settings.badgeStyle == app.lawnchairlite.data.BadgeStyle.DOT, iconShadow = settings.iconShadow, labelSizeSp = settings.labelSize.sp, folderBadgeCount = dockFolderBadge, grayscale = settings.grayscaleIcons, labelWeight = resolvedLabelWeight,
                                     onTap = { when (cell) {
                                         is GridCell.App -> vm.resolveApp(cell.appKey)?.let { vm.launch(it) }
