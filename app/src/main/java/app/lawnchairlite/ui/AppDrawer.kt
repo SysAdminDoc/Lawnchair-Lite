@@ -246,8 +246,8 @@ fun AppDrawer(
                 }
                 Spacer(Modifier.height(6.dp))
                 Row(Modifier.padding(horizontal = 24.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text("${displayApps.size} apps", color = colors.textSecondary, fontSize = 12.sp, fontWeight = FontWeight.Medium)
-                    if (drawerSort != app.lawnchairlite.data.DrawerSort.NAME) {
+                    Text(if (searchQuery.isNotBlank()) "${displayApps.size} results" else "${displayApps.size} apps", color = colors.textSecondary, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                    if (searchQuery.isBlank() && drawerSort != app.lawnchairlite.data.DrawerSort.NAME) {
                         Text("  ·  ${drawerSort.label}", color = colors.accent.copy(alpha = 0.6f), fontSize = 11.sp, fontWeight = FontWeight.Medium)
                     }
                 }

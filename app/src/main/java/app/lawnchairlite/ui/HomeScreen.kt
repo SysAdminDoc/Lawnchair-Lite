@@ -255,7 +255,7 @@ fun HomeScreen(vm: LauncherViewModel) {
                                     settleDrawer(velocityPxPerSec)
                                 } else if (totalDrag > 40f) {
                                     // Swipe down on home (notifications, etc.)
-                                    vm.executeGesture(settings.swipeDownAction)
+                                    vm.executeGesture(settings.swipeDownAction, "swipe_down")
                                 }
                             },
                             onDragCancel = {
@@ -289,9 +289,9 @@ fun HomeScreen(vm: LauncherViewModel) {
                             if (!currentDrawerVisible) {
                                 val now = System.currentTimeMillis()
                                 if (now - lastDoubleTapTime < 400L && settings.tripleTapAction != GestureAction.NONE) {
-                                    vm.executeGesture(settings.tripleTapAction)
+                                    vm.executeGesture(settings.tripleTapAction, "triple_tap")
                                 } else {
-                                    vm.executeGesture(settings.doubleTapAction)
+                                    vm.executeGesture(settings.doubleTapAction, "double_tap")
                                 }
                                 lastDoubleTapTime = now
                             }
@@ -310,7 +310,7 @@ fun HomeScreen(vm: LauncherViewModel) {
                                     zoom *= event.calculateZoom()
                                     if (zoom < 0.7f) {
                                         event.changes.forEach { it.consume() }
-                                        if (!currentDrawerVisible) vm.executeGesture(settings.pinchAction)
+                                        if (!currentDrawerVisible) vm.executeGesture(settings.pinchAction, "pinch")
                                         break
                                     }
                                 }
@@ -543,7 +543,7 @@ fun HomeScreen(vm: LauncherViewModel) {
                                     if (settings.dockTapAction == GestureAction.APP_DRAWER) {
                                         scope.launch { drawerProgress.animateTo(1f, spring(stiffness = Spring.StiffnessMedium)) }
                                     } else {
-                                        vm.executeGesture(settings.dockTapAction)
+                                        vm.executeGesture(settings.dockTapAction, "dock_tap")
                                     }
                                 }
                                 .padding(vertical = 3.dp),
@@ -717,6 +717,7 @@ fun HomeScreen(vm: LauncherViewModel) {
             HomeSpaceMenuOverlay(
                 onEditMode = { vm.dismissHomeSpaceMenu(); vm.enterEditMode() },
                 onAddWidget = { vm.dismissHomeSpaceMenu(); vm.enterEditMode(); vm.openWidgetPicker() },
+                onAddPage = { vm.dismissHomeSpaceMenu(); vm.addPage() },
                 onWallpaper = { vm.dismissHomeSpaceMenu(); vm.openWallpaperPicker() },
                 onSettings = { vm.dismissHomeSpaceMenu(); vm.openSettings() },
                 onDismiss = { vm.dismissHomeSpaceMenu() },
