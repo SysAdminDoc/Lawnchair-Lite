@@ -470,8 +470,9 @@ private fun IconPackSection(
             } else {
                 packs.forEach { pack ->
                     val isActive = pack.packageName == activePack
-                    // Preview icons (loaded lazily)
-                    val previewIcons = remember(pack.packageName) { vm.getIconPackPreview(pack.packageName) }
+                    // Preview icons (loaded async to avoid blocking compose thread)
+                    var previewIcons by remember { mutableStateOf<List<android.graphics.drawable.Drawable?>>(emptyList()) }
+                    LaunchedEffect(pack.packageName) { vm.getIconPackPreviewAsync(pack.packageName) { previewIcons = it } }
                     Row(
                         Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
                             .background(if (isActive) c.accent.copy(alpha = 0.1f) else c.card)
