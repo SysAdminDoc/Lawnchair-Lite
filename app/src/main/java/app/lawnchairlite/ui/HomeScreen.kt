@@ -1,5 +1,7 @@
 package app.lawnchairlite.ui
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
@@ -514,10 +516,12 @@ fun HomeScreen(vm: LauncherViewModel) {
                             app.lawnchairlite.data.SearchBarStyle.PILL -> SearchPill(
                                 onClick = { scope.launch { drawerProgress.animateTo(1f, spring(stiffness = Spring.StiffnessMedium)) } },
                                 modifier = Modifier.padding(horizontal = 18.dp, vertical = 5.dp),
+                                searchEngineLabel = settings.searchEngine.label,
                             )
                             app.lawnchairlite.data.SearchBarStyle.BAR -> SearchPill(
                                 onClick = { scope.launch { drawerProgress.animateTo(1f, spring(stiffness = Spring.StiffnessMedium)) } },
                                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 5.dp),
+                                searchEngineLabel = settings.searchEngine.label,
                             )
                             app.lawnchairlite.data.SearchBarStyle.MINIMAL -> Box(
                                 Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 5.dp)
@@ -594,6 +598,10 @@ fun HomeScreen(vm: LauncherViewModel) {
                                     onDragEnd = { vm.endDrag() },
                                     onDragCancel = { vm.cancelDrag() },
                                 )
+                                // Dock swipe indicator
+                                if (hasDockSwipe && !isDragging && !editMode) {
+                                    Box(Modifier.align(Alignment.BottomCenter).offset(y = 2.dp).width(12.dp).height(2.dp).clip(RoundedCornerShape(1.dp)).background(colors.accent.copy(alpha = 0.5f)))
+                                }
                             }
                         }
                     }
@@ -602,6 +610,12 @@ fun HomeScreen(vm: LauncherViewModel) {
             }
 
             if (isDragging) DragGhost(drag?.item, drag?.appInfo, settings.iconShape, dragOff, { vm.resolveApp(it) }, iconDp)
+        }
+
+        // Contact permission launcher
+        var contactPermGranted by remember { mutableStateOf(vm.hasContactPermission()) }
+        val contactPermLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            contactPermGranted = granted
         }
 
         // ═════════════════════════════════════════════════════════════
@@ -641,6 +655,8 @@ fun HomeScreen(vm: LauncherViewModel) {
                 },
                 onAppLongClick = { vm.showDrawerMenu(it) },
                 contactResults = vm.contactResults.collectAsState().value,
+                contactPermissionGranted = contactPermGranted,
+                onRequestContactPermission = { contactPermLauncher.launch(android.Manifest.permission.READ_CONTACTS) },
                 onContactTap = { uri -> vm.openContact(uri); scope.launch { drawerProgress.animateTo(0f, tween(200)) }; vm.setSearch(""); vm.setSelectedCategory(app.lawnchairlite.data.DrawerCategory.ALL) },
                 onContactCall = { number -> vm.callContact(number); scope.launch { drawerProgress.animateTo(0f, tween(200)) }; vm.setSearch(""); vm.setSelectedCategory(app.lawnchairlite.data.DrawerCategory.ALL) },
                 onSearchWeb = { vm.searchWeb(it) },

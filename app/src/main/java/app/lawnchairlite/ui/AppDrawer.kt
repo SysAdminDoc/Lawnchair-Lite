@@ -68,6 +68,8 @@ fun AppDrawer(
     onAppClick: (AppInfo) -> Unit,
     onAppLongClick: (AppInfo) -> Unit,
     contactResults: List<app.lawnchairlite.LauncherViewModel.ContactResult> = emptyList(),
+    contactPermissionGranted: Boolean = true,
+    onRequestContactPermission: () -> Unit = {},
     onContactTap: (String) -> Unit = {},
     onContactCall: (String) -> Unit = {},
     onSearchWeb: (String) -> Unit,
@@ -254,6 +256,23 @@ fun AppDrawer(
             // Calculator result
             if (calculatorResult != null && searchQuery.isNotBlank()) {
                 CalculatorResultRow(result = calculatorResult)
+            }
+
+            // Contact search permission prompt
+            if (searchQuery.length >= 2 && contactResults.isEmpty() && !contactPermissionGranted) {
+                Row(
+                    Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 4.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(colors.accent.copy(alpha = 0.06f))
+                        .clickable { onRequestContactPermission() }
+                        .padding(horizontal = 14.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text("Enable contact search", color = colors.accent, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                    Spacer(Modifier.weight(1f))
+                    Text("Grant", color = colors.accent, fontSize = 11.sp, fontWeight = FontWeight.Bold,
+                        modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(colors.accent.copy(alpha = 0.12f)).padding(horizontal = 8.dp, vertical = 4.dp))
+                }
             }
 
             // Contact search results

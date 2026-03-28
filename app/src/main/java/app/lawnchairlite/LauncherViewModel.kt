@@ -29,24 +29,7 @@ import kotlinx.coroutines.launch
 import java.util.Calendar
 import kotlin.math.max
 
-/**
- * Lawnchair Lite - ViewModel
- *
- * v2.3.0 additions:
- * - Drawer sort (name, most used, recently installed)
- * - Label style (shown, hidden, home only, drawer only)
- * - Themed icons (Android 13+)
- * - At-a-Glance battery + next alarm
- * - Search web fallback
- * - App launch animation support
- *
- * v2.2.0 additions:
- * - Notification badge counts via NotificationListener companion StateFlow
- * - App shortcuts via ShortcutRepository (LauncherApps API)
- * - Wallpaper dimming setting
- * - App usage tracking for "Recent" section in drawer
- * - Search matches package name in addition to label
- */
+/** Lawnchair Lite - ViewModel */
 class LauncherViewModel(app: Application) : AndroidViewModel(app) {
 
     companion object {
@@ -103,7 +86,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     val widgetPickerOpen: StateFlow<Boolean> = _widgetPickerOpen.asStateFlow()
     private val _homeSpaceMenu = MutableStateFlow(false)
     val homeSpaceMenu: StateFlow<Boolean> = _homeSpaceMenu.asStateFlow()
-    fun showHomeSpaceMenu() { _homeSpaceMenu.value = true }
+    fun showHomeSpaceMenu() { _homeSpaceMenu.value = true; vibrate() }
     fun dismissHomeSpaceMenu() { _homeSpaceMenu.value = false }
 
     // Contact search results
@@ -150,9 +133,10 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         }
     }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
-    // Categorized apps for drawer tabs
-    val categorizedApps: StateFlow<Map<DrawerCategory, List<AppInfo>>> = filteredApps.map { apps ->
-        AppCategorizer.categorizeAll(apps)
+    // Categorized apps for drawer tabs — skip computation during search (categories hidden)
+    val categorizedApps: StateFlow<Map<DrawerCategory, List<AppInfo>>> = combine(filteredApps, _search, settings) { apps, query, s ->
+        if (query.isNotBlank() || !s.drawerCategories) emptyMap()
+        else AppCategorizer.categorizeAll(apps)
     }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyMap())
 
     private val _selectedCategory = MutableStateFlow(DrawerCategory.ALL)
@@ -426,7 +410,12 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     }}
 
     fun refreshIconPacks() { discoverIconPacks() }
-    fun getIconPackPreview(packageName: String): List<android.graphics.drawable.Drawable?> = iconPackManager.previewIcons(packageName, 4)
+    fun getIconPackPreviewAsync(packageName: String, callback: (List<android.graphics.drawable.Drawable?>) -> Unit) {
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            val icons = iconPackManager.previewIcons(packageName, 4)
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) { callback(icons) }
+        }
+    }
 
     private suspend fun applyIconPack(packageName: String) {
         if (packageName.isBlank()) { iconPackManager.clearPack(); loadAppsInternal(); return }
@@ -1220,6 +1209,9 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
             })
         } catch (e: Exception) { Log.e(TAG, "openContact failed", e) }
     }
+
+    fun hasContactPermission(): Boolean =
+        ctx.checkSelfPermission(android.Manifest.permission.READ_CONTACTS) == android.content.pm.PackageManager.PERMISSION_GRANTED
 
     fun callContact(number: String) {
         try {

@@ -42,6 +42,7 @@ Sign: `jarsigner` with `lawnchair-lite.jks` (alias: lawnchair-lite), then `zipal
 - CameraManager.TorchCallback syncs flashlight state with external toggles
 
 ## Version History
+- v2.16.1: Audit fixes — SearchPill shows configured engine initial+name, haptic on home space menu, dock swipe indicator dot, categorizedApps skips during search (perf), contact search permission chip in drawer, icon pack preview loads async (off compose thread), stale ViewModel changelog cleaned
 - v2.16.0: Collapsible settings sections (8 groups), search engine picker (Google/DDG/Bing/Brave/Startpage), home space long-press menu (Pixel Launcher-style: Edit/Widget/Wallpaper/Settings), dock swipe-up gesture (launches configured app), icon pack preview (4 sample icons in picker), dock swipe app config in context menu, stale version comments cleaned
 - v2.15.7: suggestFolderName tokenized, unit converter regex hoisted, flashlight TorchCallback sync, drawer columns range 0-6
 - v2.15.6: atomic resetAllSettings (30+ writes -> 1), widget picker toast feedback, all drawer close paths reset category, hasOpenOverlay covers widgetPicker+editMode
@@ -127,5 +128,9 @@ Sign: `jarsigner` with `lawnchair-lite.jks` (alias: lawnchair-lite), then `zipal
 
 ### Settings UI
 - Settings organized into 8 collapsible sections: Theme & Wallpaper, Icons & Labels, Grid & Layout, Drawer, Dock, Gestures, Features, Advanced
-- Icon pack picker shows 4 preview icons per pack via IconPackManager.previewIcons()
+- Icon pack picker shows 4 preview icons per pack — loaded async via getIconPackPreviewAsync()
 - Dock swipe app config accessible from HomeContextMenu (dock source only)
+- SearchPill: takes searchEngineLabel param, shows engine initial + "Search {Engine}..." placeholder
+- categorizedApps: gated by _search + drawerCategories — skips AppCategorizer during search (perf)
+- Contact search: permission chip shown in drawer when searching + permission not granted
+- Dock swipe indicator: small accent-colored bar under dock icons with configured swipe app
