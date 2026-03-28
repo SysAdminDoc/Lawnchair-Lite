@@ -1156,7 +1156,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         try {
             val s = settings.value; val gs = (s.gridColumns * s.gridRows).coerceAtLeast(1); val dc = s.dockCount.coerceAtLeast(1)
             val dock = MutableList<GridCell?>(dc) { null }; val used = mutableSetOf<String>(); var di = 0
-            for (pkg in DEFAULT_DOCK_PKGS) { if (di >= dc) break; apps.find { it.packageName == pkg && it.key !in used }?.let { dock[di++] = GridCell.App(it.key); used.add(it.key) } }
+            for (slot in DEFAULT_DOCK_SLOTS) { if (di >= dc) break; slot.firstNotNullOfOrNull { pkg -> apps.find { it.packageName == pkg && it.key !in used } }?.let { dock[di++] = GridCell.App(it.key); used.add(it.key) } }
             for (a in apps) { if (di >= dc) break; if (a.key !in used) { dock[di++] = GridCell.App(a.key); used.add(a.key) } }
             val home = MutableList<GridCell?>(gs) { null }; var hi = 0
             for (pkg in DEFAULT_HOME_PKGS) { if (hi >= gs) break; apps.find { it.packageName == pkg && it.key !in used }?.let { home[hi++] = GridCell.App(it.key); used.add(it.key) } }

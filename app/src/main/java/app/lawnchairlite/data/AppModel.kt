@@ -159,12 +159,13 @@ fun deserializeCell(s: String): GridCell? = try {
 fun serializeGrid(cells: List<GridCell?>): String = cells.joinToString("|") { it?.serialize() ?: "_" }
 fun deserializeGrid(s: String): List<GridCell?> = if (s.isBlank()) emptyList() else s.split("|").map { deserializeCell(it) }
 
-val DEFAULT_DOCK_PKGS = listOf(
-    "com.google.android.dialer", "com.android.dialer",
-    "com.google.android.apps.messaging", "com.android.mms",
-    "com.android.chrome", "org.mozilla.firefox",
-    "com.google.android.GoogleCamera", "com.android.camera", "com.android.camera2",
-    "com.google.android.apps.photos",
+// Each inner list = one dock slot (first match wins, rest are fallbacks for that slot)
+val DEFAULT_DOCK_SLOTS = listOf(
+    listOf("com.google.android.dialer", "com.android.dialer", "com.samsung.android.dialer"),
+    listOf("com.google.android.apps.messaging", "com.android.mms", "com.samsung.android.messaging"),
+    listOf("com.android.chrome", "com.brave.browser", "org.mozilla.firefox", "com.samsung.android.app.sbrowser", "com.opera.browser"),
+    listOf("com.google.android.GoogleCamera", "com.android.camera", "com.android.camera2", "com.sec.android.app.camera", "com.samsung.android.camera"),
+    listOf("com.android.settings"),
 )
 
 val DEFAULT_HOME_PKGS = listOf(
