@@ -14,7 +14,7 @@ import org.json.JSONObject
 import java.io.IOException
 
 /**
- * Lawnchair Lite v2.12.0 - Preferences
+ * Lawnchair Lite - Preferences
  *
  * Stability improvements:
  * - ReplaceFileCorruptionHandler: if DataStore file is corrupted, reset to defaults
@@ -79,6 +79,7 @@ data class LauncherSettings(
     val grayscaleIcons: Boolean = false,
     val pageIndicatorStyle: PageIndicatorStyle = PageIndicatorStyle.DOTS,
     val labelWeight: LabelWeight = LabelWeight.REGULAR,
+    val searchEngine: SearchEngine = SearchEngine.GOOGLE,
 )
 
 class LauncherPrefs(private val context: Context) {
@@ -140,6 +141,7 @@ class LauncherPrefs(private val context: Context) {
         val LABEL_WEIGHT = stringPreferencesKey("label_weight")
         val SEARCH_HISTORY = stringPreferencesKey("search_history")
         val SUGGESTION_USAGE = stringPreferencesKey("suggestion_usage")
+        val SEARCH_ENGINE = stringPreferencesKey("search_engine")
     }
 
     // Safe data flow: catches IOException (disk errors) and emits defaults
@@ -198,6 +200,7 @@ class LauncherPrefs(private val context: Context) {
             grayscaleIcons = p[GRAYSCALE_ICONS] ?: false,
             pageIndicatorStyle = p[PAGE_INDICATOR_STYLE]?.let { runCatching { PageIndicatorStyle.valueOf(it) }.getOrNull() } ?: PageIndicatorStyle.DOTS,
             labelWeight = p[LABEL_WEIGHT]?.let { runCatching { LabelWeight.valueOf(it) }.getOrNull() } ?: LabelWeight.REGULAR,
+            searchEngine = p[SEARCH_ENGINE]?.let { runCatching { SearchEngine.valueOf(it) }.getOrNull() } ?: SearchEngine.GOOGLE,
         )
     }
 
@@ -270,6 +273,7 @@ class LauncherPrefs(private val context: Context) {
                 p[DRAWER_ANIMATION] = d.drawerAnimation; p[DRAWER_CATEGORIES] = d.drawerCategories
                 p[TRIPLE_TAP_ACTION] = d.tripleTapAction.name; p[PINCH_ACTION] = d.pinchAction.name
                 p[DOCK_TAP_ACTION] = d.dockTapAction.name
+                p[SEARCH_ENGINE] = d.searchEngine.name
             }
         }.onFailure { Log.e(TAG, "resetToDefaults failed", it) }
     }
@@ -459,6 +463,7 @@ class LauncherPrefs(private val context: Context) {
             put("grayscale_icons", p[GRAYSCALE_ICONS] ?: false)
             put("page_indicator_style", p[PAGE_INDICATOR_STYLE] ?: "DOTS")
             put("label_weight", p[LABEL_WEIGHT] ?: "REGULAR")
+            put("search_engine", p[SEARCH_ENGINE] ?: "GOOGLE")
             put("search_history", p[SEARCH_HISTORY] ?: "")
             put("suggestion_usage", p[SUGGESTION_USAGE] ?: "")
             put("app_usage", p[APP_USAGE] ?: "")
@@ -521,6 +526,7 @@ class LauncherPrefs(private val context: Context) {
             if (j.has("grayscale_icons")) p[GRAYSCALE_ICONS] = j.getBoolean("grayscale_icons")
             j.optString("page_indicator_style").takeIf { it.isNotBlank() && runCatching { PageIndicatorStyle.valueOf(it) }.isSuccess }?.let { p[PAGE_INDICATOR_STYLE] = it }
             j.optString("label_weight").takeIf { it.isNotBlank() && runCatching { LabelWeight.valueOf(it) }.isSuccess }?.let { p[LABEL_WEIGHT] = it }
+            j.optString("search_engine").takeIf { it.isNotBlank() && runCatching { SearchEngine.valueOf(it) }.isSuccess }?.let { p[SEARCH_ENGINE] = it }
             j.optString("search_history").let { p[SEARCH_HISTORY] = it }
             j.optString("suggestion_usage").takeIf { it.isNotBlank() }?.let { p[SUGGESTION_USAGE] = it }
             j.optString("app_usage").takeIf { it.isNotBlank() }?.let { p[APP_USAGE] = it }

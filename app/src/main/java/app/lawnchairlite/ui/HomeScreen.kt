@@ -43,7 +43,7 @@ import app.lawnchairlite.data.*
 import kotlinx.coroutines.launch
 
 /**
- * Lawnchair Lite v2.12.0 - Home Screen
+ * Lawnchair Lite - Home Screen
  *
  * Drawer transition ported from Launcher3's AbstractStateChangeTouchController
  * + AllAppsSwipeController + AllAppsTransitionController.
@@ -102,6 +102,7 @@ fun HomeScreen(vm: LauncherViewModel) {
     val categorizedApps by vm.categorizedApps.collectAsState()
     val selectedCategory by vm.selectedCategory.collectAsState()
     val widgetPickerOpen by vm.widgetPickerOpen.collectAsState()
+    val homeSpaceMenu by vm.homeSpaceMenu.collectAsState()
     val widgetInfos by vm.widgets.collectAsState()
     val suggestedApps by vm.suggestedApps.collectAsState()
     val colors = LocalLauncherColors.current
@@ -431,7 +432,7 @@ fun HomeScreen(vm: LauncherViewModel) {
                                             .graphicsLayer(scaleX = hoverScale, scaleY = hoverScale, alpha = if (isWidgetCell) 0f else 1f)
                                             .then(if (hoverAlpha > 0f) Modifier.clip(RoundedCornerShape(14.dp)).background(colors.accent.copy(alpha = hoverAlpha)) else Modifier)
                                             .then(if (cell == null && !editMode && !isDragging) Modifier.pointerInput(Unit) {
-                                                detectTapGestures(onLongPress = { vm.enterEditMode() })
+                                                detectTapGestures(onLongPress = { vm.showHomeSpaceMenu() })
                                             } else Modifier),
                                         Alignment.Center,
                                     ) {
@@ -558,12 +559,21 @@ fun HomeScreen(vm: LauncherViewModel) {
                             val isDS = drag?.source == DragSource.DOCK && drag?.sourceIndex == i
                             val dockHoverScale by animateFloatAsState(if (isH) 1.15f else 1f, spring(dampingRatio = 0.5f, stiffness = 400f), label = "dhs$i")
                             val dockHoverAlpha by animateFloatAsState(if (isH) 0.2f else 0f, tween(150), label = "dha$i")
+                            val hasDockSwipe = settings.dockSwipeApps.containsKey(i)
 
                             Box(
                                 Modifier.weight(1f).height(58.dp)
                                     .onGloballyPositioned { dockBounds[i] = it.boundsInRoot() }
                                     .graphicsLayer(scaleX = dockHoverScale, scaleY = dockHoverScale)
-                                    .then(if (dockHoverAlpha > 0f) Modifier.clip(RoundedCornerShape(12.dp)).background(colors.accent.copy(alpha = dockHoverAlpha)) else Modifier),
+                                    .then(if (dockHoverAlpha > 0f) Modifier.clip(RoundedCornerShape(12.dp)).background(colors.accent.copy(alpha = dockHoverAlpha)) else Modifier)
+                                    .then(if (hasDockSwipe && cell != null && !isDragging && !editMode) Modifier.pointerInput(i) {
+                                        var totalDragY = 0f
+                                        detectVerticalDragGestures(
+                                            onDragStart = { totalDragY = 0f },
+                                            onDragEnd = { if (totalDragY < -80f) vm.launchDockSwipe(i) },
+                                            onDragCancel = {},
+                                        ) { _, amount -> totalDragY += amount }
+                                    } else Modifier),
                                 Alignment.Center,
                             ) {
                                 val dockBadge = if (settings.showNotifBadges && settings.badgeStyle != app.lawnchairlite.data.BadgeStyle.HIDDEN && cell is GridCell.App) notifCounts[cell.appKey.substringBefore("/")] ?: 0 else 0
@@ -639,6 +649,7 @@ fun HomeScreen(vm: LauncherViewModel) {
                 onSearchHistoryTap = { vm.setSearch(it) },
                 onSearchHistoryRemove = { vm.removeSearchHistoryItem(it) },
                 onSearchHistoryClear = { vm.clearSearchHistory() },
+                searchEngineLabel = settings.searchEngine.label,
                 onProgressChange = { newP ->
                     scope.launch { drawerProgress.snapTo(newP) }
                 },
@@ -682,6 +693,17 @@ fun HomeScreen(vm: LauncherViewModel) {
                     }
                 },
                 onDismiss = { vm.closeWidgetPicker() },
+            )
+        }
+
+        // Home space long-press menu (Pixel Launcher-style)
+        if (homeSpaceMenu) {
+            HomeSpaceMenuOverlay(
+                onEditMode = { vm.dismissHomeSpaceMenu(); vm.enterEditMode() },
+                onAddWidget = { vm.dismissHomeSpaceMenu(); vm.enterEditMode(); vm.openWidgetPicker() },
+                onWallpaper = { vm.dismissHomeSpaceMenu(); vm.openWallpaperPicker() },
+                onSettings = { vm.dismissHomeSpaceMenu(); vm.openSettings() },
+                onDismiss = { vm.dismissHomeSpaceMenu() },
             )
         }
 

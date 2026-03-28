@@ -30,7 +30,7 @@ import java.util.Calendar
 import kotlin.math.max
 
 /**
- * Lawnchair Lite v2.12.0 - ViewModel
+ * Lawnchair Lite - ViewModel
  *
  * v2.3.0 additions:
  * - Drawer sort (name, most used, recently installed)
@@ -101,6 +101,10 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     val widgets: StateFlow<List<WidgetInfo>> = _widgets.asStateFlow()
     private val _widgetPickerOpen = MutableStateFlow(false)
     val widgetPickerOpen: StateFlow<Boolean> = _widgetPickerOpen.asStateFlow()
+    private val _homeSpaceMenu = MutableStateFlow(false)
+    val homeSpaceMenu: StateFlow<Boolean> = _homeSpaceMenu.asStateFlow()
+    fun showHomeSpaceMenu() { _homeSpaceMenu.value = true }
+    fun dismissHomeSpaceMenu() { _homeSpaceMenu.value = false }
 
     // Contact search results
     data class ContactResult(val name: String, val number: String?, val lookupUri: String?)
@@ -369,8 +373,8 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     fun closeDrawer() { _drawerOpen.value = false; _search.value = ""; _selectedCategory.value = DrawerCategory.ALL }
     fun openSettings() { _settingsOpen.value = true }
     fun closeSettings() { _settingsOpen.value = false }
-    fun closeAllOverlays() { _drawerOpen.value = false; _settingsOpen.value = false; _openFolder.value = null; _drawerMenuApp.value = null; _folderRename.value = null; _labelEdit.value = null; _homeMenu.value = null; _editMode.value = false; _widgetPickerOpen.value = false; _search.value = ""; _shortcuts.value = emptyList(); _selectedCategory.value = DrawerCategory.ALL }
-    fun hasOpenOverlay(): Boolean = _drawerOpen.value || _settingsOpen.value || _openFolder.value != null || _drawerMenuApp.value != null || _labelEdit.value != null || _homeMenu.value != null || _widgetPickerOpen.value || _editMode.value
+    fun closeAllOverlays() { _drawerOpen.value = false; _settingsOpen.value = false; _openFolder.value = null; _drawerMenuApp.value = null; _folderRename.value = null; _labelEdit.value = null; _homeMenu.value = null; _editMode.value = false; _widgetPickerOpen.value = false; _homeSpaceMenu.value = false; _search.value = ""; _shortcuts.value = emptyList(); _selectedCategory.value = DrawerCategory.ALL }
+    fun hasOpenOverlay(): Boolean = _drawerOpen.value || _settingsOpen.value || _openFolder.value != null || _drawerMenuApp.value != null || _labelEdit.value != null || _homeMenu.value != null || _widgetPickerOpen.value || _editMode.value || _homeSpaceMenu.value
 
     // -- Home/Dock Context Menu --
 
@@ -422,6 +426,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     }}
 
     fun refreshIconPacks() { discoverIconPacks() }
+    fun getIconPackPreview(packageName: String): List<android.graphics.drawable.Drawable?> = iconPackManager.previewIcons(packageName, 4)
 
     private suspend fun applyIconPack(packageName: String) {
         if (packageName.isBlank()) { iconPackManager.clearPack(); loadAppsInternal(); return }
@@ -918,6 +923,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     fun setGrayscaleIcons(v: Boolean) = pref(LauncherPrefs.GRAYSCALE_ICONS, v)
     fun setPageIndicatorStyle(s: PageIndicatorStyle) = pref(LauncherPrefs.PAGE_INDICATOR_STYLE, s.name)
     fun setLabelWeight(w: LabelWeight) = pref(LauncherPrefs.LABEL_WEIGHT, w.name)
+    fun setSearchEngine(e: SearchEngine) = pref(LauncherPrefs.SEARCH_ENGINE, e.name)
     fun cycleClockStyle() {
         val styles = ClockStyle.entries
         val next = styles[(styles.indexOf(settings.value.clockStyle) + 1) % styles.size]
@@ -1014,7 +1020,9 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     fun searchWeb(query: String) {
         try {
             val encoded = android.net.Uri.encode(query)
-            ctx.startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse("https://www.google.com/search?q=$encoded")).apply {
+            val engine = settings.value.searchEngine
+            val url = engine.urlTemplate.replace("%s", encoded)
+            ctx.startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url)).apply {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK
             })
         } catch (e: Exception) {

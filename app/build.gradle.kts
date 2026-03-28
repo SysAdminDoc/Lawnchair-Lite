@@ -1,4 +1,4 @@
-// Lawnchair Lite v2.6.0 - App Build
+// Lawnchair Lite - App Build
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -12,8 +12,8 @@ android {
         applicationId = "app.lawnchairlite"
         minSdk = 28
         targetSdk = 34
-        versionCode = 42
-        versionName = "2.15.7"
+        versionCode = 43
+        versionName = "2.16.0"
     }
 
     buildTypes {
