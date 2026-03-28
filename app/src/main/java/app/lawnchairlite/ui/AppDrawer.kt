@@ -148,7 +148,14 @@ fun AppDrawer(
             }
 
             override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
-                if (atTop && available.y > 300f && currentProgress < 0.99f) {
+                // Settle whenever drawer has been partially dismissed, regardless of velocity.
+                // Without this, slow drags leave the drawer stuck mid-screen.
+                if (displaced && currentProgress < 0.99f) {
+                    currentOnSettle(available.y)
+                    displaced = false
+                    return available
+                }
+                if (atTop && available.y > 0f && currentProgress < 0.99f) {
                     currentOnSettle(available.y)
                     displaced = false
                     return available
@@ -439,9 +446,10 @@ fun AppDrawer(
                                 headerAdjustedLetterIndex[ch] ?: return@FastScrollerRail
                             } else {
                                 val appIdx = letterIndex[ch] ?: return@FastScrollerRail
-                                appIdx / columns * columns + (if (showRecent) 1 else 0)
+                                // Grid item index = app index + offset for recent row
+                                appIdx + (if (showRecent) 1 else 0)
                             }
-                            scope.launch { gridState.animateScrollToItem(scrollIdx) }
+                            scope.launch { gridState.scrollToItem(scrollIdx) }
                         }, onVibrate = onVibrate)
                     }
                 }
