@@ -2,25 +2,20 @@
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
-    android:viewportWidth="108"
-    android:viewportHeight="108">
-    <!-- Grid dots representing app grid -->
-    <path android:fillColor="#00d4ff"
-        android:pathData="M36,36m-4,0a4,4 0,1 1,8 0a4,4 0,1 1,-8 0"/>
-    <path android:fillColor="#00d4ff"
-        android:pathData="M54,36m-4,0a4,4 0,1 1,8 0a4,4 0,1 1,-8 0"/>
-    <path android:fillColor="#00d4ff"
-        android:pathData="M72,36m-4,0a4,4 0,1 1,8 0a4,4 0,1 1,-8 0"/>
-    <path android:fillColor="#00d4ff"
-        android:pathData="M36,54m-4,0a4,4 0,1 1,8 0a4,4 0,1 1,-8 0"/>
-    <path android:fillColor="#64ffda"
-        android:pathData="M54,54m-6,0a6,6 0,1 1,12 0a6,6 0,1 1,-12 0"/>
-    <path android:fillColor="#00d4ff"
-        android:pathData="M72,54m-4,0a4,4 0,1 1,8 0a4,4 0,1 1,-8 0"/>
-    <path android:fillColor="#00d4ff"
-        android:pathData="M36,72m-4,0a4,4 0,1 1,8 0a4,4 0,1 1,-8 0"/>
-    <path android:fillColor="#00d4ff"
-        android:pathData="M54,72m-4,0a4,4 0,1 1,8 0a4,4 0,1 1,-8 0"/>
-    <path android:fillColor="#00d4ff"
-        android:pathData="M72,72m-4,0a4,4 0,1 1,8 0a4,4 0,1 1,-8 0"/>
+    android:viewportWidth="512"
+    android:viewportHeight="512">
+    <group
+        android:rotation="-18" android:pivotX="256" android:pivotY="256"
+        android:scaleX="0.4" android:scaleY="0.4" android:pivotX="256" android:pivotY="256"
+        android:translateX="-74"
+        android:translateY="84"
+        android:alpha="0.92">
+    <path android:pathData="M316 126 L386 196 L238 344 L168 274 Z" android:fillColor="@android:color/transparent" android:strokeColor="#58A6FF" android:strokeWidth="22" android:strokeLineCap="round" android:strokeLineJoin="round" />
+    <path android:pathData="M160 348 C146 362 146 392 168 414 C190 436 220 436 234 422 L284 372 L210 298 Z" android:fillColor="@android:color/transparent" android:strokeColor="#4ADE80" android:strokeWidth="20" android:strokeLineCap="round" android:strokeLineJoin="round" />
+    </group>
+    <group
+        android:scaleX="0.84" android:scaleY="0.84" android:pivotX="256" android:pivotY="256">
+    <path android:pathData="M104 188 H214 L244 150 H408 V348 H104 Z" android:fillColor="@android:color/transparent" android:strokeColor="#58A6FF" android:strokeWidth="24" android:strokeLineCap="round" android:strokeLineJoin="round" />
+    <path android:pathData="M136 248 H376" android:fillColor="@android:color/transparent" android:strokeColor="#4ADE80" android:strokeWidth="20" android:strokeLineCap="round" android:strokeLineJoin="round" />
+    </group>
 </vector>
