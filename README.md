@@ -1,3 +1,9 @@
+<p align="center">
+  <img alt="Version" src="https://img.shields.io/badge/version-2.20.0-58A6FF?style=for-the-badge">
+  <img alt="License" src="https://img.shields.io/badge/license-MIT-4ade80?style=for-the-badge">
+  <img alt="Platform" src="https://img.shields.io/badge/platform-Android-58A6FF?style=for-the-badge">
+</p>
+
 # Lawnchair Lite v2.20.0
 
 Minimal, fast Android launcher with professional-grade stability and smooth Compose-powered animations.
