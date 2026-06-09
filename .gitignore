@@ -13,3 +13,7 @@ local.properties
 *.aab
 *.jks
 CLAUDE.md
+
+# Markdown files local-only (except README)
+*.md
+!README.md
