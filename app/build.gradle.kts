@@ -12,8 +12,8 @@ android {
         applicationId = "app.lawnchairlite"
         minSdk = 28
         targetSdk = 34
-        versionCode = 53
-        versionName = "2.24.0"
+        versionCode = 54
+        versionName = "2.25.0"
     }
 
     signingConfigs {

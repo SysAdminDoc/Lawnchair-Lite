@@ -1211,6 +1211,8 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
     fun setDockStyle(s: DockStyle) = pref(LauncherPrefs.DOCK_STYLE, s.name)
+    fun setDockLabels(v: Boolean) = pref(LauncherPrefs.DOCK_LABELS, v)
+    fun setDockLabelOpacity(v: Int) = pref(LauncherPrefs.DOCK_LABEL_OPACITY, v.coerceIn(35, 100))
     fun setSearchBarStyle(s: SearchBarStyle) = pref(LauncherPrefs.SEARCH_BAR_STYLE, s.name)
     fun setHapticLevel(l: HapticLevel) = pref(LauncherPrefs.HAPTIC_LEVEL, l.name)
     fun setDrawerOpacity(v: Int) = pref(LauncherPrefs.DRAWER_OPACITY, v.coerceIn(0, 100))

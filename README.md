@@ -1,10 +1,10 @@
 <p align="center">
-  <img alt="Version" src="https://img.shields.io/badge/version-2.24.0-58A6FF?style=for-the-badge">
+  <img alt="Version" src="https://img.shields.io/badge/version-2.25.0-58A6FF?style=for-the-badge">
   <img alt="License" src="https://img.shields.io/badge/license-MIT-4ade80?style=for-the-badge">
   <img alt="Platform" src="https://img.shields.io/badge/platform-Android-58A6FF?style=for-the-badge">
 </p>
 
-# Lawnchair Lite v2.24.0
+# Lawnchair Lite v2.25.0
 
 Minimal, fast Android launcher with professional-grade stability and smooth Compose-powered animations.
 
@@ -36,6 +36,7 @@ Built on crash patterns identified across Lawnchair v14-v15 beta releases:
 - First-party Smartspace with local weather, next calendar event, next alarm, and permission prompts
 - Drawer category rules by app-name regex, package prefix, or install source with backup/restore support
 - Configurable grid (3-8 cols, 3-10 rows), dock (3-7 icons), icon sizes (S/M/L/XL)
+- Optional dock labels with opacity control
 - 9 gesture actions: double-tap, triple-tap, swipe-down, swipe-up, pinch, dock-tap, dock-swipe
 - Gesture app binding: assign any gesture to launch a specific app (with icon preview in settings)
 - Smart fuzzy search with relevance scoring (exact > starts > word > contains > pkg > subsequence)
@@ -61,6 +62,13 @@ Built on crash patterns identified across Lawnchair v14-v15 beta releases:
 - **Memoized theme computation** - `remember`-cached, no recompute per recomposition
 - **Conditional auto-focus** - keyboard only opens when drawer opened via search bar, not swipe
 - **Pager scroll guard** - horizontal paging disabled during drawer transition
+
+### v2.25.0
+
+- **Dock labels** - Optional labels under dock apps and folders
+- **Opacity control** - Dock label opacity slider in Dock settings
+- **Scoped rendering** - Dock labels reuse existing label size/weight while leaving home and drawer labels unchanged
+- **Backup support** - Dock label settings export/import with launcher backups
 
 ### v2.24.0
 

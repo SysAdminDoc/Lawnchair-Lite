@@ -68,7 +68,7 @@ fun SettingsPanel(
     val iconsKeywords = "icon shape size pack themed shadow grayscale label weight squircle circle square teardrop hexagon diamond"
     val gridKeywords = "grid columns rows padding page transition indicator badge folder cube stack fade depth carousel slide dots line"
     val drawerKeywords = "drawer sort columns opacity categories category rules regex package prefix install source section headers animation suggestions search engine"
-    val dockKeywords = "dock icons style search bar pill floating transparent hide"
+    val dockKeywords = "dock icons style search bar pill floating transparent hide labels label opacity"
     val gesturesKeywords = "gesture double tap swipe down swipe up triple pinch dock lock screen notification flashlight edit mode recent app launch"
     val featuresKeywords = "clock smartspace at a glance weather calendar event auto place notification badges status bar home lock parallax haptic feedback"
     val advancedKeywords = "kill background apps clear search history reset settings backup restore export import hidden apps about"
@@ -367,7 +367,8 @@ fun SettingsPanel(
                 }
                 // ── DOCK ──
                 if (showDock) {
-                SectionHeader("Dock", searching || dockExpanded, colors, summary = if (!searching && !dockExpanded) "${settings.dockCount} icons · ${settings.dockStyle.label}" else null) { dockExpanded = !dockExpanded }
+                val dockSummary = if (!searching && !dockExpanded) "${settings.dockCount} icons · ${settings.dockStyle.label}${if (settings.dockLabels) " · Labels" else ""}" else null
+                SectionHeader("Dock", searching || dockExpanded, colors, summary = dockSummary) { dockExpanded = !dockExpanded }
                 AnimatedVisibility(searching || dockExpanded) {
                     Column {
                         Lbl("Dock Icons", colors)
@@ -380,6 +381,16 @@ fun SettingsPanel(
                         Chips(SearchBarStyle.entries.map { it to it.label }, settings.searchBarStyle, colors) { vm.setSearchBarStyle(it) }
                         Tog("Dock Search Bar", settings.showDockSearch, colors) { vm.setShowDockSearch(it) }
                         Tog("Hide Dock", settings.hideDock, colors) { vm.setHideDock(it) }
+                        Tog("Dock Labels", settings.dockLabels, colors) { vm.setDockLabels(it) }
+                        if (settings.dockLabels) {
+                            Text("Label Opacity: ${settings.dockLabelOpacity}%", color = colors.text, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                            Slider(
+                                value = settings.dockLabelOpacity.toFloat(),
+                                onValueChange = { vm.setDockLabelOpacity(it.toInt()) },
+                                valueRange = 35f..100f,
+                                colors = SliderDefaults.colors(thumbColor = colors.accent, activeTrackColor = colors.accent, inactiveTrackColor = colors.card),
+                            )
+                        }
                         Spacer(Modifier.height(8.dp))
                     }
                 }

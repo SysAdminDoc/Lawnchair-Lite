@@ -63,6 +63,8 @@ data class LauncherSettings(
     val accentOverride: String = "", // hex color or empty for theme default
     val drawerCategories: Boolean = false,
     val dockStyle: DockStyle = DockStyle.SOLID,
+    val dockLabels: Boolean = false,
+    val dockLabelOpacity: Int = 82,
     val searchBarStyle: SearchBarStyle = SearchBarStyle.PILL,
     val hapticLevel: HapticLevel = HapticLevel.MEDIUM,
     val drawerOpacity: Int = 97, // 0-100
@@ -130,6 +132,8 @@ class LauncherPrefs(private val context: Context) {
         val ACCENT_OVERRIDE = stringPreferencesKey("accent_override")
         val DRAWER_CATEGORIES = booleanPreferencesKey("drawer_categories")
         val DOCK_STYLE = stringPreferencesKey("dock_style")
+        val DOCK_LABELS = booleanPreferencesKey("dock_labels")
+        val DOCK_LABEL_OPACITY = intPreferencesKey("dock_label_opacity")
         val SEARCH_BAR_STYLE = stringPreferencesKey("search_bar_style")
         val HAPTIC_LEVEL = stringPreferencesKey("haptic_level")
         val DRAWER_OPACITY = intPreferencesKey("drawer_opacity")
@@ -201,6 +205,8 @@ class LauncherPrefs(private val context: Context) {
             accentOverride = p[ACCENT_OVERRIDE] ?: "",
             drawerCategories = p[DRAWER_CATEGORIES] ?: false,
             dockStyle = p[DOCK_STYLE]?.let { runCatching { DockStyle.valueOf(it) }.getOrNull() } ?: DockStyle.SOLID,
+            dockLabels = p[DOCK_LABELS] ?: false,
+            dockLabelOpacity = (p[DOCK_LABEL_OPACITY] ?: 82).coerceIn(35, 100),
             searchBarStyle = p[SEARCH_BAR_STYLE]?.let { runCatching { SearchBarStyle.valueOf(it) }.getOrNull() } ?: SearchBarStyle.PILL,
             hapticLevel = p[HAPTIC_LEVEL]?.let { runCatching { HapticLevel.valueOf(it) }.getOrNull() } ?: HapticLevel.MEDIUM,
             drawerOpacity = (p[DRAWER_OPACITY] ?: 97).coerceIn(0, 100),
@@ -292,6 +298,7 @@ class LauncherPrefs(private val context: Context) {
                 p[GRID_PADDING_H] = d.gridPaddingH; p[GRID_PADDING_V] = d.gridPaddingV
                 p[HIDE_STATUS_BAR] = d.hideStatusBar; p[ACCENT_OVERRIDE] = ""
                 p[DOCK_STYLE] = d.dockStyle.name; p[SEARCH_BAR_STYLE] = d.searchBarStyle.name
+                p[DOCK_LABELS] = d.dockLabels; p[DOCK_LABEL_OPACITY] = d.dockLabelOpacity
                 p[HAPTIC_LEVEL] = d.hapticLevel.name; p[DRAWER_OPACITY] = d.drawerOpacity
                 p[LABEL_SIZE_PREF] = d.labelSize.name; p[CLOCK_STYLE] = d.clockStyle.name
                 p[SHOW_SUGGESTIONS] = d.showSuggestions; p[HIDE_DOCK] = d.hideDock
@@ -519,6 +526,8 @@ class LauncherPrefs(private val context: Context) {
             put("drawer_categories", p[DRAWER_CATEGORIES] ?: false)
             put("category_rules", p[CATEGORY_RULES] ?: "")
             put("dock_style", p[DOCK_STYLE] ?: "SOLID")
+            put("dock_labels", p[DOCK_LABELS] ?: false)
+            put("dock_label_opacity", p[DOCK_LABEL_OPACITY] ?: 82)
             put("search_bar_style", p[SEARCH_BAR_STYLE] ?: "PILL")
             put("haptic_level", p[HAPTIC_LEVEL] ?: "MEDIUM")
             put("drawer_opacity", p[DRAWER_OPACITY] ?: 97)
@@ -585,6 +594,8 @@ class LauncherPrefs(private val context: Context) {
             if (j.has("drawer_categories")) p[DRAWER_CATEGORIES] = j.getBoolean("drawer_categories")
             j.optString("category_rules").let { p[CATEGORY_RULES] = serializeCategoryRules(parseCategoryRules(it)) }
             j.optString("dock_style").takeIf { it.isNotBlank() && runCatching { DockStyle.valueOf(it) }.isSuccess }?.let { p[DOCK_STYLE] = it }
+            if (j.has("dock_labels")) p[DOCK_LABELS] = j.getBoolean("dock_labels")
+            if (j.has("dock_label_opacity")) p[DOCK_LABEL_OPACITY] = j.getInt("dock_label_opacity").coerceIn(35, 100)
             j.optString("search_bar_style").takeIf { it.isNotBlank() && runCatching { SearchBarStyle.valueOf(it) }.isSuccess }?.let { p[SEARCH_BAR_STYLE] = it }
             j.optString("haptic_level").takeIf { it.isNotBlank() && runCatching { HapticLevel.valueOf(it) }.isSuccess }?.let { p[HAPTIC_LEVEL] = it }
             if (j.has("drawer_opacity")) p[DRAWER_OPACITY] = j.getInt("drawer_opacity").coerceIn(0, 100)

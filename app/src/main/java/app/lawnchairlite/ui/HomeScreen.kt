@@ -592,7 +592,7 @@ fun HomeScreen(vm: LauncherViewModel) {
                             val hasDockSwipe = settings.dockSwipeApps.containsKey(i)
 
                             Box(
-                                Modifier.weight(1f).height(58.dp)
+                                Modifier.weight(1f).height(if (settings.dockLabels) 74.dp else 58.dp)
                                     .onGloballyPositioned { dockBounds[i] = it.boundsInRoot() }
                                     .graphicsLayer(scaleX = dockHoverScale, scaleY = dockHoverScale)
                                     .then(if (dockHoverAlpha > 0f) Modifier.clip(RoundedCornerShape(12.dp)).background(colors.accent.copy(alpha = dockHoverAlpha)) else Modifier)
@@ -610,8 +610,8 @@ fun HomeScreen(vm: LauncherViewModel) {
                                 val dockFolderBadge = if (settings.showNotifBadges && settings.badgeStyle != app.lawnchairlite.data.BadgeStyle.HIDDEN && cell is GridCell.Folder) cell.appKeys.sumOf { notifCounts[it.substringBefore("/")] ?: 0 } else 0
                                 GridCellView(
                                     cell, settings.iconShape, iconDp, { vm.resolveApp(it) }, customLabels,
-                                    isDS, false, editMode,
-                                    badgeCount = dockBadge, badgeDotOnly = settings.badgeStyle == app.lawnchairlite.data.BadgeStyle.DOT, iconShadow = settings.iconShadow, labelSizeSp = settings.labelSize.sp, folderBadgeCount = dockFolderBadge, grayscale = settings.grayscaleIcons, labelWeight = resolvedLabelWeight,
+                                    isDS, settings.dockLabels, editMode,
+                                    badgeCount = dockBadge, badgeDotOnly = settings.badgeStyle == app.lawnchairlite.data.BadgeStyle.DOT, iconShadow = settings.iconShadow, labelSizeSp = settings.labelSize.sp, labelAlpha = settings.dockLabelOpacity / 100f, folderBadgeCount = dockFolderBadge, grayscale = settings.grayscaleIcons, labelWeight = resolvedLabelWeight,
                                     onTap = { when (cell) {
                                         is GridCell.App -> vm.resolveApp(cell.appKey)?.let { vm.launch(it) }
                                         is GridCell.Folder -> vm.openFolderView(cell, DragSource.DOCK, i)
@@ -798,7 +798,7 @@ private fun GridCellView(
     cell: GridCell?, shape: IconShape, iconSizeDp: androidx.compose.ui.unit.Dp,
     resolveApp: (String) -> AppInfo?, customLabels: Map<String, String>,
     dimmed: Boolean, showLabel: Boolean, editMode: Boolean,
-    badgeCount: Int = 0, badgeDotOnly: Boolean = false, iconShadow: Boolean = false, labelSizeSp: Int = 11, folderBadgeCount: Int = 0, grayscale: Boolean = false, labelWeight: FontWeight = FontWeight.Normal,
+    badgeCount: Int = 0, badgeDotOnly: Boolean = false, iconShadow: Boolean = false, labelSizeSp: Int = 11, labelAlpha: Float = 1f, folderBadgeCount: Int = 0, grayscale: Boolean = false, labelWeight: FontWeight = FontWeight.Normal,
     onTap: () -> Unit, onLongPress: () -> Unit,
     onDragStart: (Offset) -> Unit, onDrag: (Offset) -> Unit, onDragEnd: () -> Unit, onDragCancel: () -> Unit,
 ) {
@@ -845,8 +845,8 @@ private fun GridCellView(
         Alignment.Center,
     ) {
         when (cell) {
-            is GridCell.App -> resolveApp(cell.appKey)?.let { AppIconContent(it, shape, iconSizeDp, showLabel = showLabel, dimmed = dimmed, customLabel = customLabels[cell.appKey], badgeCount = badgeCount, badgeDotOnly = badgeDotOnly, iconShadow = iconShadow, labelSizeSp = labelSizeSp, grayscale = grayscale, labelWeight = labelWeight) }
-            is GridCell.Folder -> FolderIconContent(cell, shape, resolveApp, iconSizeDp, showLabel = showLabel, dimmed = dimmed, badgeCount = folderBadgeCount)
+            is GridCell.App -> resolveApp(cell.appKey)?.let { AppIconContent(it, shape, iconSizeDp, showLabel = showLabel, dimmed = dimmed, customLabel = customLabels[cell.appKey], badgeCount = badgeCount, badgeDotOnly = badgeDotOnly, iconShadow = iconShadow, labelSizeSp = labelSizeSp, labelAlpha = labelAlpha, grayscale = grayscale, labelWeight = labelWeight) }
+            is GridCell.Folder -> FolderIconContent(cell, shape, resolveApp, iconSizeDp, showLabel = showLabel, dimmed = dimmed, badgeCount = folderBadgeCount, labelAlpha = labelAlpha)
             is GridCell.Widget -> { /* Rendered by overlay, skip */ }
         }
     }
