@@ -121,7 +121,12 @@ data class SmartspaceState(
 
 sealed class GridCell {
     data class App(val appKey: String) : GridCell()
-    data class Folder(val name: String, val appKeys: List<String>) : GridCell()
+    data class Folder(
+        val name: String,
+        val appKeys: List<String>,
+        val coverEmoji: String = "",
+        val coverAppKey: String = "",
+    ) : GridCell()
     data class Widget(val widgetId: Int) : GridCell()
 }
 
@@ -163,7 +168,11 @@ private fun unescapeField(s: String): String = s
 
 fun GridCell.serialize(): String = when (this) {
     is GridCell.App -> "A:${appKey}"
-    is GridCell.Folder -> "F:${escapeField(name)}:${appKeys.joinToString(",")}"
+    is GridCell.Folder -> if (coverEmoji.isBlank() && coverAppKey.isBlank()) {
+        "F:${escapeField(name)}:${appKeys.joinToString(",")}"
+    } else {
+        "F2:${escapeField(name)}:${escapeField(coverEmoji)}:${escapeField(coverAppKey)}:${appKeys.joinToString(",")}"
+    }
     is GridCell.Widget -> "W:${widgetId}"
 }
 
@@ -183,6 +192,16 @@ fun deserializeCell(s: String): GridCell? = try {
             if (parts.size == 2 && parts[1].isNotBlank()) {
                 val keys = parts[1].split(",").filter { it.isNotBlank() && it.contains("/") }
                 if (keys.isNotEmpty()) GridCell.Folder(unescapeField(parts[0]), keys) else null
+            } else null
+        }
+        s.startsWith("F2:") -> {
+            val parts = s.removePrefix("F2:").split(":", limit = 4)
+            if (parts.size == 4 && parts[3].isNotBlank()) {
+                val keys = parts[3].split(",").filter { it.isNotBlank() && it.contains("/") }
+                val coverAppKey = unescapeField(parts[2]).takeIf { it.contains("/") } ?: ""
+                if (keys.isNotEmpty()) {
+                    GridCell.Folder(unescapeField(parts[0]), keys, unescapeField(parts[1]), coverAppKey)
+                } else null
             } else null
         }
         s.startsWith("W:") -> {

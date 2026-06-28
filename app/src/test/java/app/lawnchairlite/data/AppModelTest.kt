@@ -30,4 +30,31 @@ class AppModelTest {
 
         assertEquals("com.example.mail/com.example.mail.Main@12", app.key)
     }
+
+    @Test
+    fun folderWithoutCoverUsesLegacySerialization() {
+        val folder = GridCell.Folder(
+            name = "Work",
+            appKeys = listOf("com.example.mail/com.example.mail.Main", "com.example.docs/com.example.docs.Main"),
+        )
+
+        val serialized = folder.serialize()
+
+        assertEquals("F:Work:com.example.mail/com.example.mail.Main,com.example.docs/com.example.docs.Main", serialized)
+        assertEquals(folder, deserializeCell(serialized))
+    }
+
+    @Test
+    fun folderCoverSerializationRoundTrips() {
+        val folder = GridCell.Folder(
+            name = "Work",
+            appKeys = listOf("com.example.mail/com.example.mail.Main", "com.example.docs/com.example.docs.Main"),
+            coverEmoji = "⭐",
+            coverAppKey = "",
+        )
+
+        val serialized = folder.serialize()
+
+        assertEquals(folder, deserializeCell(serialized))
+    }
 }

@@ -688,7 +688,16 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     }
     private fun cleanCell(cell: GridCell?, valid: Set<String>): GridCell? = when (cell) {
         is GridCell.App -> if (cell.appKey in valid) cell else null
-        is GridCell.Folder -> { val f = cell.appKeys.filter { it in valid }; when { f.isEmpty() -> null; f.size == 1 -> GridCell.App(f[0]); f.size != cell.appKeys.size -> cell.copy(appKeys = f); else -> cell } }
+        is GridCell.Folder -> {
+            val f = cell.appKeys.filter { it in valid }
+            val coverAppKey = cell.coverAppKey.takeIf { it in valid }.orEmpty()
+            when {
+                f.isEmpty() -> null
+                f.size == 1 -> GridCell.App(f[0])
+                f.size != cell.appKeys.size || coverAppKey != cell.coverAppKey -> cell.copy(appKeys = f, coverAppKey = coverAppKey)
+                else -> cell
+            }
+        }
         is GridCell.Widget -> cell
         null -> null
     }
@@ -708,9 +717,36 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         }
         _folderRename.value = null
     }}
+    private fun updateFolder(src: DragSource, idx: Int, transform: (GridCell.Folder) -> GridCell.Folder) { viewModelScope.launch {
+        val g = gridForSource(src).toMutableList()
+        val folder = g.getOrNull(idx) as? GridCell.Folder ?: return@launch
+        val updated = transform(folder)
+        g[idx] = updated
+        saveGrid(src, g)
+        _openFolder.value?.let { (_, oSrc, oIdx) ->
+            if (oSrc == src && oIdx == idx) _openFolder.value = Triple(updated, src, idx)
+        }
+    }}
+    fun setFolderCoverEmoji(src: DragSource, idx: Int, emoji: String) {
+        val clean = emoji.trim().take(4)
+        if (clean.isBlank()) return
+        updateFolder(src, idx) { it.copy(coverEmoji = clean, coverAppKey = "") }
+    }
+    fun setFolderCoverApp(src: DragSource, idx: Int, appKey: String) {
+        if (resolveApp(appKey) == null) return
+        updateFolder(src, idx) { it.copy(coverEmoji = "", coverAppKey = appKey) }
+    }
+    fun clearFolderCover(src: DragSource, idx: Int) {
+        updateFolder(src, idx) { it.copy(coverEmoji = "", coverAppKey = "") }
+    }
     fun removeFolderApp(src: DragSource, idx: Int, key: String) { viewModelScope.launch {
         val g = gridForSource(src).toMutableList(); val c = g.getOrNull(idx) as? GridCell.Folder ?: return@launch
-        val f = c.appKeys.filter { it != key }; g[idx] = when { f.isEmpty() -> null; f.size == 1 -> GridCell.App(f[0]); else -> c.copy(appKeys = f) }
+        val f = c.appKeys.filter { it != key }
+        g[idx] = when {
+            f.isEmpty() -> null
+            f.size == 1 -> GridCell.App(f[0])
+            else -> c.copy(appKeys = f, coverAppKey = c.coverAppKey.takeIf { it != key }.orEmpty())
+        }
         saveGrid(src, g); val nc = g.getOrNull(idx); _openFolder.value = if (nc is GridCell.Folder) Triple(nc, src, idx) else null
     }}
     fun reorderFolderApps(src: DragSource, idx: Int, newKeys: List<String>) { viewModelScope.launch {

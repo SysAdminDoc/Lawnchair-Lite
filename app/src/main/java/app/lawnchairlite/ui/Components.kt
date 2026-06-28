@@ -174,16 +174,23 @@ fun FolderIconContent(folder: GridCell.Folder, shape: IconShape, resolveApp: (St
     Column(modifier.graphicsLayer(alpha = if (dimmed) 0.25f else 1f), horizontalAlignment = Alignment.CenterHorizontally) {
         Box(Modifier.size(iconSizeDp)) {
             Box(Modifier.fillMaxSize().clip(iconClip(shape)).background(c.card).border(0.5.dp, c.accent.copy(alpha = 0.3f), iconClip(shape)), Alignment.Center) {
-                val use3x3 = folder.appKeys.size > 4
-                val previewCount = if (use3x3) 9 else 4
-                val gridSize = if (use3x3) 3 else 2
-                val thumbSize = if (use3x3) 12.dp else 17.dp
-                val p = folder.appKeys.take(previewCount).mapNotNull { resolveApp(it) }
-                if (p.isEmpty()) Icon(Icons.Default.Folder, null, tint = c.accent, modifier = Modifier.size(26.dp))
-                else Column(Modifier.padding(if (use3x3) 5.dp else 6.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    p.chunked(gridSize).take(gridSize).forEach { row ->
-                        Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                            row.forEach { a -> if (a.icon != null) Image(rememberDrawablePainter(a.icon), null, Modifier.size(thumbSize).clip(RoundedCornerShape(if (use3x3) 3.dp else 4.dp))) else Box(Modifier.size(thumbSize).clip(RoundedCornerShape(if (use3x3) 3.dp else 4.dp)).background(c.border)) }
+                val coverApp = folder.coverAppKey.takeIf { it.isNotBlank() }?.let { resolveApp(it) }
+                when {
+                    folder.coverEmoji.isNotBlank() -> Text(folder.coverEmoji, fontSize = (iconSizeDp.value * 0.52f).sp, maxLines = 1)
+                    coverApp?.icon != null -> Image(rememberDrawablePainter(coverApp.icon), coverApp.label, Modifier.fillMaxSize().padding((iconSizeDp.value * 0.14f).dp))
+                    else -> {
+                        val use3x3 = folder.appKeys.size > 4
+                        val previewCount = if (use3x3) 9 else 4
+                        val gridSize = if (use3x3) 3 else 2
+                        val thumbSize = if (use3x3) 12.dp else 17.dp
+                        val p = folder.appKeys.take(previewCount).mapNotNull { resolveApp(it) }
+                        if (p.isEmpty()) Icon(Icons.Default.Folder, null, tint = c.accent, modifier = Modifier.size(26.dp))
+                        else Column(Modifier.padding(if (use3x3) 5.dp else 6.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            p.chunked(gridSize).take(gridSize).forEach { row ->
+                                Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                                    row.forEach { a -> if (a.icon != null) Image(rememberDrawablePainter(a.icon), null, Modifier.size(thumbSize).clip(RoundedCornerShape(if (use3x3) 3.dp else 4.dp))) else Box(Modifier.size(thumbSize).clip(RoundedCornerShape(if (use3x3) 3.dp else 4.dp)).background(c.border)) }
+                                }
+                            }
                         }
                     }
                 }
@@ -528,6 +535,7 @@ fun HomeContextMenu(
     val app = menuState.appInfo
     val isFolder = cell is GridCell.Folder
     val sourceLabel = if (menuState.source == DragSource.DOCK) "Dock" else "Home"
+    var showFolderCoverPicker by remember(cell) { mutableStateOf(false) }
 
     Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.5f)).pointerInput(Unit) { detectTapGestures { onDismiss() } }, Alignment.Center) {
         Column(
@@ -617,6 +625,19 @@ fun HomeContextMenu(
                 val folder = cell as GridCell.Folder
                 CtxItem("Open Folder", c) { vm.openFolderView(folder, menuState.source, menuState.index); onDismiss() }
                 CtxItem("Rename Folder", c) { vm.startFolderRename(menuState.source, menuState.index, folder.name); onDismiss() }
+                CtxItem(if (folder.coverEmoji.isBlank() && folder.coverAppKey.isBlank()) "Set Folder Cover" else "Change Folder Cover", c) {
+                    showFolderCoverPicker = !showFolderCoverPicker
+                }
+                if (showFolderCoverPicker) {
+                    FolderCoverPicker(
+                        folder = folder,
+                        c = c,
+                        resolveApp = { vm.resolveApp(it) },
+                        onEmoji = { emoji -> vm.setFolderCoverEmoji(menuState.source, menuState.index, emoji); onDismiss() },
+                        onApp = { key -> vm.setFolderCoverApp(menuState.source, menuState.index, key); onDismiss() },
+                        onClear = { vm.clearFolderCover(menuState.source, menuState.index); onDismiss() },
+                    )
+                }
                 CtxItem("Rearrange Icons", c) { vm.enterEditMode() }
                 Divider(color = c.border.copy(alpha = 0.3f), thickness = 0.5.dp)
                 CtxItem("Remove from $sourceLabel", c, isRed = true) { vm.removeFromGrid(menuState.source, menuState.index) }
@@ -626,6 +647,58 @@ fun HomeContextMenu(
 }
 
 // ── Folder Overlay (improved - selective X, better UX) ───────────────
+
+@Composable
+private fun FolderCoverPicker(
+    folder: GridCell.Folder,
+    c: LauncherColors,
+    resolveApp: (String) -> AppInfo?,
+    onEmoji: (String) -> Unit,
+    onApp: (String) -> Unit,
+    onClear: () -> Unit,
+) {
+    val emojiOptions = listOf("⭐", "💼", "🎮", "📷", "🎵", "🛠", "❤️", "📁")
+    val apps = folder.appKeys.mapNotNull { key -> resolveApp(key)?.let { key to it } }
+    Column(Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 6.dp)) {
+        Text("EMOJI", color = c.accent, fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 4.dp, bottom = 4.dp))
+        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            emojiOptions.forEach { emoji ->
+                Text(
+                    emoji,
+                    fontSize = 22.sp,
+                    modifier = Modifier.size(40.dp).clip(RoundedCornerShape(12.dp)).background(c.card)
+                        .border(0.5.dp, if (folder.coverEmoji == emoji) c.accent else c.border, RoundedCornerShape(12.dp))
+                        .clickable { onEmoji(emoji) }
+                        .padding(7.dp),
+                    textAlign = TextAlign.Center,
+                )
+            }
+        }
+        if (apps.isNotEmpty()) {
+            Spacer(Modifier.height(8.dp))
+            Text("ICON", color = c.accent, fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 4.dp, bottom = 4.dp))
+            Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                apps.forEach { (key, app) ->
+                    Box(
+                        Modifier.size(42.dp).clip(RoundedCornerShape(12.dp)).background(c.card)
+                            .border(0.5.dp, if (folder.coverAppKey == key) c.accent else c.border, RoundedCornerShape(12.dp))
+                            .clickable { onApp(key) }
+                            .padding(6.dp),
+                        Alignment.Center,
+                    ) {
+                        if (app.icon != null) Image(rememberDrawablePainter(app.icon), app.label, Modifier.fillMaxSize())
+                        else Text(app.label.take(1), color = c.accent, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        }
+        if (folder.coverEmoji.isNotBlank() || folder.coverAppKey.isNotBlank()) {
+            Spacer(Modifier.height(6.dp))
+            Text("Clear Cover", color = c.textSecondary, fontSize = 11.sp,
+                modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable { onClear() }.padding(horizontal = 8.dp, vertical = 5.dp))
+        }
+    }
+}
 
 @Composable
 fun FolderOverlay(folder: GridCell.Folder, shape: IconShape, iconSizeDp: Dp, resolveApp: (String) -> AppInfo?, customLabels: Map<String, String>, folderColumns: Int = 4, iconShadow: Boolean = false, grayscale: Boolean = false, labelWeight: FontWeight = FontWeight.Normal, onAppClick: (AppInfo) -> Unit, onRemoveApp: (String) -> Unit, onReorder: (List<String>) -> Unit, onRename: () -> Unit, onDismiss: () -> Unit) {

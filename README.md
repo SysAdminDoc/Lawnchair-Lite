@@ -1,10 +1,10 @@
 <p align="center">
-  <img alt="Version" src="https://img.shields.io/badge/version-2.23.0-58A6FF?style=for-the-badge">
+  <img alt="Version" src="https://img.shields.io/badge/version-2.24.0-58A6FF?style=for-the-badge">
   <img alt="License" src="https://img.shields.io/badge/license-MIT-4ade80?style=for-the-badge">
   <img alt="Platform" src="https://img.shields.io/badge/platform-Android-58A6FF?style=for-the-badge">
 </p>
 
-# Lawnchair Lite v2.23.0
+# Lawnchair Lite v2.24.0
 
 Minimal, fast Android launcher with professional-grade stability and smooth Compose-powered animations.
 
@@ -28,7 +28,7 @@ Built on crash patterns identified across Lawnchair v14-v15 beta releases:
 - Multiple home pages with swipe navigation, add/remove pages from long-press menu
 - App drawer with alphabetical fast scroller (haptic feedback on letter changes)
 - Material 3 drawer tabs for All, Recent, Favorites, and Work profile apps
-- Folder creation via drag-and-drop with 3x3 preview for large folders
+- Folder creation via drag-and-drop with 3x3 preview, app-icon covers, and emoji covers
 - Icon pack support (ADW/Nova format) with 4-icon preview per pack
 - Custom icon labels, hide apps from drawer with batch unhide
 - 6 theme modes (Midnight, Glass, OLED, Mocha, Aurora, Neon) with per-theme error colors
@@ -61,6 +61,13 @@ Built on crash patterns identified across Lawnchair v14-v15 beta releases:
 - **Memoized theme computation** - `remember`-cached, no recompute per recomposition
 - **Conditional auto-focus** - keyboard only opens when drawer opened via search bar, not swipe
 - **Pager scroll guard** - horizontal paging disabled during drawer transition
+
+### v2.24.0
+
+- **Folder covers** - Folder long-press menu can choose an emoji or one of the folder app icons as the cover
+- **Cover rendering** - Custom covers replace the 2x2/3x3 preview while preserving notification badges and labels
+- **Safe persistence** - New covered-folder serialization round-trips while old folder layouts keep the legacy format
+- **Stale cleanup** - Removing an app also clears it as a folder cover when needed
 
 ### v2.23.0
 
