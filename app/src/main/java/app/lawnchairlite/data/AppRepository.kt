@@ -4,11 +4,16 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ApplicationInfo
+import android.content.pm.LauncherActivityInfo
+import android.content.pm.LauncherApps
 import android.content.pm.PackageManager
 import android.graphics.drawable.Drawable
 import android.net.Uri
 import android.os.Build
 import android.os.DeadSystemException
+import android.os.Process
+import android.os.UserHandle
+import android.os.UserManager
 import android.provider.Settings
 import android.util.Log
 import kotlinx.coroutines.Dispatchers
@@ -31,6 +36,8 @@ class AppRepository(private val context: Context) {
     }
 
     private val pm: PackageManager = context.packageManager
+    private val launcherApps: LauncherApps? = context.getSystemService(LauncherApps::class.java)
+    private val userManager: UserManager? = context.getSystemService(UserManager::class.java)
 
     /**
      * Load all launchable apps with defensive error handling per-app.
@@ -38,6 +45,9 @@ class AppRepository(private val context: Context) {
      * ensuring one bad app entry doesn't prevent loading the rest.
      */
     suspend fun loadApps(iconPackManager: IconPackManager? = null, useThemedIcons: Boolean = false): List<AppInfo> = withContext(Dispatchers.IO) {
+        val profileApps = loadProfileApps(iconPackManager)
+        if (profileApps.isNotEmpty()) return@withContext profileApps
+
         val intent = Intent(Intent.ACTION_MAIN).apply { addCategory(Intent.CATEGORY_LAUNCHER) }
         val packLoaded = iconPackManager?.isLoaded() == true
 
@@ -82,6 +92,57 @@ class AppRepository(private val context: Context) {
             .distinctBy { it.key }
     }
 
+    private fun loadProfileApps(iconPackManager: IconPackManager?): List<AppInfo> {
+        val launcher = launcherApps ?: return emptyList()
+        val currentUser = Process.myUserHandle()
+        val profiles = runCatching { launcher.profiles }.getOrDefault(emptyList())
+        if (profiles.isEmpty()) return emptyList()
+
+        return profiles.flatMap { user ->
+            val activities = runCatching { launcher.getActivityList(null, user) }
+                .onFailure { Log.w(TAG, "getActivityList failed for profile $user", it) }
+                .getOrDefault(emptyList())
+            activities.mapNotNull { info -> appInfoFromLauncher(info, user, currentUser, iconPackManager) }
+        }.filter { it.packageName != context.packageName }
+            .sortedBy { it.label.lowercase() }
+            .distinctBy { it.key }
+    }
+
+    private fun appInfoFromLauncher(
+        info: LauncherActivityInfo,
+        user: UserHandle,
+        currentUser: UserHandle,
+        iconPackManager: IconPackManager?,
+    ): AppInfo? = try {
+        val component = info.componentName
+        val appInfo = info.applicationInfo
+        val sys = (appInfo.flags and ApplicationInfo.FLAG_SYSTEM) != 0
+        val systemIcon: Drawable? = runCatching { info.getIcon(0) }.getOrNull()
+        val packLoaded = iconPackManager?.isLoaded() == true
+        val icon = if (packLoaded && systemIcon != null) {
+            runCatching { iconPackManager?.resolveIcon(component) ?: systemIcon }.getOrDefault(systemIcon)
+        } else systemIcon
+        val workProfile = user != currentUser
+        val serial = if (workProfile) {
+            runCatching { userManager?.getSerialNumberForUser(user) ?: 0L }.getOrDefault(0L)
+        } else 0L
+        AppInfo(
+            label = info.label?.toString() ?: component.packageName,
+            packageName = component.packageName,
+            activityName = component.className,
+            icon = icon,
+            isSystemApp = sys,
+            firstInstallTime = runCatching { info.firstInstallTime }.getOrDefault(0L),
+            installSource = installSourceFor(component.packageName),
+            isWorkProfile = workProfile,
+            profileSerial = serial,
+            userHandle = if (workProfile) user else null,
+        )
+    } catch (e: Exception) {
+        Log.w(TAG, "Failed to resolve launcher profile app", e)
+        null
+    }
+
     private fun installSourceFor(packageName: String): String = try {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             val info = pm.getInstallSourceInfo(packageName)
@@ -110,12 +171,28 @@ class AppRepository(private val context: Context) {
         }
     }
 
+    fun isAppAvailable(app: AppInfo): Boolean {
+        val user = app.userHandle
+        if (user != null) {
+            return runCatching {
+                launcherApps?.getActivityList(app.packageName, user)
+                    ?.any { it.componentName == app.componentName } == true
+            }.getOrDefault(false)
+        }
+        return isPackageInstalled(app.packageName)
+    }
+
     fun launchApp(app: AppInfo) {
-        if (!isPackageInstalled(app.packageName)) {
+        if (!isAppAvailable(app)) {
             Log.w(TAG, "Package not installed: ${app.packageName}")
             return
         }
         try {
+            val user = app.userHandle
+            if (user != null) {
+                launcherApps?.startMainActivity(app.componentName, user, null, null)
+                return
+            }
             val i = pm.getLaunchIntentForPackage(app.packageName)
                 ?: Intent(Intent.ACTION_MAIN).apply {
                     component = app.componentName

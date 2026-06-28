@@ -1,10 +1,10 @@
 <p align="center">
-  <img alt="Version" src="https://img.shields.io/badge/version-2.22.0-58A6FF?style=for-the-badge">
+  <img alt="Version" src="https://img.shields.io/badge/version-2.23.0-58A6FF?style=for-the-badge">
   <img alt="License" src="https://img.shields.io/badge/license-MIT-4ade80?style=for-the-badge">
   <img alt="Platform" src="https://img.shields.io/badge/platform-Android-58A6FF?style=for-the-badge">
 </p>
 
-# Lawnchair Lite v2.22.0
+# Lawnchair Lite v2.23.0
 
 Minimal, fast Android launcher with professional-grade stability and smooth Compose-powered animations.
 
@@ -27,6 +27,7 @@ Built on crash patterns identified across Lawnchair v14-v15 beta releases:
 
 - Multiple home pages with swipe navigation, add/remove pages from long-press menu
 - App drawer with alphabetical fast scroller (haptic feedback on letter changes)
+- Material 3 drawer tabs for All, Recent, Favorites, and Work profile apps
 - Folder creation via drag-and-drop with 3x3 preview for large folders
 - Icon pack support (ADW/Nova format) with 4-icon preview per pack
 - Custom icon labels, hide apps from drawer with batch unhide
@@ -60,6 +61,13 @@ Built on crash patterns identified across Lawnchair v14-v15 beta releases:
 - **Memoized theme computation** - `remember`-cached, no recompute per recomposition
 - **Conditional auto-focus** - keyboard only opens when drawer opened via search bar, not swipe
 - **Pager scroll guard** - horizontal paging disabled during drawer transition
+
+### v2.23.0
+
+- **Material 3 drawer tabs** - All, Recent, Favorites, and Work tabs switch the drawer grid without leaving search
+- **Favorites tab** - Drawer context menu can add/remove favorite apps, persisted in DataStore and backups
+- **Work profile tab** - LauncherApps profile scan loads managed-profile apps when Android exposes them
+- **Profile-aware launch** - Work-profile apps launch through LauncherApps while personal apps keep the existing launch path
 
 ### v2.22.0
 

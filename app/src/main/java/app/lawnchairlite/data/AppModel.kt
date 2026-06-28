@@ -2,6 +2,7 @@ package app.lawnchairlite.data
 
 import android.content.ComponentName
 import android.graphics.drawable.Drawable
+import android.os.UserHandle
 import android.util.Log
 
 /**
@@ -14,9 +15,15 @@ data class AppInfo(
     val icon: Drawable?, val isSystemApp: Boolean = false,
     val firstInstallTime: Long = 0L,
     val installSource: String = "",
+    val isWorkProfile: Boolean = false,
+    val profileSerial: Long = 0L,
+    val userHandle: UserHandle? = null,
 ) {
     val componentName: ComponentName get() = ComponentName(packageName, activityName)
-    val key: String get() = "$packageName/$activityName"
+    val key: String get() {
+        val base = "$packageName/$activityName"
+        return if (isWorkProfile && profileSerial > 0L) "$base@$profileSerial" else base
+    }
 }
 
 enum class IconShape(val label: String) {
@@ -59,6 +66,9 @@ enum class BadgeStyle(val label: String) {
 enum class DrawerCategory(val label: String) {
     ALL("All"), GAMES("Games"), SOCIAL("Social"), MEDIA("Media"),
     TOOLS("Tools"), WORK("Work"), OTHER("Other");
+}
+enum class DrawerTab(val label: String) {
+    ALL("All"), RECENT("Recent"), FAVORITES("Favorites"), WORK("Work");
 }
 enum class CategoryRuleType(val label: String) {
     APP_NAME_REGEX("Name Regex"), PACKAGE_PREFIX("Package Prefix"), INSTALL_SOURCE("Install Source");

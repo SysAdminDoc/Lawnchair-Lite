@@ -18,6 +18,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.SearchOff
 import androidx.compose.material3.Icon
+import androidx.compose.material3.ScrollableTabRow
+import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -34,6 +36,7 @@ import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.lawnchairlite.data.AppInfo
+import app.lawnchairlite.data.DrawerTab
 import app.lawnchairlite.data.IconShape
 import kotlinx.coroutines.launch
 
@@ -52,10 +55,14 @@ fun AppDrawer(
     iconSizeDp: Dp,
     columns: Int,
     recentApps: List<AppInfo>,
+    favoriteApps: List<AppInfo>,
+    workProfileApps: List<AppInfo>,
     categorizedApps: Map<app.lawnchairlite.data.DrawerCategory, List<AppInfo>>,
     showCategories: Boolean,
     selectedCategory: app.lawnchairlite.data.DrawerCategory,
     onCategoryChange: (app.lawnchairlite.data.DrawerCategory) -> Unit,
+    selectedTab: DrawerTab,
+    onTabChange: (DrawerTab) -> Unit,
     notifCounts: Map<String, Int>,
     showBadges: Boolean,
     badgeDotOnly: Boolean,
@@ -170,11 +177,19 @@ fun AppDrawer(
     }
 
     val translationY = (1f - progress) * screenHeightPx
-    val showRecent = searchQuery.isBlank() && recentApps.isNotEmpty() && !showCategories
-    // Use categorized apps when categories enabled, otherwise use full list
-    val displayApps = if (showCategories && searchQuery.isBlank() && selectedCategory != app.lawnchairlite.data.DrawerCategory.ALL) {
+    val effectiveTab = if (searchQuery.isBlank()) selectedTab else DrawerTab.ALL
+    val showCategoriesForTab = showCategories && searchQuery.isBlank() && effectiveTab == DrawerTab.ALL
+    val tabApps = when (effectiveTab) {
+        DrawerTab.ALL -> apps
+        DrawerTab.RECENT -> recentApps
+        DrawerTab.FAVORITES -> favoriteApps
+        DrawerTab.WORK -> workProfileApps
+    }
+    val showRecent = false
+    // Use categorized apps when categories are enabled on the All tab, otherwise use the selected tab list.
+    val displayApps = if (showCategoriesForTab && selectedCategory != app.lawnchairlite.data.DrawerCategory.ALL) {
         categorizedApps[selectedCategory] ?: apps
-    } else apps
+    } else tabApps
 
     // Compute letters/index from displayApps so fast scroller is correct when
     // categories are active or section headers shift grid positions.
@@ -205,7 +220,7 @@ fun AppDrawer(
     // Hide fast scroller when a specific category is selected — displayApps is a subset
     // and the alphabet rail wouldn't match the visible grid position anyway.
     val showFastScroller = letters.size > 3 && searchQuery.isBlank() &&
-        !(showCategories && selectedCategory != app.lawnchairlite.data.DrawerCategory.ALL)
+        !(showCategoriesForTab && selectedCategory != app.lawnchairlite.data.DrawerCategory.ALL)
 
     Box(
         Modifier
@@ -237,7 +252,18 @@ fun AppDrawer(
                         onClearAll = onSearchHistoryClear,
                     )
                 }
-                if (showCategories && searchQuery.isBlank()) {
+                if (searchQuery.isBlank()) {
+                    Spacer(Modifier.height(4.dp))
+                    DrawerTabs(
+                        selectedTab = effectiveTab,
+                        allCount = apps.size,
+                        recentCount = recentApps.size,
+                        favoriteCount = favoriteApps.size,
+                        workCount = workProfileApps.size,
+                        onTabChange = onTabChange,
+                    )
+                }
+                if (showCategoriesForTab) {
                     Spacer(Modifier.height(4.dp))
                     Row(
                         Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp),
@@ -263,8 +289,22 @@ fun AppDrawer(
                 }
                 Spacer(Modifier.height(6.dp))
                 Row(Modifier.padding(horizontal = 24.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text(if (searchQuery.isNotBlank()) "${displayApps.size} results" else "${displayApps.size} apps", color = colors.textSecondary.copy(alpha = 0.8f), fontSize = 12.sp, fontWeight = FontWeight.Medium)
-                    if (searchQuery.isBlank() && drawerSort != app.lawnchairlite.data.DrawerSort.NAME) {
+                    val countLabel = when {
+                        searchQuery.isNotBlank() -> "${displayApps.size} results"
+                        effectiveTab == DrawerTab.RECENT -> "${displayApps.size} recent apps"
+                        effectiveTab == DrawerTab.FAVORITES -> "${displayApps.size} favorites"
+                        effectiveTab == DrawerTab.WORK -> "${displayApps.size} work apps"
+                        else -> "${displayApps.size} apps"
+                    }
+                    Text(countLabel, color = colors.textSecondary.copy(alpha = 0.8f), fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                    if (searchQuery.isBlank() && effectiveTab == DrawerTab.RECENT && recentApps.isNotEmpty()) {
+                        Spacer(Modifier.weight(1f))
+                        Text("Clear", color = colors.textSecondary, fontSize = 11.sp,
+                            modifier = Modifier.clip(RoundedCornerShape(8.dp))
+                                .clickable { onClearRecents() }
+                                .padding(horizontal = 8.dp, vertical = 4.dp))
+                    }
+                    if (searchQuery.isBlank() && effectiveTab == DrawerTab.ALL && drawerSort != app.lawnchairlite.data.DrawerSort.NAME) {
                         Text("  ·  ${drawerSort.label}", color = colors.accent.copy(alpha = 0.6f), fontSize = 11.sp, fontWeight = FontWeight.Medium)
                     }
                 }
@@ -314,7 +354,14 @@ fun AppDrawer(
                             tint = colors.textSecondary.copy(alpha = 0.5f),
                             modifier = Modifier.size(48.dp))
                         Spacer(Modifier.height(8.dp))
-                        Text("No apps found", color = colors.textSecondary, fontSize = 14.sp)
+                        val emptyText = when {
+                            searchQuery.isNotBlank() -> "No apps found"
+                            effectiveTab == DrawerTab.RECENT -> "No recent apps"
+                            effectiveTab == DrawerTab.FAVORITES -> "No favorites yet"
+                            effectiveTab == DrawerTab.WORK -> "No work profile apps"
+                            else -> "No apps found"
+                        }
+                        Text(emptyText, color = colors.textSecondary, fontSize = 14.sp)
                         if (searchQuery.isNotBlank()) {
                             Spacer(Modifier.height(12.dp))
                             Row(
@@ -381,7 +428,7 @@ fun AppDrawer(
                             }
                         }
 
-                        if (showSectionHeaders && searchQuery.isBlank() && !showCategories) {
+                        if (showSectionHeaders && searchQuery.isBlank() && effectiveTab != DrawerTab.RECENT && !showCategoriesForTab) {
                             // Group apps by first letter and add section headers
                             var lastLetter: Char? = null
                             displayApps.forEach { app ->
@@ -459,6 +506,50 @@ fun AppDrawer(
                 }
             }
             Spacer(Modifier.navigationBarsPadding())
+        }
+    }
+}
+
+@Composable
+private fun DrawerTabs(
+    selectedTab: DrawerTab,
+    allCount: Int,
+    recentCount: Int,
+    favoriteCount: Int,
+    workCount: Int,
+    onTabChange: (DrawerTab) -> Unit,
+) {
+    val colors = LocalLauncherColors.current
+    val tabs = DrawerTab.entries
+    val selectedIndex = tabs.indexOf(selectedTab).let { if (it >= 0) it else 0 }
+
+    ScrollableTabRow(
+        selectedTabIndex = selectedIndex,
+        edgePadding = 16.dp,
+        containerColor = colors.background.copy(alpha = 0f),
+        contentColor = colors.accent,
+        divider = {},
+    ) {
+        tabs.forEach { tab ->
+            val count = when (tab) {
+                DrawerTab.ALL -> allCount
+                DrawerTab.RECENT -> recentCount
+                DrawerTab.FAVORITES -> favoriteCount
+                DrawerTab.WORK -> workCount
+            }
+            Tab(
+                selected = selectedTab == tab,
+                onClick = { onTabChange(tab) },
+                selectedContentColor = colors.accent,
+                unselectedContentColor = colors.textSecondary,
+                text = {
+                    Text(
+                        "${tab.label} ($count)",
+                        fontSize = 12.sp,
+                        fontWeight = if (selectedTab == tab) FontWeight.Bold else FontWeight.Medium,
+                    )
+                },
+            )
         }
     }
 }

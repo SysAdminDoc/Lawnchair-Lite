@@ -81,6 +81,8 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
 
     private val _hiddenApps = MutableStateFlow<Set<String>>(emptySet())
     val hiddenApps: StateFlow<Set<String>> = _hiddenApps.asStateFlow()
+    private val _favoriteApps = MutableStateFlow<Set<String>>(emptySet())
+    val favoriteAppKeys: StateFlow<Set<String>> = _favoriteApps.asStateFlow()
     private val _customLabels = MutableStateFlow<Map<String, String>>(emptyMap())
     val customLabels: StateFlow<Map<String, String>> = _customLabels.asStateFlow()
 
@@ -159,6 +161,12 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     private val _selectedCategory = MutableStateFlow(DrawerCategory.ALL)
     val selectedCategory: StateFlow<DrawerCategory> = _selectedCategory.asStateFlow()
     fun setSelectedCategory(c: DrawerCategory) { _selectedCategory.value = c }
+    private val _selectedDrawerTab = MutableStateFlow(DrawerTab.ALL)
+    val selectedDrawerTab: StateFlow<DrawerTab> = _selectedDrawerTab.asStateFlow()
+    fun setSelectedDrawerTab(tab: DrawerTab) {
+        _selectedDrawerTab.value = tab
+        if (tab != DrawerTab.ALL) _selectedCategory.value = DrawerCategory.ALL
+    }
 
     // Recent apps: top N most recently used (not hidden)
     val recentApps: StateFlow<List<AppInfo>> = combine(_allApps, _appUsage, _hiddenApps) { apps, usage, hidden ->
@@ -170,8 +178,17 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
                 .sortedByDescending { it.value }
                 .take(MAX_RECENT_APPS)
                 .mapNotNull { appMap[it.key] }
-        }
+            }
     }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    val favoriteApps: StateFlow<List<AppInfo>> = combine(filteredApps, _favoriteApps) { apps, favorites ->
+        if (favorites.isEmpty()) emptyList()
+        else apps.filter { it.key in favorites }
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    val workProfileApps: StateFlow<List<AppInfo>> = filteredApps
+        .map { apps -> apps.filter { it.isWorkProfile } }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     // Time-aware app suggestions
     val suggestedApps: StateFlow<List<AppInfo>> = combine(
@@ -266,6 +283,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch { prefs.homeGrid.collect { if (it.isNotEmpty()) _homeGrid.value = it } }
         viewModelScope.launch { prefs.dockGrid.collect { if (it.isNotEmpty()) _dockGrid.value = it } }
         viewModelScope.launch { prefs.hiddenApps.collect { _hiddenApps.value = it } }
+        viewModelScope.launch { prefs.favoriteApps.collect { _favoriteApps.value = it } }
         viewModelScope.launch { prefs.customLabels.collect { _customLabels.value = it } }
         viewModelScope.launch { prefs.appUsage.collect { _appUsage.value = it } }
         viewModelScope.launch { prefs.widgets.collect { _widgets.value = it } }
@@ -333,7 +351,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     fun getLabel(key: String): String? = _customLabels.value[key] ?: resolveApp(key)?.label
 
     fun launch(app: AppInfo) {
-        if (!repo.isPackageInstalled(app.packageName)) {
+        if (!repo.isAppAvailable(app)) {
             toast("App no longer installed")
             debouncedReload()
             return
@@ -386,10 +404,10 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         if (q.length >= 2) searchContacts(q) else _contactResults.value = emptyList()
     }
     fun openDrawer() { _drawerOpen.value = true }
-    fun closeDrawer() { _drawerOpen.value = false; _search.value = ""; _selectedCategory.value = DrawerCategory.ALL }
+    fun closeDrawer() { _drawerOpen.value = false; _search.value = ""; _selectedCategory.value = DrawerCategory.ALL; _selectedDrawerTab.value = DrawerTab.ALL }
     fun openSettings() { _settingsOpen.value = true }
     fun closeSettings() { _settingsOpen.value = false }
-    fun closeAllOverlays() { _drawerOpen.value = false; _settingsOpen.value = false; _openFolder.value = null; _drawerMenuApp.value = null; _folderRename.value = null; _labelEdit.value = null; _homeMenu.value = null; _editMode.value = false; _widgetPickerOpen.value = false; _homeSpaceMenu.value = false; _search.value = ""; _shortcuts.value = emptyList(); _selectedCategory.value = DrawerCategory.ALL }
+    fun closeAllOverlays() { _drawerOpen.value = false; _settingsOpen.value = false; _openFolder.value = null; _drawerMenuApp.value = null; _folderRename.value = null; _labelEdit.value = null; _homeMenu.value = null; _editMode.value = false; _widgetPickerOpen.value = false; _homeSpaceMenu.value = false; _search.value = ""; _shortcuts.value = emptyList(); _selectedCategory.value = DrawerCategory.ALL; _selectedDrawerTab.value = DrawerTab.ALL }
     fun hasOpenOverlay(): Boolean = _drawerOpen.value || _settingsOpen.value || _openFolder.value != null || _drawerMenuApp.value != null || _labelEdit.value != null || _homeMenu.value != null || _widgetPickerOpen.value || _editMode.value || _homeSpaceMenu.value
 
     // -- Home/Dock Context Menu --
@@ -659,6 +677,11 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
             c = false; val dock = _dockGrid.value.toMutableList()
             for (i in dock.indices) { val r = cleanCell(dock[i], valid); if (r !== dock[i]) { dock[i] = r; c = true } }
             if (c) { _dockGrid.value = dock; prefs.saveDock(dock) }
+            val favorites = _favoriteApps.value.filter { it in valid }.toSet()
+            if (favorites.size != _favoriteApps.value.size) {
+                _favoriteApps.value = favorites
+                prefs.saveFavoriteApps(favorites)
+            }
         } catch (e: Exception) {
             Log.e(TAG, "cleanupStaleKeys failed", e)
         }
@@ -703,6 +726,16 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch { _shortcuts.value = shortcutRepo.getShortcuts(app.packageName) }
     }
     fun dismissDrawerMenu() { _drawerMenuApp.value = null; _shortcuts.value = emptyList() }
+
+    fun toggleFavorite(app: AppInfo) { viewModelScope.launch {
+        val favorites = _favoriteApps.value.toMutableSet()
+        val added = favorites.add(app.key)
+        if (!added) favorites.remove(app.key)
+        _favoriteApps.value = favorites
+        prefs.saveFavoriteApps(favorites)
+        toast(if (added) "Added to favorites" else "Removed from favorites")
+        _drawerMenuApp.value = null; _shortcuts.value = emptyList()
+    }}
 
     fun pinToHome(app: AppInfo) { viewModelScope.launch {
         val ps = pageSize(); val grid = padGrid(_homeGrid.value, ps).toMutableList()

@@ -101,8 +101,12 @@ fun HomeScreen(vm: LauncherViewModel) {
     val notifCounts by vm.notifCounts.collectAsState()
     val appShortcuts by vm.shortcuts.collectAsState()
     val recentApps by vm.recentApps.collectAsState()
+    val favoriteApps by vm.favoriteApps.collectAsState()
+    val favoriteAppKeys by vm.favoriteAppKeys.collectAsState()
+    val workProfileApps by vm.workProfileApps.collectAsState()
     val categorizedApps by vm.categorizedApps.collectAsState()
     val selectedCategory by vm.selectedCategory.collectAsState()
+    val selectedDrawerTab by vm.selectedDrawerTab.collectAsState()
     val widgetPickerOpen by vm.widgetPickerOpen.collectAsState()
     val homeSpaceMenu by vm.homeSpaceMenu.collectAsState()
     val widgetInfos by vm.widgets.collectAsState()
@@ -195,6 +199,7 @@ fun HomeScreen(vm: LauncherViewModel) {
                 )) else drawerProgress.snapTo(0f)
                 vm.setSearch("")
                 vm.setSelectedCategory(app.lawnchairlite.data.DrawerCategory.ALL)
+                vm.setSelectedDrawerTab(app.lawnchairlite.data.DrawerTab.ALL)
             }
         }
     }
@@ -214,6 +219,7 @@ fun HomeScreen(vm: LauncherViewModel) {
                 stiffness = Spring.StiffnessMedium,
             )) else drawerProgress.snapTo(0f)
             vm.setSelectedCategory(app.lawnchairlite.data.DrawerCategory.ALL)
+            vm.setSelectedDrawerTab(app.lawnchairlite.data.DrawerTab.ALL)
         }
     }
 
@@ -652,10 +658,14 @@ fun HomeScreen(vm: LauncherViewModel) {
                 iconSizeDp = iconDp,
                 columns = if (settings.drawerColumns > 0) settings.drawerColumns else cols,
                 recentApps = recentApps,
+                favoriteApps = favoriteApps,
+                workProfileApps = workProfileApps,
                 categorizedApps = categorizedApps,
                 showCategories = settings.drawerCategories,
                 selectedCategory = selectedCategory,
                 onCategoryChange = { vm.setSelectedCategory(it) },
+                selectedTab = selectedDrawerTab,
+                onTabChange = { vm.setSelectedDrawerTab(it) },
                 notifCounts = notifCounts,
                 showBadges = settings.showNotifBadges && settings.badgeStyle != app.lawnchairlite.data.BadgeStyle.HIDDEN,
                 badgeDotOnly = settings.badgeStyle == app.lawnchairlite.data.BadgeStyle.DOT,
@@ -673,14 +683,15 @@ fun HomeScreen(vm: LauncherViewModel) {
                     scope.launch { drawerProgress.animateTo(0f, tween(200)) }
                     vm.setSearch("")
                     vm.setSelectedCategory(app.lawnchairlite.data.DrawerCategory.ALL)
+                    vm.setSelectedDrawerTab(app.lawnchairlite.data.DrawerTab.ALL)
                 },
                 onAppLongClick = { vm.showDrawerMenu(it) },
                 autoFocusSearch = openedViaSearch,
                 contactResults = vm.contactResults.collectAsState().value,
                 contactPermissionGranted = contactPermGranted,
                 onRequestContactPermission = { contactPermLauncher.launch(android.Manifest.permission.READ_CONTACTS) },
-                onContactTap = { uri -> vm.openContact(uri); scope.launch { drawerProgress.animateTo(0f, tween(200)) }; vm.setSearch(""); vm.setSelectedCategory(app.lawnchairlite.data.DrawerCategory.ALL) },
-                onContactCall = { number -> vm.callContact(number); scope.launch { drawerProgress.animateTo(0f, tween(200)) }; vm.setSearch(""); vm.setSelectedCategory(app.lawnchairlite.data.DrawerCategory.ALL) },
+                onContactTap = { uri -> vm.openContact(uri); scope.launch { drawerProgress.animateTo(0f, tween(200)) }; vm.setSearch(""); vm.setSelectedCategory(app.lawnchairlite.data.DrawerCategory.ALL); vm.setSelectedDrawerTab(app.lawnchairlite.data.DrawerTab.ALL) },
+                onContactCall = { number -> vm.callContact(number); scope.launch { drawerProgress.animateTo(0f, tween(200)) }; vm.setSearch(""); vm.setSelectedCategory(app.lawnchairlite.data.DrawerCategory.ALL); vm.setSelectedDrawerTab(app.lawnchairlite.data.DrawerTab.ALL) },
                 onSearchWeb = { vm.searchWeb(it) },
                 calculatorResult = vm.calculatorResult.collectAsState().value,
                 searchHistory = vm.searchHistory.collectAsState().value,
@@ -775,7 +786,7 @@ fun HomeScreen(vm: LauncherViewModel) {
         }
 
         val menuApp = drawerMenuApp
-        if (menuApp != null) DrawerContextMenu(menuApp, settings.iconShape, vm = vm, shortcuts = appShortcuts, onShortcutClick = { vm.launchShortcut(it); scope.launch { drawerProgress.animateTo(0f, tween(200)) }; vm.setSearch(""); vm.setSelectedCategory(app.lawnchairlite.data.DrawerCategory.ALL) }, onPinHome = { vm.pinToHome(menuApp); scope.launch { drawerProgress.animateTo(0f, tween(200)) }; vm.setSearch(""); vm.setSelectedCategory(app.lawnchairlite.data.DrawerCategory.ALL) }, onPinDock = { vm.pinToDock(menuApp); scope.launch { drawerProgress.animateTo(0f, tween(200)) }; vm.setSearch(""); vm.setSelectedCategory(app.lawnchairlite.data.DrawerCategory.ALL) }, onHide = { vm.hideApp(menuApp.key) }, onAppInfo = { vm.appInfo(menuApp); vm.dismissDrawerMenu() }, onUninstall = { vm.requestUninstall(menuApp); vm.dismissDrawerMenu() }, onDismiss = { vm.dismissDrawerMenu() })
+        if (menuApp != null) DrawerContextMenu(menuApp, settings.iconShape, vm = vm, shortcuts = appShortcuts, isFavorite = menuApp.key in favoriteAppKeys, onShortcutClick = { vm.launchShortcut(it); scope.launch { drawerProgress.animateTo(0f, tween(200)) }; vm.setSearch(""); vm.setSelectedCategory(app.lawnchairlite.data.DrawerCategory.ALL); vm.setSelectedDrawerTab(app.lawnchairlite.data.DrawerTab.ALL) }, onPinHome = { vm.pinToHome(menuApp); scope.launch { drawerProgress.animateTo(0f, tween(200)) }; vm.setSearch(""); vm.setSelectedCategory(app.lawnchairlite.data.DrawerCategory.ALL); vm.setSelectedDrawerTab(app.lawnchairlite.data.DrawerTab.ALL) }, onPinDock = { vm.pinToDock(menuApp); scope.launch { drawerProgress.animateTo(0f, tween(200)) }; vm.setSearch(""); vm.setSelectedCategory(app.lawnchairlite.data.DrawerCategory.ALL); vm.setSelectedDrawerTab(app.lawnchairlite.data.DrawerTab.ALL) }, onToggleFavorite = { vm.toggleFavorite(menuApp) }, onHide = { vm.hideApp(menuApp.key) }, onAppInfo = { vm.appInfo(menuApp); vm.dismissDrawerMenu() }, onUninstall = { vm.requestUninstall(menuApp); vm.dismissDrawerMenu() }, onDismiss = { vm.dismissDrawerMenu() })
     }
 }
 

@@ -151,6 +151,7 @@ class LauncherPrefs(private val context: Context) {
         val SEARCH_HISTORY = stringPreferencesKey("search_history")
         val SUGGESTION_USAGE = stringPreferencesKey("suggestion_usage")
         val SEARCH_ENGINE = stringPreferencesKey("search_engine")
+        val FAVORITE_APPS = stringPreferencesKey("favorite_apps")
         val GESTURE_APP_DOUBLE_TAP = stringPreferencesKey("gesture_app_double_tap")
         val GESTURE_APP_SWIPE_DOWN = stringPreferencesKey("gesture_app_swipe_down")
         val GESTURE_APP_TRIPLE_TAP = stringPreferencesKey("gesture_app_triple_tap")
@@ -235,6 +236,9 @@ class LauncherPrefs(private val context: Context) {
     val hiddenApps: Flow<Set<String>> = safeData.map { p ->
         p[HIDDEN_APPS]?.split("|")?.filter { it.isNotBlank() }?.toSet() ?: emptySet()
     }
+    val favoriteApps: Flow<Set<String>> = safeData.map { p ->
+        p[FAVORITE_APPS]?.split("|")?.filter { it.isNotBlank() }?.toSet() ?: emptySet()
+    }
     val customLabels: Flow<Map<String, String>> = safeData.map { p ->
         p[CUSTOM_LABELS]?.split("|")?.mapNotNull { entry ->
             val eq = entry.indexOf('=')
@@ -301,6 +305,7 @@ class LauncherPrefs(private val context: Context) {
                 p[SEARCH_ENGINE] = d.searchEngine.name
                 p[SWIPE_UP_ACTION] = d.swipeUpAction.name
                 p[CATEGORY_RULES] = ""
+                p[FAVORITE_APPS] = ""
             }
         }.onFailure { Log.e(TAG, "resetToDefaults failed", it) }
     }
@@ -318,6 +323,11 @@ class LauncherPrefs(private val context: Context) {
     suspend fun saveHidden(keys: Set<String>) {
         runCatching { context.dataStore.edit { it[HIDDEN_APPS] = keys.joinToString("|") } }
             .onFailure { Log.e(TAG, "Failed to save hidden apps", it) }
+    }
+
+    suspend fun saveFavoriteApps(keys: Set<String>) {
+        runCatching { context.dataStore.edit { it[FAVORITE_APPS] = keys.joinToString("|") } }
+            .onFailure { Log.e(TAG, "Failed to save favorite apps", it) }
     }
 
     suspend fun saveCustomLabels(map: Map<String, String>) {
@@ -527,6 +537,7 @@ class LauncherPrefs(private val context: Context) {
             put("page_indicator_style", p[PAGE_INDICATOR_STYLE] ?: "DOTS")
             put("label_weight", p[LABEL_WEIGHT] ?: "REGULAR")
             put("search_engine", p[SEARCH_ENGINE] ?: "GOOGLE")
+            put("favorite_apps", p[FAVORITE_APPS] ?: "")
             put("swipe_up_action", p[SWIPE_UP_ACTION] ?: "APP_DRAWER")
             put("search_history", p[SEARCH_HISTORY] ?: "")
             put("suggestion_usage", p[SUGGESTION_USAGE] ?: "")
@@ -593,6 +604,7 @@ class LauncherPrefs(private val context: Context) {
             j.optString("page_indicator_style").takeIf { it.isNotBlank() && runCatching { PageIndicatorStyle.valueOf(it) }.isSuccess }?.let { p[PAGE_INDICATOR_STYLE] = it }
             j.optString("label_weight").takeIf { it.isNotBlank() && runCatching { LabelWeight.valueOf(it) }.isSuccess }?.let { p[LABEL_WEIGHT] = it }
             j.optString("search_engine").takeIf { it.isNotBlank() && runCatching { SearchEngine.valueOf(it) }.isSuccess }?.let { p[SEARCH_ENGINE] = it }
+            j.optString("favorite_apps").let { p[FAVORITE_APPS] = it.split("|").filter { key -> key.isNotBlank() }.take(100).joinToString("|") }
             j.optString("search_history").let { p[SEARCH_HISTORY] = it }
             j.optString("suggestion_usage").takeIf { it.isNotBlank() }?.let { p[SUGGESTION_USAGE] = it }
             j.optString("app_usage").takeIf { it.isNotBlank() }?.let { p[APP_USAGE] = it }

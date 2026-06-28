@@ -734,7 +734,7 @@ fun FolderOverlay(folder: GridCell.Folder, shape: IconShape, iconSizeDp: Dp, res
 // ── Drawer Context Menu ──────────────────────────────────────────────
 
 @Composable
-fun DrawerContextMenu(app: AppInfo, shape: IconShape, vm: LauncherViewModel, shortcuts: List<AppShortcut>, onShortcutClick: (AppShortcut) -> Unit, onPinHome: () -> Unit, onPinDock: () -> Unit, onHide: () -> Unit, onAppInfo: () -> Unit, onUninstall: () -> Unit, onDismiss: () -> Unit) {
+fun DrawerContextMenu(app: AppInfo, shape: IconShape, vm: LauncherViewModel, shortcuts: List<AppShortcut>, isFavorite: Boolean, onShortcutClick: (AppShortcut) -> Unit, onPinHome: () -> Unit, onPinDock: () -> Unit, onToggleFavorite: () -> Unit, onHide: () -> Unit, onAppInfo: () -> Unit, onUninstall: () -> Unit, onDismiss: () -> Unit) {
     val c = LocalLauncherColors.current
     Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.5f)).pointerInput(Unit) { detectTapGestures { onDismiss() } }, Alignment.Center) {
         Column(Modifier.widthIn(min = 240.dp, max = 280.dp).clip(RoundedCornerShape(20.dp)).background(c.surface).border(0.5.dp, c.border, RoundedCornerShape(20.dp)).pointerInput(Unit) { detectTapGestures { } }.padding(vertical = 12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -751,6 +751,7 @@ fun DrawerContextMenu(app: AppInfo, shape: IconShape, vm: LauncherViewModel, sho
             }
             Spacer(Modifier.height(if (shortcuts.isEmpty()) 12.dp else 4.dp)); Divider(color = c.border.copy(alpha = 0.3f), thickness = 0.5.dp)
             CtxItem("Add to Home Screen", c, onClick = onPinHome); CtxItem("Add to Dock", c, onClick = onPinDock)
+            CtxItem(if (isFavorite) "Remove Favorite" else "Add Favorite", c, onClick = onToggleFavorite)
             CtxItem("Hide from Drawer", c, onClick = onHide); CtxItem("App Info", c, onClick = onAppInfo)
             if (!app.isSystemApp) { Divider(color = c.border.copy(alpha = 0.3f), thickness = 0.5.dp); CtxItem("Uninstall", c, isRed = true, onClick = onUninstall) }
         }
