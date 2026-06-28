@@ -153,7 +153,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     // Categorized apps for drawer tabs — skip computation during search (categories hidden)
     val categorizedApps: StateFlow<Map<DrawerCategory, List<AppInfo>>> = combine(filteredApps, _search, settings) { apps, query, s ->
         if (query.isNotBlank() || !s.drawerCategories) emptyMap()
-        else AppCategorizer.categorizeAll(apps)
+        else AppCategorizer.categorizeAll(apps, s.categoryRules)
     }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyMap())
 
     private val _selectedCategory = MutableStateFlow(DrawerCategory.ALL)
@@ -1106,6 +1106,41 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     fun setIconShadow(v: Boolean) = pref(LauncherPrefs.ICON_SHADOW, v)
     fun setAccentOverride(hex: String) = pref(LauncherPrefs.ACCENT_OVERRIDE, hex)
     fun setDrawerCategories(v: Boolean) = pref(LauncherPrefs.DRAWER_CATEGORIES, v)
+    fun addCategoryRule(type: CategoryRuleType, pattern: String, category: DrawerCategory) {
+        val cleanPattern = pattern.trim().take(120)
+        if (cleanPattern.isBlank() || category == DrawerCategory.ALL) {
+            toast("Choose a pattern and category")
+            return
+        }
+        if (type == CategoryRuleType.APP_NAME_REGEX && runCatching { Regex(cleanPattern) }.isFailure) {
+            toast("Invalid name regex")
+            return
+        }
+        viewModelScope.launch {
+            val rules = (settings.value.categoryRules + AppCategoryRule(type, cleanPattern, category)).take(40)
+            prefs.saveCategoryRules(rules)
+            pref(LauncherPrefs.DRAWER_CATEGORIES, true)
+            toast("Category rule added")
+        }
+    }
+    fun removeCategoryRule(index: Int) {
+        viewModelScope.launch {
+            val rules = settings.value.categoryRules.toMutableList()
+            if (index in rules.indices) {
+                rules.removeAt(index)
+                prefs.saveCategoryRules(rules)
+            }
+        }
+    }
+    fun setCategoryRuleEnabled(index: Int, enabled: Boolean) {
+        viewModelScope.launch {
+            val rules = settings.value.categoryRules.toMutableList()
+            if (index in rules.indices) {
+                rules[index] = rules[index].copy(enabled = enabled)
+                prefs.saveCategoryRules(rules)
+            }
+        }
+    }
     fun setDockStyle(s: DockStyle) = pref(LauncherPrefs.DOCK_STYLE, s.name)
     fun setSearchBarStyle(s: SearchBarStyle) = pref(LauncherPrefs.SEARCH_BAR_STYLE, s.name)
     fun setHapticLevel(l: HapticLevel) = pref(LauncherPrefs.HAPTIC_LEVEL, l.name)

@@ -48,7 +48,8 @@ object AppCategorizer {
     private fun tokenize(text: String): Set<String> =
         text.lowercase().split('.', ' ', '_', '-').filter { it.isNotBlank() }.toSet()
 
-    fun categorize(app: AppInfo): DrawerCategory {
+    fun categorize(app: AppInfo, rules: List<AppCategoryRule> = emptyList()): DrawerCategory {
+        rules.firstOrNull { it.matches(app) }?.let { return it.category }
         val tokens = tokenize(app.packageName) + tokenize(app.label)
 
         return when {
@@ -61,14 +62,25 @@ object AppCategorizer {
         }
     }
 
-    fun categorizeAll(apps: List<AppInfo>): Map<DrawerCategory, List<AppInfo>> {
+    fun categorizeAll(apps: List<AppInfo>, rules: List<AppCategoryRule> = emptyList()): Map<DrawerCategory, List<AppInfo>> {
         val result = mutableMapOf<DrawerCategory, MutableList<AppInfo>>()
         DrawerCategory.entries.forEach { result[it] = mutableListOf() }
         apps.forEach { app ->
-            val cat = categorize(app)
+            val cat = categorize(app, rules)
             result[cat]!!.add(app)
             result[DrawerCategory.ALL]!!.add(app)
         }
         return result
+    }
+
+    fun AppCategoryRule.matches(app: AppInfo): Boolean {
+        if (!enabled || category == DrawerCategory.ALL || pattern.isBlank()) return false
+        return when (type) {
+            CategoryRuleType.APP_NAME_REGEX -> runCatching {
+                Regex(pattern, RegexOption.IGNORE_CASE).containsMatchIn(app.label)
+            }.getOrDefault(false)
+            CategoryRuleType.PACKAGE_PREFIX -> app.packageName.startsWith(pattern.trim(), ignoreCase = true)
+            CategoryRuleType.INSTALL_SOURCE -> app.installSource.startsWith(pattern.trim(), ignoreCase = true)
+        }
     }
 }

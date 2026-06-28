@@ -67,7 +67,7 @@ fun SettingsPanel(
     val themeKeywords = "theme wallpaper dim accent color midnight glass oled mocha aurora neon"
     val iconsKeywords = "icon shape size pack themed shadow grayscale label weight squircle circle square teardrop hexagon diamond"
     val gridKeywords = "grid columns rows padding page transition indicator badge folder cube stack fade depth carousel slide dots line"
-    val drawerKeywords = "drawer sort columns opacity categories section headers animation suggestions search engine"
+    val drawerKeywords = "drawer sort columns opacity categories category rules regex package prefix install source section headers animation suggestions search engine"
     val dockKeywords = "dock icons style search bar pill floating transparent hide"
     val gesturesKeywords = "gesture double tap swipe down swipe up triple pinch dock lock screen notification flashlight edit mode recent app launch"
     val featuresKeywords = "clock smartspace at a glance weather calendar event auto place notification badges status bar home lock parallax haptic feedback"
@@ -351,6 +351,9 @@ fun SettingsPanel(
                             colors = SliderDefaults.colors(thumbColor = colors.accent, activeTrackColor = colors.accent, inactiveTrackColor = colors.card),
                         )
                         Tog("Drawer Categories", settings.drawerCategories, colors) { vm.setDrawerCategories(it) }
+                        if (settings.drawerCategories || settings.categoryRules.isNotEmpty()) {
+                            CategoryRulesSection(settings.categoryRules, colors, vm)
+                        }
                         Tog("Drawer Section Headers", settings.drawerSectionHeaders, colors) { vm.setDrawerSectionHeaders(it) }
                         Tog("Drawer Animation", settings.drawerAnimation, colors) { vm.setDrawerAnimation(it) }
                         Tog("App Suggestions", settings.showSuggestions, colors) { vm.setShowSuggestions(it) }
@@ -559,6 +562,86 @@ private fun SectionHeader(title: String, expanded: Boolean, c: LauncherColors, s
 }
 
 // ── Icon Pack Picker ─────────────────────────────────────────────────
+
+@Composable
+private fun CategoryRulesSection(rules: List<AppCategoryRule>, c: LauncherColors, vm: LauncherViewModel) {
+    var type by remember { mutableStateOf(CategoryRuleType.APP_NAME_REGEX) }
+    var pattern by remember { mutableStateOf("") }
+    var category by remember { mutableStateOf(DrawerCategory.TOOLS) }
+    val categories = DrawerCategory.entries.filter { it != DrawerCategory.ALL }
+    val placeholder = when (type) {
+        CategoryRuleType.APP_NAME_REGEX -> "mail|docs|work"
+        CategoryRuleType.PACKAGE_PREFIX -> "com.google.android"
+        CategoryRuleType.INSTALL_SOURCE -> "com.android.vending"
+    }
+
+    Lbl("Category Rules", c)
+    if (rules.isEmpty()) {
+        Text("Rules override automatic categories.", color = c.textSecondary, fontSize = 12.sp, modifier = Modifier.padding(bottom = 8.dp))
+    } else {
+        rules.forEachIndexed { index, rule ->
+            Column(
+                Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(c.card)
+                    .border(0.5.dp, c.border, RoundedCornerShape(12.dp))
+                    .padding(horizontal = 12.dp, vertical = 10.dp),
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text(rule.category.label, color = c.accent, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                        Text("${rule.type.label}: ${rule.pattern}", color = c.textSecondary, fontSize = 11.sp, maxLines = 1)
+                    }
+                    Switch(
+                        checked = rule.enabled,
+                        onCheckedChange = { vm.setCategoryRuleEnabled(index, it) },
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = Color.White,
+                            checkedTrackColor = c.accent,
+                            uncheckedThumbColor = c.textSecondary,
+                            uncheckedTrackColor = c.surface,
+                            uncheckedBorderColor = c.border,
+                        ),
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text("Remove", color = c.error, fontSize = 12.sp, fontWeight = FontWeight.Medium,
+                        modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(c.error.copy(alpha = 0.1f))
+                            .clickable { vm.removeCategoryRule(index) }.padding(horizontal = 10.dp, vertical = 5.dp))
+                }
+            }
+            Spacer(Modifier.height(6.dp))
+        }
+    }
+
+    Chips(CategoryRuleType.entries.map { it to it.label }, type, c) { type = it }
+    Spacer(Modifier.height(8.dp))
+    TextField(
+        value = pattern,
+        onValueChange = { pattern = it.take(120) },
+        modifier = Modifier.fillMaxWidth().height(48.dp).clip(RoundedCornerShape(10.dp)),
+        placeholder = { Text(placeholder, color = c.textSecondary, fontSize = 13.sp) },
+        colors = TextFieldDefaults.colors(
+            focusedTextColor = c.text,
+            unfocusedTextColor = c.text,
+            cursorColor = c.accent,
+            focusedContainerColor = c.card,
+            unfocusedContainerColor = c.card,
+            focusedIndicatorColor = Color.Transparent,
+            unfocusedIndicatorColor = Color.Transparent,
+        ),
+        singleLine = true,
+        textStyle = androidx.compose.ui.text.TextStyle(fontSize = 13.sp),
+    )
+    Spacer(Modifier.height(8.dp))
+    Chips(categories.map { it to it.label }, category, c) { category = it }
+    Spacer(Modifier.height(8.dp))
+    Text("Add Rule", color = if (pattern.isBlank()) c.textSecondary else c.accent, fontSize = 12.sp, fontWeight = FontWeight.Medium,
+        modifier = Modifier.clip(RoundedCornerShape(8.dp))
+            .background(if (pattern.isBlank()) c.card else c.accent.copy(alpha = 0.12f))
+            .clickable {
+                vm.addCategoryRule(type, pattern, category)
+                pattern = ""
+            }.padding(horizontal = 12.dp, vertical = 7.dp))
+    Spacer(Modifier.height(8.dp))
+}
 
 @Composable
 private fun IconPackSection(

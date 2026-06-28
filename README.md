@@ -1,10 +1,10 @@
 <p align="center">
-  <img alt="Version" src="https://img.shields.io/badge/version-2.21.0-58A6FF?style=for-the-badge">
+  <img alt="Version" src="https://img.shields.io/badge/version-2.22.0-58A6FF?style=for-the-badge">
   <img alt="License" src="https://img.shields.io/badge/license-MIT-4ade80?style=for-the-badge">
   <img alt="Platform" src="https://img.shields.io/badge/platform-Android-58A6FF?style=for-the-badge">
 </p>
 
-# Lawnchair Lite v2.21.0
+# Lawnchair Lite v2.22.0
 
 Minimal, fast Android launcher with professional-grade stability and smooth Compose-powered animations.
 
@@ -33,6 +33,7 @@ Built on crash patterns identified across Lawnchair v14-v15 beta releases:
 - 6 theme modes (Midnight, Glass, OLED, Mocha, Aurora, Neon) with per-theme error colors
 - Custom accent color with 12 presets + hex input + theme-default reset chip
 - First-party Smartspace with local weather, next calendar event, next alarm, and permission prompts
+- Drawer category rules by app-name regex, package prefix, or install source with backup/restore support
 - Configurable grid (3-8 cols, 3-10 rows), dock (3-7 icons), icon sizes (S/M/L/XL)
 - 9 gesture actions: double-tap, triple-tap, swipe-down, swipe-up, pinch, dock-tap, dock-swipe
 - Gesture app binding: assign any gesture to launch a specific app (with icon preview in settings)
@@ -59,6 +60,13 @@ Built on crash patterns identified across Lawnchair v14-v15 beta releases:
 - **Memoized theme computation** - `remember`-cached, no recompute per recomposition
 - **Conditional auto-focus** - keyboard only opens when drawer opened via search bar, not swipe
 - **Pager scroll guard** - horizontal paging disabled during drawer transition
+
+### v2.22.0
+
+- **Drawer category rules** - User-defined rules override automatic app categorization
+- **Rule matchers** - Match by app-name regex, package prefix, or install source
+- **Settings editor** - Add, disable, and remove category rules from the Drawer settings section
+- **Backup support** - Category rules export/import with the launcher backup JSON
 
 ### v2.21.0
 
@@ -222,7 +230,7 @@ AppRepository          - Hardened PM calls, package existence checks, themed ico
 IconPackManager        - LruCache, defensive XML parsing, preview icons
 ShortcutRepository     - LauncherApps shortcut queries + launching
 NotificationListener   - NotificationListenerService for badge counts
-AppCategorizer         - Word-boundary tokenized auto-categorization
+AppCategorizer         - Word-boundary tokenized categorization with user rules
 AppModel               - Safe deserialization, data types, enums
 UI (Compose)           - HomeScreen, AppDrawer, Components, Settings, Theme
 ```

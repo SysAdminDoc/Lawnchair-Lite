@@ -13,6 +13,7 @@ data class AppInfo(
     val label: String, val packageName: String, val activityName: String,
     val icon: Drawable?, val isSystemApp: Boolean = false,
     val firstInstallTime: Long = 0L,
+    val installSource: String = "",
 ) {
     val componentName: ComponentName get() = ComponentName(packageName, activityName)
     val key: String get() = "$packageName/$activityName"
@@ -59,6 +60,15 @@ enum class DrawerCategory(val label: String) {
     ALL("All"), GAMES("Games"), SOCIAL("Social"), MEDIA("Media"),
     TOOLS("Tools"), WORK("Work"), OTHER("Other");
 }
+enum class CategoryRuleType(val label: String) {
+    APP_NAME_REGEX("Name Regex"), PACKAGE_PREFIX("Package Prefix"), INSTALL_SOURCE("Install Source");
+}
+data class AppCategoryRule(
+    val type: CategoryRuleType,
+    val pattern: String,
+    val category: DrawerCategory,
+    val enabled: Boolean = true,
+)
 enum class DockStyle(val label: String) {
     SOLID("Solid"), PILL("Pill"), FLOATING("Floating"), TRANSPARENT("Transparent");
 }

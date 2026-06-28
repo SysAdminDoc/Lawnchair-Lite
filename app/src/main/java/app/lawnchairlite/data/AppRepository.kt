@@ -71,6 +71,7 @@ class AppRepository(private val context: Context) {
                     icon = icon,
                     isSystemApp = sys,
                     firstInstallTime = installTime,
+                    installSource = installSourceFor(ai.packageName),
                 )
             } catch (e: Exception) {
                 Log.w(TAG, "Failed to resolve app: ${ri.activityInfo?.packageName}", e)
@@ -79,6 +80,18 @@ class AppRepository(private val context: Context) {
         }.filter { it.packageName != context.packageName }
             .sortedBy { it.label.lowercase() }
             .distinctBy { it.key }
+    }
+
+    private fun installSourceFor(packageName: String): String = try {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            val info = pm.getInstallSourceInfo(packageName)
+            info.installingPackageName ?: info.initiatingPackageName ?: info.originatingPackageName ?: ""
+        } else {
+            @Suppress("DEPRECATION")
+            pm.getInstallerPackageName(packageName) ?: ""
+        }
+    } catch (_: Exception) {
+        ""
     }
 
     /**

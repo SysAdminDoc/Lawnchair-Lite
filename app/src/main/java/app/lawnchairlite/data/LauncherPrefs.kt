@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import org.json.JSONArray
 import org.json.JSONObject
 import java.io.IOException
 
@@ -87,6 +88,7 @@ data class LauncherSettings(
     val gestureAppDockTap: String = "",
     val swipeUpAction: GestureAction = GestureAction.APP_DRAWER,
     val gestureAppSwipeUp: String = "",
+    val categoryRules: List<AppCategoryRule> = emptyList(),
 )
 
 class LauncherPrefs(private val context: Context) {
@@ -156,6 +158,7 @@ class LauncherPrefs(private val context: Context) {
         val GESTURE_APP_DOCK_TAP = stringPreferencesKey("gesture_app_dock_tap")
         val SWIPE_UP_ACTION = stringPreferencesKey("swipe_up_action")
         val GESTURE_APP_SWIPE_UP = stringPreferencesKey("gesture_app_swipe_up")
+        val CATEGORY_RULES = stringPreferencesKey("category_rules_v1")
     }
 
     // Safe data flow: catches IOException (disk errors) and emits defaults
@@ -222,6 +225,7 @@ class LauncherPrefs(private val context: Context) {
             gestureAppDockTap = p[GESTURE_APP_DOCK_TAP] ?: "",
             swipeUpAction = p[SWIPE_UP_ACTION]?.let { runCatching { GestureAction.valueOf(it) }.getOrNull() } ?: GestureAction.APP_DRAWER,
             gestureAppSwipeUp = p[GESTURE_APP_SWIPE_UP] ?: "",
+            categoryRules = p[CATEGORY_RULES]?.let { parseCategoryRules(it) } ?: emptyList(),
         )
     }
 
@@ -296,6 +300,7 @@ class LauncherPrefs(private val context: Context) {
                 p[DOCK_TAP_ACTION] = d.dockTapAction.name
                 p[SEARCH_ENGINE] = d.searchEngine.name
                 p[SWIPE_UP_ACTION] = d.swipeUpAction.name
+                p[CATEGORY_RULES] = ""
             }
         }.onFailure { Log.e(TAG, "resetToDefaults failed", it) }
     }
@@ -350,6 +355,41 @@ class LauncherPrefs(private val context: Context) {
         runCatching {
             context.dataStore.edit { it[DOCK_SWIPE_APPS] = map.entries.joinToString("|") { (k, v) -> "$k=$v" } }
         }.onFailure { Log.e(TAG, "Failed to save dock swipe apps", it) }
+    }
+
+    suspend fun saveCategoryRules(rules: List<AppCategoryRule>) {
+        runCatching {
+            context.dataStore.edit { it[CATEGORY_RULES] = serializeCategoryRules(rules) }
+        }.onFailure { Log.e(TAG, "Failed to save category rules", it) }
+    }
+
+    private fun serializeCategoryRules(rules: List<AppCategoryRule>): String = JSONArray().apply {
+        rules.take(40).forEach { rule ->
+            put(JSONObject().apply {
+                put("type", rule.type.name)
+                put("pattern", rule.pattern)
+                put("category", rule.category.name)
+                put("enabled", rule.enabled)
+            })
+        }
+    }.toString()
+
+    private fun parseCategoryRules(raw: String): List<AppCategoryRule> = runCatching {
+        if (raw.isBlank()) return@runCatching emptyList()
+        val array = JSONArray(raw)
+        buildList {
+            for (i in 0 until array.length().coerceAtMost(40)) {
+                val item = array.optJSONObject(i) ?: continue
+                val type = runCatching { CategoryRuleType.valueOf(item.optString("type")) }.getOrNull() ?: continue
+                val category = runCatching { DrawerCategory.valueOf(item.optString("category")) }.getOrNull() ?: continue
+                val pattern = item.optString("pattern").trim()
+                if (pattern.isBlank() || category == DrawerCategory.ALL) continue
+                add(AppCategoryRule(type, pattern.take(120), category, item.optBoolean("enabled", true)))
+            }
+        }
+    }.getOrElse { e ->
+        Log.w(TAG, "Failed to parse category rules", e)
+        emptyList()
     }
 
     val widgets: Flow<List<WidgetInfo>> = safeData.map { p ->
@@ -467,6 +507,7 @@ class LauncherPrefs(private val context: Context) {
             put("icon_shadow", p[ICON_SHADOW] ?: false)
             put("accent_override", p[ACCENT_OVERRIDE] ?: "")
             put("drawer_categories", p[DRAWER_CATEGORIES] ?: false)
+            put("category_rules", p[CATEGORY_RULES] ?: "")
             put("dock_style", p[DOCK_STYLE] ?: "SOLID")
             put("search_bar_style", p[SEARCH_BAR_STYLE] ?: "PILL")
             put("haptic_level", p[HAPTIC_LEVEL] ?: "MEDIUM")
@@ -531,6 +572,7 @@ class LauncherPrefs(private val context: Context) {
             if (j.has("icon_shadow")) p[ICON_SHADOW] = j.getBoolean("icon_shadow")
             j.optString("accent_override").let { p[ACCENT_OVERRIDE] = it }
             if (j.has("drawer_categories")) p[DRAWER_CATEGORIES] = j.getBoolean("drawer_categories")
+            j.optString("category_rules").let { p[CATEGORY_RULES] = serializeCategoryRules(parseCategoryRules(it)) }
             j.optString("dock_style").takeIf { it.isNotBlank() && runCatching { DockStyle.valueOf(it) }.isSuccess }?.let { p[DOCK_STYLE] = it }
             j.optString("search_bar_style").takeIf { it.isNotBlank() && runCatching { SearchBarStyle.valueOf(it) }.isSuccess }?.let { p[SEARCH_BAR_STYLE] = it }
             j.optString("haptic_level").takeIf { it.isNotBlank() && runCatching { HapticLevel.valueOf(it) }.isSuccess }?.let { p[HAPTIC_LEVEL] = it }

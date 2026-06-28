@@ -12,8 +12,8 @@ android {
         applicationId = "app.lawnchairlite"
         minSdk = 28
         targetSdk = 34
-        versionCode = 50
-        versionName = "2.21.0"
+        versionCode = 51
+        versionName = "2.22.0"
     }
 
     signingConfigs {
@@ -84,4 +84,5 @@ dependencies {
     implementation("com.google.accompanist:accompanist-drawablepainter:0.34.0")
 
     debugImplementation("androidx.compose.ui:ui-tooling")
+    testImplementation("junit:junit:4.13.2")
 }
