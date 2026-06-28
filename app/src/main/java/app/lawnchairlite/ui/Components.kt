@@ -31,6 +31,7 @@ import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -54,6 +55,7 @@ import app.lawnchairlite.data.AppShortcut
 import app.lawnchairlite.data.DragSource
 import app.lawnchairlite.data.GridCell
 import app.lawnchairlite.data.IconShape
+import app.lawnchairlite.data.SmartspaceState
 import com.google.accompanist.drawablepainter.rememberDrawablePainter
 import java.text.SimpleDateFormat
 import java.util.*
@@ -261,7 +263,43 @@ fun PageLineIndicator(pageCount: Int, currentPage: Int, modifier: Modifier = Mod
 }
 
 @Composable
-fun AtAGlanceClock(modifier: Modifier = Modifier, clockStyle: app.lawnchairlite.data.ClockStyle = app.lawnchairlite.data.ClockStyle.LARGE, onDateClick: () -> Unit = {}, onTimeClick: () -> Unit = {}, onCycleStyle: () -> Unit = {}) {
+private fun SmartspaceLine(
+    icon: ImageVector,
+    text: String,
+    onClick: () -> Unit,
+    shadow: Shadow,
+    modifier: Modifier = Modifier,
+) {
+    val c = LocalLauncherColors.current
+    Row(
+        modifier.clickable { onClick() }.padding(top = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(icon, null, tint = c.accent.copy(alpha = 0.65f), modifier = Modifier.size(13.dp))
+        Spacer(Modifier.width(5.dp))
+        Text(
+            text,
+            color = c.textSecondary.copy(alpha = 0.78f),
+            fontSize = 11.sp,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            style = TextStyle(shadow = shadow),
+        )
+    }
+}
+
+@Composable
+fun AtAGlanceClock(
+    modifier: Modifier = Modifier,
+    clockStyle: app.lawnchairlite.data.ClockStyle = app.lawnchairlite.data.ClockStyle.LARGE,
+    smartspace: SmartspaceState = SmartspaceState(),
+    onDateClick: () -> Unit = {},
+    onTimeClick: () -> Unit = {},
+    onWeatherClick: () -> Unit = {},
+    onRequestCalendarPermission: () -> Unit = {},
+    onRequestLocationPermission: () -> Unit = {},
+    onCycleStyle: () -> Unit = {},
+) {
     val c = LocalLauncherColors.current
     val context = androidx.compose.ui.platform.LocalContext.current
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
@@ -270,6 +308,10 @@ fun AtAGlanceClock(modifier: Modifier = Modifier, clockStyle: app.lawnchairlite.
     val cal = remember(now) { Calendar.getInstance().apply { timeInMillis = now } }
     val dateFmt = remember { SimpleDateFormat("EEE, MMM d", Locale.getDefault()) }
     val dateStr = remember(now / 60000) { dateFmt.format(Date(now)) }
+    val eventFmt = remember(is24h) {
+        if (is24h) SimpleDateFormat("EEE HH:mm", Locale.getDefault())
+        else SimpleDateFormat("EEE h:mm a", Locale.getDefault())
+    }
 
     // Battery level
     val batteryPct = remember(now / 30000) {
@@ -326,6 +368,13 @@ fun AtAGlanceClock(modifier: Modifier = Modifier, clockStyle: app.lawnchairlite.
 
     // Text shadow for wallpaper readability
     val clockShadow = Shadow(color = Color.Black.copy(alpha = 0.6f), offset = Offset(0f, 1f), blurRadius = 4f)
+    val weatherText = smartspace.weather?.let { "${it.temperature}${it.unit} ${it.condition}" }
+    val eventText = smartspace.nextEvent?.let { event ->
+        val where = event.location.takeIf { it.isNotBlank() }?.let { " - $it" }.orEmpty()
+        "${eventFmt.format(Date(event.startsAtMillis))} ${event.title}$where"
+    }
+    val weatherPrompt = if (smartspace.locationPermissionNeeded) "Enable location for weather" else null
+    val calendarPrompt = if (smartspace.calendarPermissionNeeded) "Enable calendar for events" else null
 
     when (clockStyle) {
         app.lawnchairlite.data.ClockStyle.LARGE -> Column(modifier.padding(horizontal = 24.dp, vertical = 12.dp)) {
@@ -339,6 +388,14 @@ fun AtAGlanceClock(modifier: Modifier = Modifier, clockStyle: app.lawnchairlite.
                         modifier = Modifier.size(14.dp))
                     Text("$batteryPct%", color = c.textSecondary, fontSize = 12.sp, fontWeight = FontWeight.Medium, style = TextStyle(shadow = clockShadow))
                 }
+            }
+            when {
+                weatherText != null -> SmartspaceLine(Icons.Default.WbSunny, weatherText, onWeatherClick, clockShadow)
+                weatherPrompt != null -> SmartspaceLine(Icons.Default.LocationOn, weatherPrompt, onRequestLocationPermission, clockShadow)
+            }
+            when {
+                eventText != null -> SmartspaceLine(Icons.Default.Event, eventText, onDateClick, clockShadow)
+                calendarPrompt != null -> SmartspaceLine(Icons.Default.Event, calendarPrompt, onRequestCalendarPermission, clockShadow)
             }
             if (nextAlarmStr != null) {
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 1.dp)) {
@@ -370,6 +427,19 @@ fun AtAGlanceClock(modifier: Modifier = Modifier, clockStyle: app.lawnchairlite.
                     null, tint = if (compactBatteryLow) c.error else c.textSecondary.copy(alpha = 0.5f),
                     modifier = Modifier.size(12.dp))
                 Text("$batteryPct%", color = if (compactBatteryLow) c.error else c.textSecondary, fontSize = 12.sp, fontWeight = FontWeight.Medium, style = TextStyle(shadow = clockShadow))
+            }
+            val compactSmartspace = weatherText ?: eventText ?: weatherPrompt ?: calendarPrompt
+            if (compactSmartspace != null) {
+                Text("  |  ", color = c.textSecondary.copy(alpha = 0.4f), fontSize = 13.sp, style = TextStyle(shadow = clockShadow))
+                Text(
+                    compactSmartspace,
+                    color = c.textSecondary,
+                    fontSize = 12.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f),
+                    style = TextStyle(shadow = clockShadow),
+                )
             }
         }
         app.lawnchairlite.data.ClockStyle.MINIMAL -> Box(

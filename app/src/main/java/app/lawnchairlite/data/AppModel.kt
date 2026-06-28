@@ -79,6 +79,26 @@ enum class SearchEngine(val label: String, val urlTemplate: String) {
     STARTPAGE("Startpage", "https://www.startpage.com/do/dsearch?query=%s");
 }
 
+data class SmartspaceWeather(
+    val temperature: Int,
+    val unit: String,
+    val condition: String,
+)
+
+data class SmartspaceEvent(
+    val title: String,
+    val startsAtMillis: Long,
+    val location: String = "",
+)
+
+data class SmartspaceState(
+    val weather: SmartspaceWeather? = null,
+    val nextEvent: SmartspaceEvent? = null,
+    val locationPermissionNeeded: Boolean = false,
+    val calendarPermissionNeeded: Boolean = false,
+    val lastUpdatedMillis: Long = 0L,
+)
+
 sealed class GridCell {
     data class App(val appKey: String) : GridCell()
     data class Folder(val name: String, val appKeys: List<String>) : GridCell()

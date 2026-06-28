@@ -1,10 +1,10 @@
 <p align="center">
-  <img alt="Version" src="https://img.shields.io/badge/version-2.20.0-58A6FF?style=for-the-badge">
+  <img alt="Version" src="https://img.shields.io/badge/version-2.21.0-58A6FF?style=for-the-badge">
   <img alt="License" src="https://img.shields.io/badge/license-MIT-4ade80?style=for-the-badge">
   <img alt="Platform" src="https://img.shields.io/badge/platform-Android-58A6FF?style=for-the-badge">
 </p>
 
-# Lawnchair Lite v2.20.0
+# Lawnchair Lite v2.21.0
 
 Minimal, fast Android launcher with professional-grade stability and smooth Compose-powered animations.
 
@@ -32,6 +32,7 @@ Built on crash patterns identified across Lawnchair v14-v15 beta releases:
 - Custom icon labels, hide apps from drawer with batch unhide
 - 6 theme modes (Midnight, Glass, OLED, Mocha, Aurora, Neon) with per-theme error colors
 - Custom accent color with 12 presets + hex input + theme-default reset chip
+- First-party Smartspace with local weather, next calendar event, next alarm, and permission prompts
 - Configurable grid (3-8 cols, 3-10 rows), dock (3-7 icons), icon sizes (S/M/L/XL)
 - 9 gesture actions: double-tap, triple-tap, swipe-down, swipe-up, pinch, dock-tap, dock-swipe
 - Gesture app binding: assign any gesture to launch a specific app (with icon preview in settings)
@@ -58,6 +59,13 @@ Built on crash patterns identified across Lawnchair v14-v15 beta releases:
 - **Memoized theme computation** - `remember`-cached, no recompute per recomposition
 - **Conditional auto-focus** - keyboard only opens when drawer opened via search bar, not swipe
 - **Pager scroll guard** - horizontal paging disabled during drawer transition
+
+### v2.21.0
+
+- **First-party Smartspace** - Weather, next calendar event, and next alarm now render in the home At-a-Glance area without Google Smartspace
+- **Weather chip** - Uses last-known coarse location and a no-key Open-Meteo forecast request with short timeouts
+- **Calendar chip** - Reads the next 7-day calendar event through Android CalendarProvider when permission is granted
+- **Permission prompts** - Home Smartspace rows request location/calendar access directly and refresh after grants
 
 ### v2.19.0
 

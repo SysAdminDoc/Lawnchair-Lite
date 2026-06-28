@@ -1,19 +1,26 @@
 package app.lawnchairlite
 
+import android.Manifest
+import android.annotation.SuppressLint
 import android.app.ActivityManager
 import android.app.Application
 import android.app.admin.DevicePolicyManager
 import android.appwidget.AppWidgetHost
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProviderInfo
+import android.content.ContentUris
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.database.Cursor
 import android.hardware.camera2.CameraManager
+import android.location.Location
+import android.location.LocationManager
 import android.os.Build
 import android.os.VibrationEffect
 import android.os.Vibrator
+import android.provider.CalendarContract
 import android.provider.ContactsContract
 import android.provider.Settings
 import android.util.Log
@@ -22,12 +29,19 @@ import androidx.compose.ui.geometry.Offset
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import app.lawnchairlite.data.*
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import org.json.JSONObject
+import java.net.HttpURLConnection
+import java.net.URL
 import java.util.Calendar
+import java.util.concurrent.TimeUnit
 import kotlin.math.max
+import kotlin.math.roundToInt
 
 /** Lawnchair Lite - ViewModel */
 class LauncherViewModel(app: Application) : AndroidViewModel(app) {
@@ -37,6 +51,8 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         private const val DEBOUNCE_MS = 300L
         private const val MAX_RECENT_APPS = 8
         private const val WIDGET_HOST_ID = 1024
+        private const val SMARTSPACE_REFRESH_MS = 15 * 60 * 1000L
+        private const val WEATHER_TIMEOUT_MS = 3500
     }
 
     private val ctx = app.applicationContext
@@ -98,6 +114,10 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     private val _searchHistory = MutableStateFlow<List<String>>(emptyList())
     val searchHistory: StateFlow<List<String>> = _searchHistory.asStateFlow()
 
+    // First-party Smartspace state
+    private val _smartspace = MutableStateFlow(SmartspaceState())
+    val smartspace: StateFlow<SmartspaceState> = _smartspace.asStateFlow()
+
     // Suggestion usage (time-bucket:appKey -> launch count)
     private val _suggestionUsage = MutableStateFlow<Map<String, Int>>(emptyMap())
 
@@ -112,13 +132,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         tryEvaluate(query) ?: tryConvertUnit(query)
     }.stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
-    val filteredApps: StateFlow<List<AppInfo>> = combine(_allApps, _search, _hiddenApps, settings, _appUsage) { args ->
-        @Suppress("UNCHECKED_CAST")
-        val apps = args[0] as List<AppInfo>
-        val q = args[1] as String
-        val hidden = args[2] as Set<String>
-        val s = args[3] as LauncherSettings
-        val usage = args[4] as Map<String, Long>
+    val filteredApps: StateFlow<List<AppInfo>> = combine(_allApps, _search, _hiddenApps, settings, _appUsage) { apps, q, hidden, s, usage ->
         val visible = apps.filter { it.key !in hidden }
         if (q.isBlank()) {
             when (s.drawerSort) {
@@ -241,12 +255,14 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     val editMode: StateFlow<Boolean> = _editMode.asStateFlow()
 
     private var reloadJob: Job? = null
+    private var smartspaceRefreshJob: Job? = null
     private var flashlightOn = false
     private var torchCallback: CameraManager.TorchCallback? = null
 
     init {
         loadApps()
         discoverIconPacks()
+        startSmartspaceRefresh()
         viewModelScope.launch { prefs.homeGrid.collect { if (it.isNotEmpty()) _homeGrid.value = it } }
         viewModelScope.launch { prefs.dockGrid.collect { if (it.isNotEmpty()) _dockGrid.value = it } }
         viewModelScope.launch { prefs.hiddenApps.collect { _hiddenApps.value = it } }
@@ -521,6 +537,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     }.onFailure { Log.e(TAG, "requestDeviceAdmin failed", it) }}
 
     @Suppress("DEPRECATION")
+    @SuppressLint("WrongConstant")
     fun expandNotifications() {
         try {
             val sbService = ctx.getSystemService("statusbar") ?: return
@@ -899,6 +916,143 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
             hour in 12..16 -> "afternoon"
             hour in 17..21 -> "evening"
             else -> "night"
+        }
+    }
+
+    // -- Smartspace --
+
+    fun refreshSmartspace() {
+        if (smartspaceRefreshJob?.isActive == true) return
+        smartspaceRefreshJob = viewModelScope.launch { refreshSmartspaceInternal() }
+    }
+
+    private fun startSmartspaceRefresh() {
+        viewModelScope.launch {
+            while (true) {
+                refreshSmartspaceInternal()
+                delay(SMARTSPACE_REFRESH_MS)
+            }
+        }
+    }
+
+    private suspend fun refreshSmartspaceInternal() {
+        val calendarNeeded = !hasCalendarPermission()
+        val locationNeeded = !hasLocationPermission()
+        val event = if (calendarNeeded) null else loadNextCalendarEvent()
+        val weather = if (locationNeeded) null else loadWeather()
+        _smartspace.value = SmartspaceState(
+            weather = weather,
+            nextEvent = event,
+            locationPermissionNeeded = locationNeeded,
+            calendarPermissionNeeded = calendarNeeded,
+            lastUpdatedMillis = System.currentTimeMillis(),
+        )
+    }
+
+    private suspend fun loadNextCalendarEvent(): SmartspaceEvent? = withContext(Dispatchers.IO) {
+        val now = System.currentTimeMillis()
+        val end = now + TimeUnit.DAYS.toMillis(7)
+        val uriBuilder = CalendarContract.Instances.CONTENT_URI.buildUpon()
+        ContentUris.appendId(uriBuilder, now)
+        ContentUris.appendId(uriBuilder, end)
+        val projection = arrayOf(
+            CalendarContract.Instances.TITLE,
+            CalendarContract.Instances.BEGIN,
+            CalendarContract.Instances.EVENT_LOCATION,
+        )
+        try {
+            ctx.contentResolver.query(
+                uriBuilder.build(),
+                projection,
+                null,
+                null,
+                "${CalendarContract.Instances.BEGIN} ASC",
+            )?.use { cursor ->
+                while (cursor.moveToNext()) {
+                    val title = cursor.getString(0)?.trim().orEmpty()
+                    val startsAt = cursor.getLong(1)
+                    val location = cursor.getString(2)?.trim().orEmpty()
+                    if (title.isNotBlank() && startsAt >= now) {
+                        return@withContext SmartspaceEvent(title, startsAt, location)
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Calendar smartspace query failed", e)
+        }
+        null
+    }
+
+    private suspend fun loadWeather(): SmartspaceWeather? = withContext(Dispatchers.IO) {
+        val location = lastKnownLocation() ?: return@withContext null
+        val url = URL(
+            "https://api.open-meteo.com/v1/forecast" +
+                "?latitude=${location.latitude}&longitude=${location.longitude}" +
+                "&current=temperature_2m,weather_code&temperature_unit=fahrenheit&timezone=auto"
+        )
+        var connection: HttpURLConnection? = null
+        try {
+            connection = (url.openConnection() as HttpURLConnection).apply {
+                connectTimeout = WEATHER_TIMEOUT_MS
+                readTimeout = WEATHER_TIMEOUT_MS
+                requestMethod = "GET"
+            }
+            if (connection.responseCode !in 200..299) return@withContext null
+            val body = connection.inputStream.bufferedReader().use { it.readText() }
+            val current = JSONObject(body).optJSONObject("current") ?: return@withContext null
+            val temp = current.optDouble("temperature_2m", Double.NaN)
+            if (temp.isNaN()) return@withContext null
+            SmartspaceWeather(
+                temperature = temp.roundToInt(),
+                unit = "F",
+                condition = weatherCondition(current.optInt("weather_code", -1)),
+            )
+        } catch (e: Exception) {
+            Log.w(TAG, "Weather smartspace fetch failed", e)
+            null
+        } finally {
+            connection?.disconnect()
+        }
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun lastKnownLocation(): Location? {
+        if (!hasLocationPermission()) return null
+        val lm = ctx.getSystemService(Context.LOCATION_SERVICE) as? LocationManager ?: return null
+        return listOf(
+            LocationManager.NETWORK_PROVIDER,
+            LocationManager.GPS_PROVIDER,
+            LocationManager.PASSIVE_PROVIDER,
+        ).mapNotNull { provider ->
+            runCatching { lm.getLastKnownLocation(provider) }.getOrNull()
+        }.maxByOrNull { it.time }
+    }
+
+    private fun weatherCondition(code: Int): String = when (code) {
+        0 -> "Clear"
+        1, 2 -> "Partly cloudy"
+        3 -> "Cloudy"
+        45, 48 -> "Fog"
+        51, 53, 55, 56, 57 -> "Drizzle"
+        61, 63, 65, 66, 67, 80, 81, 82 -> "Rain"
+        71, 73, 75, 77, 85, 86 -> "Snow"
+        95, 96, 99 -> "Storm"
+        else -> "Weather"
+    }
+
+    fun hasCalendarPermission(): Boolean =
+        ctx.checkSelfPermission(Manifest.permission.READ_CALENDAR) == PackageManager.PERMISSION_GRANTED
+
+    fun hasLocationPermission(): Boolean =
+        ctx.checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+
+    fun openWeatherApp() {
+        try {
+            ctx.startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse("https://www.google.com/search?q=weather")).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            })
+        } catch (e: Exception) {
+            Log.e(TAG, "openWeatherApp failed", e)
         }
     }
 

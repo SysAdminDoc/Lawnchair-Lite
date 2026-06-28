@@ -107,6 +107,7 @@ fun HomeScreen(vm: LauncherViewModel) {
     val homeSpaceMenu by vm.homeSpaceMenu.collectAsState()
     val widgetInfos by vm.widgets.collectAsState()
     val suggestedApps by vm.suggestedApps.collectAsState()
+    val smartspace by vm.smartspace.collectAsState()
     val colors = LocalLauncherColors.current
     val isDragging = drag != null
     val iconDp = settings.iconSize.dp.dp
@@ -153,6 +154,12 @@ fun HomeScreen(vm: LauncherViewModel) {
     // causing pointerInput key invalidation (the critical fix).
     val currentDrawerFullyOpen by rememberUpdatedState(drawerFullyOpen)
     val currentDrawerVisible by rememberUpdatedState(drawerVisible)
+    val calendarPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
+        vm.refreshSmartspace()
+    }
+    val locationPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
+        vm.refreshSmartspace()
+    }
 
     /**
      * Settle drawer: decides whether to commit (open/close) or revert.
@@ -353,7 +360,16 @@ fun HomeScreen(vm: LauncherViewModel) {
                             .padding(horizontal = 14.dp, vertical = 6.dp))
                 }
 
-                if (settings.showClock && !isDragging && !editMode) AtAGlanceClock(clockStyle = settings.clockStyle, onDateClick = { vm.openCalendarApp() }, onTimeClick = { vm.openClockApp() }, onCycleStyle = { vm.cycleClockStyle() })
+                if (settings.showClock && !isDragging && !editMode) AtAGlanceClock(
+                    clockStyle = settings.clockStyle,
+                    smartspace = smartspace,
+                    onDateClick = { vm.openCalendarApp() },
+                    onTimeClick = { vm.openClockApp() },
+                    onWeatherClick = { vm.openWeatherApp() },
+                    onRequestCalendarPermission = { calendarPermissionLauncher.launch(android.Manifest.permission.READ_CALENDAR) },
+                    onRequestLocationPermission = { locationPermissionLauncher.launch(android.Manifest.permission.ACCESS_COARSE_LOCATION) },
+                    onCycleStyle = { vm.cycleClockStyle() },
+                )
 
                 if (settings.showSuggestions && suggestedApps.isNotEmpty() && !isDragging && !editMode) {
                     SuggestionRow(

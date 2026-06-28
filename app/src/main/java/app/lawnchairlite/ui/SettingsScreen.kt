@@ -70,7 +70,7 @@ fun SettingsPanel(
     val drawerKeywords = "drawer sort columns opacity categories section headers animation suggestions search engine"
     val dockKeywords = "dock icons style search bar pill floating transparent hide"
     val gesturesKeywords = "gesture double tap swipe down swipe up triple pinch dock lock screen notification flashlight edit mode recent app launch"
-    val featuresKeywords = "clock at a glance auto place notification badges status bar home lock parallax haptic feedback"
+    val featuresKeywords = "clock smartspace at a glance weather calendar event auto place notification badges status bar home lock parallax haptic feedback"
     val advancedKeywords = "kill background apps clear search history reset settings backup restore export import hidden apps about"
     fun sectionMatches(keywords: String): Boolean = sq.isBlank() || keywords.contains(sq) || sq.split(" ").all { w -> keywords.contains(w) }
     val showTheme = sectionMatches(themeKeywords)
@@ -413,7 +413,7 @@ fun SettingsPanel(
                 SectionHeader("Features", searching || featuresExpanded, colors) { featuresExpanded = !featuresExpanded }
                 AnimatedVisibility(searching || featuresExpanded) {
                     Column {
-                        Tog("At-a-Glance Clock", settings.showClock, colors) { vm.setShowClock(it) }
+                        Tog("Smartspace", settings.showClock, colors) { vm.setShowClock(it) }
                         if (settings.showClock) {
                             Lbl("Clock Style", colors)
                             Chips(ClockStyle.entries.map { it to it.label }, settings.clockStyle, colors) { vm.setClockStyle(it) }
