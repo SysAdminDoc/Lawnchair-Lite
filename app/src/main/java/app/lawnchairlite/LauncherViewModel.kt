@@ -98,10 +98,22 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     val shortcuts: StateFlow<List<AppShortcut>> = _shortcuts.asStateFlow()
 
     // Widget state
+    data class PendingWidgetPlacement(
+        val appWidgetId: Int,
+        val providerInfo: AppWidgetProviderInfo,
+        val page: Int,
+        val row: Int,
+        val col: Int,
+        val spanX: Int,
+        val spanY: Int,
+    )
+
     private val _widgets = MutableStateFlow<List<WidgetInfo>>(emptyList())
     val widgets: StateFlow<List<WidgetInfo>> = _widgets.asStateFlow()
     private val _widgetPickerOpen = MutableStateFlow(false)
     val widgetPickerOpen: StateFlow<Boolean> = _widgetPickerOpen.asStateFlow()
+    private val _pendingWidgetPlacement = MutableStateFlow<PendingWidgetPlacement?>(null)
+    val pendingWidgetPlacement: StateFlow<PendingWidgetPlacement?> = _pendingWidgetPlacement.asStateFlow()
     private val _homeSpaceMenu = MutableStateFlow(false)
     val homeSpaceMenu: StateFlow<Boolean> = _homeSpaceMenu.asStateFlow()
     fun showHomeSpaceMenu() { _homeSpaceMenu.value = true; vibrate() }
@@ -1439,7 +1451,81 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         widgetManager.installedProviders.sortedBy { it.loadLabel(ctx.packageManager).toString().lowercase() }
     }.getOrDefault(emptyList())
 
-    fun allocateWidgetId(): Int = widgetHost.allocateAppWidgetId()
+    fun beginWidgetPlacement(providerInfo: AppWidgetProviderInfo, page: Int, spanX: Int, spanY: Int): PendingWidgetPlacement? {
+        discardPendingWidget()
+        val widgetId = runCatching { widgetHost.allocateAppWidgetId() }.getOrElse {
+            Log.e(TAG, "allocateWidgetId failed", it)
+            toast("Couldn't start widget setup")
+            return null
+        }
+        val span = findFirstEmptySpan(page, spanX, spanY)
+        if (span == null) {
+            runCatching { widgetHost.deleteAppWidgetId(widgetId) }
+            toast("No room on this page - clear some cells first")
+            return null
+        }
+        return PendingWidgetPlacement(widgetId, providerInfo, page, span.first, span.second, spanX, spanY)
+            .also { _pendingWidgetPlacement.value = it }
+    }
+
+    fun bindPendingWidgetIfAllowed(): Boolean {
+        val pending = _pendingWidgetPlacement.value ?: return false
+        return runCatching {
+            widgetManager.bindAppWidgetIdIfAllowed(pending.appWidgetId, pending.providerInfo.provider)
+        }.onFailure {
+            Log.w(TAG, "bindAppWidgetIdIfAllowed failed for ${pending.providerInfo.provider}", it)
+        }.getOrDefault(false)
+    }
+
+    fun pendingWidgetNeedsConfiguration(): Boolean = _pendingWidgetPlacement.value?.providerInfo?.configure != null
+
+    fun getPendingWidgetBindIntent(): Intent? {
+        val pending = _pendingWidgetPlacement.value ?: return null
+        return Intent(AppWidgetManager.ACTION_APPWIDGET_BIND).apply {
+            putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, pending.appWidgetId)
+            putExtra(AppWidgetManager.EXTRA_APPWIDGET_PROVIDER, pending.providerInfo.provider)
+        }
+    }
+
+    fun getPendingWidgetConfigureIntent(): Intent? {
+        val pending = _pendingWidgetPlacement.value ?: return null
+        val configure = pending.providerInfo.configure ?: return null
+        return Intent(AppWidgetManager.ACTION_APPWIDGET_CONFIGURE).apply {
+            component = configure
+            putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, pending.appWidgetId)
+        }
+    }
+
+    fun completePendingWidget() {
+        val pending = _pendingWidgetPlacement.value ?: return
+        _pendingWidgetPlacement.value = null
+        addWidget(
+            WidgetInfo(
+                pending.appWidgetId,
+                pending.page,
+                pending.row,
+                pending.col,
+                pending.spanX,
+                pending.spanY,
+                pending.providerInfo.provider.flattenToString(),
+            )
+        )
+    }
+
+    fun cancelPendingWidget(message: String = "Widget setup canceled") {
+        val pending = _pendingWidgetPlacement.value ?: return
+        _pendingWidgetPlacement.value = null
+        runCatching { widgetHost.deleteAppWidgetId(pending.appWidgetId) }
+            .onFailure { Log.w(TAG, "delete pending widget id failed: ${pending.appWidgetId}", it) }
+        if (message.isNotBlank()) toast(message)
+    }
+
+    private fun discardPendingWidget() {
+        val pending = _pendingWidgetPlacement.value ?: return
+        _pendingWidgetPlacement.value = null
+        runCatching { widgetHost.deleteAppWidgetId(pending.appWidgetId) }
+            .onFailure { Log.w(TAG, "discard pending widget id failed: ${pending.appWidgetId}", it) }
+    }
 
     fun addWidget(info: WidgetInfo) { viewModelScope.launch {
         val list = _widgets.value + info
@@ -1471,30 +1557,9 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
 
     fun widgetForId(id: Int): WidgetInfo? = _widgets.value.find { it.appWidgetId == id }
 
-    fun canBindWidget(appWidgetId: Int, provider: ComponentName): Boolean =
-        widgetManager.bindAppWidgetIdIfAllowed(appWidgetId, provider)
-
-    fun getBindIntent(appWidgetId: Int, provider: ComponentName): Intent =
-        Intent(AppWidgetManager.ACTION_APPWIDGET_BIND).apply {
-            putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
-            putExtra(AppWidgetManager.EXTRA_APPWIDGET_PROVIDER, provider)
-        }
-
     fun findFirstEmptySpan(page: Int, spanX: Int, spanY: Int): Pair<Int, Int>? {
-        val cols = settings.value.gridColumns; val rows = settings.value.gridRows
-        val ps = cols * rows; val pageStart = page * ps
-        val grid = padGrid(_homeGrid.value, ps)
-        for (r in 0..(rows - spanY)) {
-            for (c in 0..(cols - spanX)) {
-                var fits = true
-                for (dr in 0 until spanY) { for (dc in 0 until spanX) {
-                    val idx = pageStart + (r + dr) * cols + (c + dc)
-                    if (idx !in grid.indices || grid[idx] != null) { fits = false; break }
-                }; if (!fits) break }
-                if (fits) return r to c
-            }
-        }
-        return null
+        val s = settings.value
+        return WidgetGridPlanner.findFirstEmptySpan(_homeGrid.value, page, s.gridColumns, s.gridRows, spanX, spanY)
     }
 
     // -- Contact Search --

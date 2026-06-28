@@ -164,6 +164,44 @@ fun HomeScreen(vm: LauncherViewModel) {
     val locationPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
         vm.refreshSmartspace()
     }
+    val configureWidgetLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        val pendingId = vm.pendingWidgetPlacement.value?.appWidgetId
+        val resultId = result.data?.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, AppWidgetManager.INVALID_APPWIDGET_ID)
+            ?: AppWidgetManager.INVALID_APPWIDGET_ID
+        if (result.resultCode == android.app.Activity.RESULT_OK && (resultId == AppWidgetManager.INVALID_APPWIDGET_ID || resultId == pendingId)) {
+            vm.completePendingWidget()
+        } else {
+            vm.cancelPendingWidget("Widget setup canceled")
+        }
+    }
+    fun launchPendingWidgetConfiguration() {
+        val intent = vm.getPendingWidgetConfigureIntent()
+        if (intent == null) {
+            vm.completePendingWidget()
+            return
+        }
+        runCatching { configureWidgetLauncher.launch(intent) }
+            .onFailure { vm.cancelPendingWidget("Widget configuration unavailable") }
+    }
+    val bindWidgetLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        val pendingId = vm.pendingWidgetPlacement.value?.appWidgetId
+        val resultId = result.data?.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, AppWidgetManager.INVALID_APPWIDGET_ID)
+            ?: AppWidgetManager.INVALID_APPWIDGET_ID
+        if (result.resultCode == android.app.Activity.RESULT_OK && (resultId == AppWidgetManager.INVALID_APPWIDGET_ID || resultId == pendingId)) {
+            if (vm.pendingWidgetNeedsConfiguration()) launchPendingWidgetConfiguration() else vm.completePendingWidget()
+        } else {
+            vm.cancelPendingWidget("Widget setup canceled")
+        }
+    }
+    fun launchPendingWidgetBind() {
+        val intent = vm.getPendingWidgetBindIntent()
+        if (intent == null) {
+            vm.cancelPendingWidget("Widget setup unavailable")
+            return
+        }
+        runCatching { bindWidgetLauncher.launch(intent) }
+            .onFailure { vm.cancelPendingWidget("Widget permission unavailable") }
+    }
 
     /**
      * Settle drawer: decides whether to commit (open/close) or revert.
@@ -720,28 +758,17 @@ fun HomeScreen(vm: LauncherViewModel) {
         // Widget picker
         if (widgetPickerOpen) {
             val availableWidgets = remember { vm.getAvailableWidgets() }
-            val widgetContext = androidx.compose.ui.platform.LocalContext.current
             val widgetCellW = (LocalConfiguration.current.screenWidthDp - settings.gridPaddingH * 2) / cols
             WidgetPickerDialog(
                 widgets = availableWidgets,
                 onSelect = { providerInfo ->
-                    val widgetId = vm.allocateWidgetId()
-                    val bound = vm.canBindWidget(widgetId, providerInfo.provider)
-                    if (bound) {
-                        // Find first empty span for widget — derive cell size from actual grid
-                        val minCols = ((providerInfo.minWidth + widgetCellW - 1) / widgetCellW).coerceIn(1, cols)
-                        val minRows = ((providerInfo.minHeight + widgetCellW - 1) / widgetCellW).coerceIn(1, rows)
-                        val span = vm.findFirstEmptySpan(currentPage, minCols, minRows)
-                        if (span != null) {
-                            vm.addWidget(WidgetInfo(widgetId, currentPage, span.first, span.second, minCols, minRows, providerInfo.provider.flattenToString()))
-                        } else {
-                            vm.widgetHost.deleteAppWidgetId(widgetId)
-                            android.widget.Toast.makeText(widgetContext, "No room on this page — clear some cells first", android.widget.Toast.LENGTH_SHORT).show()
-                        }
+                    val minCols = ((providerInfo.minWidth + widgetCellW - 1) / widgetCellW).coerceIn(1, cols)
+                    val minRows = ((providerInfo.minHeight + widgetCellW - 1) / widgetCellW).coerceIn(1, rows)
+                    if (vm.beginWidgetPlacement(providerInfo, currentPage, minCols, minRows) == null) return@WidgetPickerDialog
+                    if (vm.bindPendingWidgetIfAllowed()) {
+                        if (vm.pendingWidgetNeedsConfiguration()) launchPendingWidgetConfiguration() else vm.completePendingWidget()
                     } else {
-                        // Need user permission to bind — clean up and inform user
-                        vm.widgetHost.deleteAppWidgetId(widgetId)
-                        android.widget.Toast.makeText(widgetContext, "Widget requires permission — try a different widget", android.widget.Toast.LENGTH_SHORT).show()
+                        launchPendingWidgetBind()
                     }
                 },
                 onDismiss = { vm.closeWidgetPicker() },

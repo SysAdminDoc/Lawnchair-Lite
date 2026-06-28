@@ -1,6 +1,6 @@
 # Lawnchair Lite Roadmap
 
-Minimal, fast Android launcher built on Jetpack Compose with professional-grade stability (v2.25.0). Stability architecture already landed; roadmap pushes performance, visual polish, and feature-parity with premium launchers.
+Minimal, fast Android launcher built on Jetpack Compose with professional-grade stability (v2.26.0). Stability architecture already landed; roadmap pushes performance, visual polish, and feature-parity with premium launchers.
 
 ## Planned Features
 
@@ -118,13 +118,6 @@ Minimal, fast Android launcher built on Jetpack Compose with professional-grade 
 - **Accompanist DrawablePainter** — `com.google.accompanist:accompanist-drawablepainter:0.36.0` (pin) — entry: `Image(painter = rememberDrawablePainter(drawable), contentDescription = null)`. Gotcha: Accompanist is end-of-life; Google recommends replacing with `Painter.fromDrawable()` from Compose 1.7+. Plan the migration before next Compose BOM bump.
 
 ## Research-Driven Additions
-
-- [ ] P0 - Complete widget bind and configuration recovery
-  Why: Widgets currently fail with a toast when host binding is not already allowed, which blocks many third-party widgets.
-  Evidence: `app/src/main/java/app/lawnchairlite/ui/HomeScreen.kt`, Android AppWidgetHost docs
-  Touches: `HomeScreen.kt`, `LauncherViewModel.kt`, `MainActivity.kt`, `Components.kt`, widget tests
-  Acceptance: Selecting a widget that needs permission launches the system bind flow, runs provider configuration when required, deletes abandoned widget IDs on cancel, and restores the picker state without losing the current page.
-  Complexity: M
 
 - [ ] P0 - Add backup privacy rules and backup content controls
   Why: Android Auto Backup is enabled while launcher preferences include search history, app usage, hidden apps, widgets, and layout data.
