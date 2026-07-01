@@ -1,49 +1,54 @@
-# Research - Lawnchair Lite
+# Research — Lawnchair Lite
 
 ## Executive Summary
-Lawnchair Lite is a compact Android launcher built with Kotlin, Jetpack Compose, Material 3, DataStore, AppWidgetHost, LauncherApps, and a deliberately local-first feature set. Verified: the strongest current shape is stability plus fast customization: defensive PackageManager loading, DataStore corruption recovery, local Smartspace, drawer tabs, folder covers, category rules, dock labels, widgets, icon packs, backup/restore, and gesture binding are already present. Highest-value direction: keep the "Lite" promise by hardening platform edges before adding more surface area. Priority opportunities are widget bind/config recovery, backup privacy controls, manifest permission policy, custom Compose accessibility semantics, localization, backup schema migration, local diagnostics, dependency/toolchain modernization, diacritic-aware search, drawer folder parity, and migration import from incumbent launchers.
+Verified: Lawnchair Lite is a Kotlin/Jetpack Compose Android launcher with a deliberately local-first, grid-and-drawer identity: home pages, dock, folders, widgets, app drawer tabs, fuzzy search, gestures, icon packs, local Smartspace, notification badges, hidden apps, and JSON backup/restore are already implemented. Its strongest current shape is stability-first launcher behavior, including defensive package loading, DataStore corruption recovery, widget bind/config recovery, debounced package events, and release R8 shrinking. Highest-value direction: harden trust and platform edges before broadening features. Priority opportunities are: backup privacy/data-extraction rules, platform-permission audit, release metadata drift cleanup, Compose accessibility semantics, versioned backup restore preview, local diagnostics export, local Android 15/16 smoke testing, i18n extraction, ViewModel boundary splits, dependency/target SDK modernization, drawer group parity, and launcher backup migration.
 
 ## Product Map
-- Core workflows: set as HOME launcher; arrange home pages, dock, folders, and widgets; open/search apps, contacts, shortcuts, calculator, units, and web; configure themes, grids, icon packs, gestures, drawer tabs/categories, Smartspace, badges, hidden apps, and backup/restore.
-- User personas: power users leaving Nova/Lawnchair upstream; privacy-first FOSS users; users wanting a stable minimal launcher; work-profile users; customization-heavy icon/theme users.
-- Platforms and distribution: Android minSdk 28, compile/target SDK 34, signed APK from Gradle; GitHub-hosted public repo; no Play-specific build flavor currently.
-- Key integrations and data flows: LauncherApps/PackageManager for apps and profiles; AppWidgetHost for hosted widgets; NotificationListenerService for badges; CalendarProvider, ContactsProvider, LocationManager, and Open-Meteo for Smartspace/contact search; DataStore plus JSON export/import for layout and settings.
+- Core workflows: set Lawnchair Lite as HOME; arrange home pages/dock/folders/widgets; search apps/contacts/calculator/units/web; configure themes, grids, icon packs, gestures, drawer categories/tabs, Smartspace, badges, hidden apps, and backup/restore.
+- User personas: Nova/Lawnchair power users who want a lighter launcher; privacy-first FOSS users; users with large app libraries; work-profile users; widget/theme customization users.
+- Platforms and distribution: Android minSdk 28, target/compile SDK 34, AGP 8.2.2, Kotlin 1.9.22, Compose BOM 2024.01.00, signed APK release build from Gradle; GitHub-hosted repo, with F-Droid/libre readiness still planned.
+- Key integrations and data flows: LauncherApps/PackageManager for app/profile inventory; AppWidgetHost/AppWidgetManager for widgets; NotificationListenerService for badges; ContactsProvider, CalendarProvider, LocationManager, and Open-Meteo for optional local Smartspace/search; DataStore plus JSON export/import for settings/layout.
 
 ## Competitive Landscape
-- Lawnchair upstream: strong Launcher3 rebase discipline, Android 16 base, Smartspacer, global search, dynamic theming, QuickSwitch, and font/icon customization. Learn the platform-upgrade cadence and permission/search polish; avoid root-only recents and upstream feature breadth that would weaken Lite's stability goal.
-- Kvaesitso: search-first FOSS launcher with app/contact/calendar/web/cloud providers, F-Droid distribution, crash reporter, debug export, translation infrastructure, and plugin-style modules. Learn modular search providers and diagnostics; avoid turning the home screen into a feed/search product that changes Lawnchair Lite's grid-first identity.
-- KISS Launcher: tiny, fast, search-centric launcher with learned ranking and low memory expectations. Learn diacritic/transliteration-aware matching and fast recency ranking; avoid text-only minimalism because this project already centers icons, folders, widgets, and themes.
-- Nova Launcher: still the benchmark for gestures, backups, drawer groups, per-icon/folder gestures, and migration expectations. Learn backup import/export polish and app-drawer group parity; avoid opaque commercial dependencies, ad/tracker concerns, and paywall-shaped features.
-- Smart Launcher: strong automatic categorization, smart folders, theme adaptation, and backup/migration flows. Learn synced drawer/home folder concepts and Nova import expectations; avoid over-automating layout changes without user review.
-- Niagara Launcher: excellent one-handed app list, app pop-ups, pop-up widgets, and notification-in-context flows. Learn lightweight contextual surfaces; avoid replacing the grid workspace with list-first navigation.
-- Microsoft Launcher: mainstream cloud/local backup, feed integration, and calendar/to-do productivity surface. Learn transfer and recovery flows; avoid account lock-in and feed bloat.
-- Neo/Fossify/Stario/Olauncher: FOSS launchers show demand for privacy-first distribution, minimal UI, icon packs, categories, backup/restore, and simple migration. Learn F-Droid/libre positioning and issue triage patterns; avoid duplicate forks of Launcher3 complexity without the upstream rebase capacity.
+- Lawnchair upstream: Launcher3-based, Android 16 development branch, rich Pixel-style customization, Smartspacer/QuickSwitch ecosystem. Learn platform-rebase discipline and Launcher3 compatibility boundaries; avoid root/QuickSwitch recents complexity because Lite is already stable without it.
+- Kvaesitso: active FOSS search-first launcher with app/contact/calendar/web/cloud search, F-Droid split, plugin/provider concepts, and strong issue signal around providers/widgets/icons. Learn modular provider architecture and diagnostics; avoid replacing Lite's grid workspace with a feed/search-only shell.
+- KISS Launcher: small active FOSS launcher focused on fast search, history, favorites, and low resource use. Learn diacritic/transliteration-aware matching and dense history UX; avoid text-only minimalism that would discard Lite's icon/widget/folder strengths.
+- Nova Launcher: benchmark for drawer folders/groups, gestures, backups, and user migration expectations. Learn backup/import polish and drawer organization; avoid opaque commercial/account assumptions.
+- Smart Launcher: strong automatic app categorization, Nova backup import, modular feature toggles, migration messaging, and explicit privacy answers. Learn migration flow and category UX; avoid cloud/analytics assumptions in the default Lite path.
+- Niagara Launcher: premium pop-up folders/widgets, widget stack, one-handed list UX, and notification-in-context surfaces. Learn compact contextual actions and widget stacking; avoid changing Lite into a list-first launcher.
+- Action Launcher: covers, shutters, widget stacks, all-apps folders, Quickdrawer, and Quickedit icon suggestions. Learn gesture-revealed widget/folder affordances; avoid feature density that harms discoverability.
+- Fossify/Neo/Olauncher/Stario: FOSS/minimal launchers show demand for no-ads/no-bloat positioning, icon packs, backup/restore, categories, hidden apps, and simple release channels. Learn libre metadata and permission transparency; avoid cloning Launcher3 breadth without corresponding maintenance capacity.
 
 ## Security, Privacy, and Reliability
-- Verified: `app/src/main/AndroidManifest.xml` requests `QUERY_ALL_PACKAGES`, `BIND_APPWIDGET`, `READ_CONTACTS`, `READ_CALENDAR`, `ACCESS_COARSE_LOCATION`, `POST_NOTIFICATIONS`, and `KILL_BACKGROUND_PROCESSES`; each needs a Settings-facing purpose, degrade path, and Play/F-Droid policy note before wider distribution.
-- Verified: `app/src/main/AndroidManifest.xml` has `android:allowBackup="true"` while `app/src/main/java/app/lawnchairlite/data/LauncherPrefs.kt` exports search history, app usage, widgets, home grid, dock grid, hidden apps, favorites, and gesture bindings. Add data extraction rules or require encrypted device backup so launcher habits do not leak through cloud backup unintentionally.
-- Verified: `app/src/main/java/app/lawnchairlite/ui/HomeScreen.kt` deletes widget IDs and shows a toast when `bindAppWidgetIdIfAllowed()` returns false, but Android's host guidance says the host should launch the bind permission flow and handle widget configuration. This is the top recovery gap for widgets.
-- Verified: `app/src/main/java/app/lawnchairlite/LauncherApplication.kt` posts crash notifications and `CrashCopyReceiver.kt` copies reports, but there is no Settings-visible crash history/debug bundle and no fallback when notification permission is absent.
-- Verified: `app/src/main/java/app/lawnchairlite/ui/SettingsScreen.kt`, `AppDrawer.kt`, and `Components.kt` use many custom `clickable` rows, text buttons, chips, and icon images without explicit roles, state descriptions, or traversal semantics; automated Compose accessibility tests are absent.
+- Verified: `app/src/main/AndroidManifest.xml` sets `android:allowBackup="true"` while `LauncherPrefs.exportBackup()` includes search history, suggestion usage, app usage, widgets, home/dock layout, hidden apps, favorites, custom labels, and gesture/app bindings. Android Auto Backup and backup-risk guidance make this the top privacy gap until data extraction rules and manual export toggles land.
+- Verified: `app/src/main/AndroidManifest.xml` requests broad or sensitive permissions: `QUERY_ALL_PACKAGES`, `BIND_APPWIDGET`, `POST_NOTIFICATIONS`, `KILL_BACKGROUND_PROCESSES`, `EXPAND_STATUS_BAR`, `READ_CONTACTS`, `READ_CALENDAR`, and `ACCESS_COARSE_LOCATION`. Play/F-Droid readiness requires feature ownership, denial recovery, and removal of unused/system-only permissions.
+- Verified: local `CHANGELOG.md` advertises v2.27.0 backup privacy controls, but tracked `README.md` and `app/build.gradle.kts` are v2.26.0 and current tracked code has no `res/xml/backup_rules.xml` or `data_extraction_rules.xml`. Treat release-note/version drift as a blocking release hygiene issue before shipping.
+- Verified: `LauncherApplication.kt` only exposes crash reports through notifications and clipboard copy. If notification permission is denied or the notification fails, users have no Settings-visible crash history, support bundle, or local diagnostic export.
+- Verified: `SettingsScreen.kt`, `Components.kt`, `AppDrawer.kt`, and `HomeScreen.kt` contain many custom `clickable` rows/chips/icons and drag/drop controls without explicit roles, state descriptions, traversal grouping, or Compose accessibility tests.
+- Verified: `SettingsScreen.kt` imports backup JSON by reading the selected file into memory and `LauncherPrefs.importBackup()` applies fields directly without dry-run preview, schema compatibility report, max-size guard, or section-level confirmation.
 
 ## Architecture Assessment
-- `LauncherViewModel.kt` is the central module for app loading, gestures, search, Smartspace, widgets, backup, contacts, and actions. Split search providers, Smartspace loaders, widget binding, and backup migration into focused classes before more features land.
-- `LauncherPrefs.kt` already validates many import fields, but the backup format is implicit JSON with no schema version migrator, dry-run preview, or compatibility report. Add versioned import/export and tests for stale, future, and partial backups.
-- `SettingsScreen.kt` uses hardcoded display strings throughout; only `res/values/strings.xml` is minimal. Move user-facing text to resources before adding translations or F-Droid metadata.
-- `app/build.gradle.kts` is on AGP 8.2.2, Kotlin 1.9.22, Compose BOM 2024.01.00, Activity 1.8.2, DataStore 1.0.0, and Accompanist DrawablePainter 0.34.0. This is stable but now behind platform, Compose, accessibility-test, generated-widget-preview, and Android 15/16 readiness work.
-- Tests currently cover categorization and AppInfo key stability only. Add tests around backup migration, search scoring, widget bind decisions, permission degradation, and Compose semantics.
+- `LauncherViewModel.kt` is about 80 KB and owns app loading, package events, gestures, search, Smartspace, widgets, backup, contacts, launch actions, and settings state. Split search scoring/providers, Smartspace loaders, widget placement, and backup import/export into testable collaborators before adding more feature surface.
+- `LauncherPrefs.kt` has strong defensive defaults and corruption recovery, but backup schema is implicit and import mutates state directly. A versioned schema plus dry-run preview is required before third-party migration import.
+- UI text is mostly hardcoded in Compose files; `res/values/strings.xml` is minimal. Localization and TalkBack quality both depend on moving user-visible strings and formatted messages into resources.
+- Test coverage is narrow: current unit tests cover app categorization, model key/cover serialization, and widget grid span planning. There are no backup import tests, search ranking tests, permission-degradation tests, diagnostics tests, Compose semantics tests, or local instrumentation smoke tests.
+- Dependency lane is behind current Android guidance: AGP 8.2.2, Kotlin 1.9.22, Compose BOM 2024.01.00, Activity 1.8.2, DataStore 1.0.0, and Accompanist DrawablePainter 0.34.0. Modernization should be staged with release/debug build proof and icon-rendering regression checks.
+- The existing roadmap's hosted CI/device-farm idea conflicts with repo rules that builds and tests happen locally. Replace that direction with a local emulator/device smoke harness for launcher-specific flows.
 
 ## Rejected Ideas
-- Root recents/QuickSwitch parity from Lawnchair upstream: rejected because it adds root-only crash and maintenance risk that conflicts with Lite's stability target.
-- Full feed-first redesign from Kvaesitso/Microsoft/Posidon: rejected because Lawnchair Lite is a grid launcher with optional Smartspace, not a feed shell.
-- Native Android 15 Private Space integration: rejected because third-party launchers cannot rely on privileged/profile-owner APIs; strengthen hidden apps and biometric reveal instead.
-- Cloud account backup as the first backup improvement: rejected for now because local JSON, privacy rules, and schema migration must be correct before adding sync.
-- Android Auto, Wear OS, and TV companion launchers: rejected because phone launcher reliability, tablets/foldables, and backup migration have higher user impact.
-- Remote semantic app search: rejected because local search, contacts/calendar providers, and privacy controls should land first.
+- Native QuickSwitch/Recents integration from Lawnchair upstream: rejected because root/system-recents coupling is high-risk and contradicts Lite's stability-first shape.
+- Feed-first or search-only redesign from Kvaesitso/Microsoft/Posidon: rejected because Lite's product identity is grid-first with optional search and Smartspace.
+- Native Android Private Space control with biometric unlock: rejected because Private Space is platform-owned; implement graceful visibility handling and optional hidden-app protection instead.
+- Cloud backup as the first backup improvement: rejected until local Auto Backup rules, explicit export privacy, restore preview, and schema migration are correct.
+- Public plugin SDK now: rejected until internal search/Smartspace/widget boundaries exist; Kvaesitso issues show plugin support creates API-stability and support burden.
+- Hosted CI/cloud device farm matrix: rejected for this repo because local-build rules forbid GitHub Actions/build CI; use local adb/emulator smoke coverage instead.
+- LLM/semantic remote app search: rejected because local search quality, privacy controls, and provider modularity have higher fit and lower risk.
+- Wear OS, TV, Android Auto companion launchers: rejected until phone launcher reliability, backup, accessibility, and distribution readiness are stronger.
 
 ## Sources
 Direct OSS competitors:
 - https://github.com/LawnchairLauncher/lawnchair
+- https://github.com/LawnchairLauncher/lawnchair/releases
 - https://github.com/MM2-0/Kvaesitso
 - https://f-droid.org/en/packages/de.mm20.launcher2.release/
 - https://github.com/Neamar/KISS
@@ -51,33 +56,32 @@ Direct OSS competitors:
 - https://github.com/NeoApplications/Neo-Launcher
 - https://github.com/FossifyOrg/Launcher
 - https://github.com/albu-razvan/Stario
+- https://github.com/diluteoxygen/Android-Launcher-Comparison-Table
 
-Commercial and community:
-- https://novalauncher.com/
+Commercial, adjacent, and community:
 - https://novalauncher.com/faq
-- https://play.google.com/store/apps/details?id=ginlemon.flowerfree
-- https://docs.smartlauncher.net/faq
-- https://niagaralauncher.com/
-- https://help.niagaralauncher.app/article/40-niagara-pro-features
+- https://docs.smartlauncher.net/faq/start-here/how-to-migrate-from-other-launchers
+- https://docs.smartlauncher.net/faq/changelog/6.6
+- https://www.smartlauncher.net/blog/a-message-for-nova-users
+- https://help.niagaralauncher.app/article/115-pop-ups
+- https://play.google.com/store/apps/details?id=bitpit.launcher
+- https://play.google.com/store/apps/details?id=com.actionlauncher.playstore
 - https://play.google.com/store/apps/details?id=com.microsoft.launcher
 - https://support.microsoft.com/en-us/office/using-microsoft-launcher-on-android
-- https://github.com/diluteoxygen/Android-Launcher-Comparison-Table
-- https://f-droid.org/en/categories/launcher/
 
-Android platform and dependencies:
+Android platform, dependencies, and security:
 - https://developer.android.com/develop/ui/views/appwidgets/host
-- https://developer.android.com/reference/kotlin/android/appwidget/AppWidgetManager
 - https://developer.android.com/develop/ui/views/appwidgets/previews
 - https://developer.android.com/identity/data/autobackup
 - https://developer.android.com/privacy-and-security/risks/backup-best-practices
+- https://developer.android.com/training/package-visibility
+- https://support.google.com/googleplay/android-developer/answer/10158779
 - https://developer.android.com/privacy-and-security/risks/android-exported
 - https://developer.android.com/develop/ui/compose/accessibility/semantics
-- https://developer.android.com/develop/ui/compose/accessibility/testing
 - https://developer.android.com/topic/performance/baselineprofiles/overview
-- https://developer.android.com/about/versions/15/behavior-changes-15
 - https://developer.android.com/build/releases/agp-9-2-0-release-notes
 - https://android-developers.googleblog.com/2026/04/jetpack-compose-april-2026-updates.html
 
 ## Open Questions
-- Which distribution channel is the primary target for the next public build: GitHub-only, Play, F-Droid-compatible, or separate Play/FOSS flavors?
-- Should explicit JSON backups include search history and app usage by default, or should those be opt-in sections?
+- Which distribution target should define the next release gate: GitHub-only signed APK, Play-compatible build, F-Droid-compatible flavor, or separate Play/FOSS variants?
+- Should explicit launcher JSON exports include search history, app usage/recents, hidden apps, and widget bindings by default, or should those be opt-in sections?

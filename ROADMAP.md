@@ -195,3 +195,38 @@ Minimal, fast Android launcher built on Jetpack Compose with professional-grade 
   Touches: Gradle flavors if needed, README, metadata files, release process notes
   Acceptance: A libre-compatible build path is documented, metadata avoids proprietary service assumptions, requested permissions are justified, and the APK can be built locally with the same signing/release checklist.
   Complexity: M
+
+- [ ] P0 — Reconcile release metadata with shipped code
+  Why: Local release notes currently claim v2.27.0 backup privacy controls while tracked build/README metadata and source code remain v2.26.0 without backup data extraction rules.
+  Evidence: `CHANGELOG.md`, `README.md`, `app/build.gradle.kts`, `app/src/main/AndroidManifest.xml`, `app/src/main/java/app/lawnchairlite/data/LauncherPrefs.kt`
+  Touches: `CHANGELOG.md`, `README.md`, `app/build.gradle.kts`, release checklist
+  Acceptance: Version strings and release notes only describe features present in tracked code; backup privacy claims are either implemented or removed before the next release artifact.
+  Complexity: S
+
+- [ ] P1 — Add local Android 15/16 launcher smoke harness
+  Why: Platform changes around Private Space, archived apps, widget previews, edge-to-edge, and package visibility need local launcher-specific verification without hosted CI.
+  Evidence: Android 15 Private Space/app-widget docs, `AppRepository.kt`, `HomeScreen.kt`, `MainActivity.kt`, repo no-GitHub-Actions rule
+  Touches: Android instrumentation tests or local adb smoke script, `AppRepository.kt`, `HomeScreen.kt`, `LauncherViewModel.kt`, Gradle test config
+  Acceptance: A local command installs the release/debug APK on an emulator or attached device, opens the launcher, exercises drawer/search/settings/widget-picker golden paths, records pass/fail output, and documents any platform feature that must degrade gracefully.
+  Complexity: M
+
+- [ ] P1 — Split launcher state services out of `LauncherViewModel`
+  Why: Search, Smartspace, widgets, backup, contacts, app loading, and gesture actions all live in one large ViewModel, making roadmap items harder to test safely.
+  Evidence: `app/src/main/java/app/lawnchairlite/LauncherViewModel.kt`, Kvaesitso provider architecture, existing backup/search/widget roadmap items
+  Touches: `LauncherViewModel.kt`, new search/smartspace/widget/backup service classes, unit tests
+  Acceptance: Search scoring/providers, Smartspace loading, widget placement/bind decisions, and backup import/export each have a focused class with deterministic unit coverage while public UI behavior remains unchanged.
+  Complexity: L
+
+- [ ] P2 — Improve widget picker previews and destructive widget recovery
+  Why: Competitors differentiate on widget stacks/pop-up widgets, while Android widget-host docs emphasize durable host IDs and user-visible previews; current picker is label/search centered and widget removal has no confirmation.
+  Evidence: Android AppWidgetHost and widget preview docs, `Components.kt`, `HomeScreen.kt`, KISS issue 2610, Action/Niagara widget stack features
+  Touches: `Components.kt`, `HomeScreen.kt`, `LauncherViewModel.kt`, widget tests
+  Acceptance: Widget picker displays provider preview imagery when available with icon fallback, empty/error states explain unavailable previews, removal confirms before deleting host IDs, and tests cover preview fallback plus cancel/remove behavior.
+  Complexity: M
+
+- [ ] P2 — Add shortcut and PWA icon override parity
+  Why: Neo and Fossify issue signals show shortcut/PWA icons are a recurring launcher polish gap, and Action Launcher-style quick icon alternatives are a premium differentiator.
+  Evidence: Neo Launcher issue 309, Fossify Launcher issue 315, Action Launcher Quickedit feature, `ShortcutRepository.kt`, `IconPackManager.kt`
+  Touches: `ShortcutRepository.kt`, `IconPackManager.kt`, `AppModel.kt`, `Components.kt`, `LauncherPrefs.kt`, backup tests
+  Acceptance: Pinned shortcuts and web/PWA entries can use icon-pack or manual fallback icons, overrides persist through backup/restore, and missing icon resources fall back without blank icons.
+  Complexity: M
