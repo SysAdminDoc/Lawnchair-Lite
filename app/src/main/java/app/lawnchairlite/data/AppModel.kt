@@ -4,6 +4,7 @@ import android.content.ComponentName
 import android.graphics.drawable.Drawable
 import android.os.UserHandle
 import android.util.Log
+import java.util.Locale
 
 /**
  * Lawnchair Lite - Data Model
@@ -79,6 +80,74 @@ data class AppCategoryRule(
     val category: DrawerCategory,
     val enabled: Boolean = true,
 )
+
+data class DrawerGroup(
+    val id: String,
+    val name: String,
+    val appKeys: Set<String> = emptySet(),
+    val packagePrefixes: List<String> = emptyList(),
+    val enabled: Boolean = true,
+) {
+    val assignmentCount: Int get() = appKeys.size + packagePrefixes.size
+
+    fun matches(app: AppInfo): Boolean {
+        if (!enabled) return false
+        if (app.key in appKeys) return true
+        val packageName = app.packageName.lowercase(Locale.ROOT)
+        return packagePrefixes.any { prefix -> prefix.isNotBlank() && packageName.startsWith(prefix) }
+    }
+}
+
+fun normalizeDrawerGroupName(name: String): String =
+    name.trim().replace(Regex("\\s+"), " ").take(40)
+
+fun normalizeDrawerGroupPrefix(prefix: String): String =
+    prefix.trim().lowercase(Locale.ROOT).take(120)
+
+fun drawerGroupIdFromName(name: String, existingIds: Set<String> = emptySet()): String {
+    val base = normalizeDrawerGroupName(name)
+        .lowercase(Locale.ROOT)
+        .replace(Regex("[^a-z0-9]+"), "_")
+        .trim('_')
+        .ifBlank { "group" }
+        .take(48)
+    var candidate = base
+    var suffix = 2
+    while (candidate in existingIds) {
+        candidate = "${base.take((48 - suffix.toString().length - 1).coerceAtLeast(1))}_$suffix"
+        suffix++
+    }
+    return candidate
+}
+
+fun sanitizeDrawerGroups(groups: List<DrawerGroup>): List<DrawerGroup> {
+    val seenIds = mutableSetOf<String>()
+    return groups.mapNotNull { group ->
+        val name = normalizeDrawerGroupName(group.name)
+        if (name.isBlank()) return@mapNotNull null
+        val requestedId = group.id.trim().lowercase(Locale.ROOT).replace(Regex("[^a-z0-9_\\-]+"), "_").trim('_').take(48)
+        val id = drawerGroupIdFromName(requestedId.ifBlank { name }, seenIds)
+        seenIds += id
+        DrawerGroup(
+            id = id,
+            name = name,
+            appKeys = group.appKeys.asSequence()
+                .map { it.trim() }
+                .filter { it.contains("/") }
+                .distinct()
+                .take(200)
+                .toSet(),
+            packagePrefixes = group.packagePrefixes.asSequence()
+                .map { normalizeDrawerGroupPrefix(it) }
+                .filter { it.isNotBlank() }
+                .distinct()
+                .take(20)
+                .toList(),
+            enabled = group.enabled,
+        )
+    }.take(24)
+}
+
 enum class DockStyle(val label: String) {
     SOLID("Solid"), PILL("Pill"), FLOATING("Floating"), TRANSPARENT("Transparent");
 }

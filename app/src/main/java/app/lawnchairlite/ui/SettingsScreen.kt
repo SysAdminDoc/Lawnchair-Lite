@@ -116,7 +116,7 @@ fun SettingsPanel(
     val themeKeywords = "theme wallpaper dim accent color midnight glass oled mocha aurora neon"
     val iconsKeywords = "icon shape size pack themed shadow grayscale label weight squircle circle square teardrop hexagon diamond"
     val gridKeywords = "grid columns rows padding page transition indicator badge folder cube stack fade depth carousel slide dots line"
-    val drawerKeywords = "drawer sort columns opacity categories category rules regex package prefix install source section headers animation suggestions search engine"
+    val drawerKeywords = "drawer sort columns opacity categories category rules groups folders regex package prefix install source section headers animation suggestions search engine"
     val dockKeywords = "dock icons style search bar pill floating transparent hide labels label opacity"
     val gesturesKeywords = "gesture double tap swipe down swipe up triple pinch dock lock screen notification flashlight edit mode recent app launch"
     val featuresKeywords = "clock smartspace at a glance weather calendar event auto place notification badges status bar home lock parallax haptic feedback"
@@ -403,6 +403,7 @@ fun SettingsPanel(
                         if (settings.drawerCategories || settings.categoryRules.isNotEmpty()) {
                             CategoryRulesSection(settings.categoryRules, colors, vm)
                         }
+                        DrawerGroupsSection(settings.drawerGroups, allAppsRaw, colors, vm)
                         Tog(stringResource(R.string.drawer_section_headers), settings.drawerSectionHeaders, colors) { vm.setDrawerSectionHeaders(it) }
                         Tog(stringResource(R.string.drawer_animation), settings.drawerAnimation, colors) { vm.setDrawerAnimation(it) }
                         Tog(stringResource(R.string.app_suggestions), settings.showSuggestions, colors) { vm.setShowSuggestions(it) }
@@ -754,6 +755,178 @@ private fun SectionHeader(title: String, expanded: Boolean, c: LauncherColors, s
 }
 
 // ── Icon Pack Picker ─────────────────────────────────────────────────
+
+@Composable
+private fun DrawerGroupsSection(groups: List<DrawerGroup>, apps: List<AppInfo>, c: LauncherColors, vm: LauncherViewModel) {
+    var newGroupName by remember { mutableStateOf("") }
+    var expandedGroupId by remember { mutableStateOf<String?>(null) }
+    val groupIds = groups.map { it.id }
+    LaunchedEffect(groupIds) {
+        if (expandedGroupId != null && expandedGroupId !in groupIds) expandedGroupId = groups.firstOrNull()?.id
+    }
+
+    Lbl(stringResource(R.string.drawer_groups), c)
+    Text(stringResource(R.string.drawer_groups_desc), color = c.textSecondary, fontSize = 12.sp, modifier = Modifier.padding(bottom = 8.dp))
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        TextField(
+            value = newGroupName,
+            onValueChange = { newGroupName = it.take(40) },
+            modifier = Modifier.weight(1f).height(48.dp).clip(RoundedCornerShape(10.dp)),
+            placeholder = { Text(stringResource(R.string.new_drawer_group_name), color = c.textSecondary, fontSize = 13.sp) },
+            colors = TextFieldDefaults.colors(
+                focusedTextColor = c.text,
+                unfocusedTextColor = c.text,
+                cursorColor = c.accent,
+                focusedContainerColor = c.card,
+                unfocusedContainerColor = c.card,
+                focusedIndicatorColor = Color.Transparent,
+                unfocusedIndicatorColor = Color.Transparent,
+            ),
+            singleLine = true,
+            textStyle = androidx.compose.ui.text.TextStyle(fontSize = 13.sp),
+        )
+        Spacer(Modifier.width(8.dp))
+        Text(stringResource(R.string.create_group), color = if (newGroupName.isBlank()) c.textSecondary else c.accent, fontSize = 12.sp, fontWeight = FontWeight.Medium,
+            modifier = Modifier.clip(RoundedCornerShape(8.dp))
+                .background(if (newGroupName.isBlank()) c.card else c.accent.copy(alpha = 0.12f))
+                .clickable {
+                    vm.addDrawerGroup(newGroupName)
+                    newGroupName = ""
+                }
+                .padding(horizontal = 12.dp, vertical = 7.dp))
+    }
+    Spacer(Modifier.height(8.dp))
+
+    groups.forEach { group ->
+        var renameText by remember(group.id, group.name) { mutableStateOf(group.name) }
+        var prefixText by remember(group.id) { mutableStateOf("") }
+        val expanded = expandedGroupId == group.id
+        val assignedApps = apps.count { it.key in group.appKeys }
+        Column(
+            Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(c.card)
+                .border(0.5.dp, c.border, RoundedCornerShape(12.dp))
+                .padding(horizontal = 12.dp, vertical = 10.dp),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(group.name, color = if (group.enabled) c.accent else c.textSecondary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                    Text(stringResource(R.string.drawer_group_assignment_count, assignedApps, group.packagePrefixes.size), color = c.textSecondary, fontSize = 11.sp)
+                }
+                Switch(
+                    checked = group.enabled,
+                    onCheckedChange = { vm.setDrawerGroupEnabled(group.id, it) },
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = Color.White,
+                        checkedTrackColor = c.accent,
+                        uncheckedThumbColor = c.textSecondary,
+                        uncheckedTrackColor = c.surface,
+                        uncheckedBorderColor = c.border,
+                    ),
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(stringResource(if (expanded) R.string.close else R.string.edit), color = c.accent, fontSize = 12.sp, fontWeight = FontWeight.Medium,
+                    modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(c.accent.copy(alpha = 0.1f))
+                        .clickable { expandedGroupId = if (expanded) null else group.id }.padding(horizontal = 10.dp, vertical = 5.dp))
+                Spacer(Modifier.width(6.dp))
+                Text(stringResource(R.string.remove), color = c.error, fontSize = 12.sp, fontWeight = FontWeight.Medium,
+                    modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(c.error.copy(alpha = 0.1f))
+                        .clickable { vm.removeDrawerGroup(group.id) }.padding(horizontal = 10.dp, vertical = 5.dp))
+            }
+
+            AnimatedVisibility(expanded, enter = expandVertically() + fadeIn(), exit = shrinkVertically() + fadeOut()) {
+                Column(Modifier.padding(top = 10.dp)) {
+                    TextField(
+                        value = renameText,
+                        onValueChange = { renameText = it.take(40) },
+                        modifier = Modifier.fillMaxWidth().height(48.dp).clip(RoundedCornerShape(10.dp)),
+                        placeholder = { Text(stringResource(R.string.drawer_group_name), color = c.textSecondary, fontSize = 13.sp) },
+                        colors = TextFieldDefaults.colors(
+                            focusedTextColor = c.text,
+                            unfocusedTextColor = c.text,
+                            cursorColor = c.accent,
+                            focusedContainerColor = c.surface,
+                            unfocusedContainerColor = c.surface,
+                            focusedIndicatorColor = Color.Transparent,
+                            unfocusedIndicatorColor = Color.Transparent,
+                        ),
+                        singleLine = true,
+                        textStyle = androidx.compose.ui.text.TextStyle(fontSize = 13.sp),
+                    )
+                    if (renameText != group.name) {
+                        Text(stringResource(R.string.save), color = c.accent, fontSize = 12.sp, fontWeight = FontWeight.Medium,
+                            modifier = Modifier.padding(top = 6.dp).clip(RoundedCornerShape(8.dp)).background(c.accent.copy(alpha = 0.12f))
+                                .clickable { vm.renameDrawerGroup(group.id, renameText) }.padding(horizontal = 12.dp, vertical = 7.dp))
+                    }
+
+                    Text(stringResource(R.string.package_prefixes), color = c.accent, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp, modifier = Modifier.padding(top = 14.dp, bottom = 8.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        TextField(
+                            value = prefixText,
+                            onValueChange = { prefixText = it.take(120) },
+                            modifier = Modifier.weight(1f).height(48.dp).clip(RoundedCornerShape(10.dp)),
+                            placeholder = { Text(stringResource(R.string.package_prefix_hint), color = c.textSecondary, fontSize = 13.sp) },
+                            colors = TextFieldDefaults.colors(
+                                focusedTextColor = c.text,
+                                unfocusedTextColor = c.text,
+                                cursorColor = c.accent,
+                                focusedContainerColor = c.surface,
+                                unfocusedContainerColor = c.surface,
+                                focusedIndicatorColor = Color.Transparent,
+                                unfocusedIndicatorColor = Color.Transparent,
+                            ),
+                            singleLine = true,
+                            textStyle = androidx.compose.ui.text.TextStyle(fontSize = 13.sp),
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(stringResource(R.string.add_prefix), color = if (prefixText.isBlank()) c.textSecondary else c.accent, fontSize = 12.sp, fontWeight = FontWeight.Medium,
+                            modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(if (prefixText.isBlank()) c.surface else c.accent.copy(alpha = 0.12f))
+                                .clickable {
+                                    vm.addDrawerGroupPrefix(group.id, prefixText)
+                                    prefixText = ""
+                                }
+                                .padding(horizontal = 12.dp, vertical = 7.dp))
+                    }
+                    if (group.packagePrefixes.isNotEmpty()) {
+                        Row(Modifier.padding(top = 8.dp).horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            group.packagePrefixes.forEach { prefix ->
+                                Text(prefix, color = c.accent, fontSize = 11.sp, fontWeight = FontWeight.Medium,
+                                    modifier = Modifier.clip(RoundedCornerShape(12.dp)).background(c.accent.copy(alpha = 0.1f))
+                                        .clickable { vm.removeDrawerGroupPrefix(group.id, prefix) }.padding(horizontal = 10.dp, vertical = 5.dp))
+                            }
+                        }
+                    }
+
+                    Text(stringResource(R.string.group_apps), color = c.accent, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp, modifier = Modifier.padding(top = 14.dp, bottom = 8.dp))
+                    Column(Modifier.fillMaxWidth().heightIn(max = 220.dp).verticalScroll(rememberScrollState())) {
+                        apps.sortedBy { it.label.lowercase() }.forEach { app ->
+                            val assigned = app.key in group.appKeys
+                            Row(
+                                Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp))
+                                    .clickable {
+                                        if (assigned) vm.removeAppFromDrawerGroup(group.id, app.key)
+                                        else vm.addAppToDrawerGroup(group.id, app.key)
+                                    }
+                                    .padding(horizontal = 10.dp, vertical = 7.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                if (app.icon != null) {
+                                    Image(rememberDrawablePainter(app.icon), null, Modifier.size(24.dp).clip(RoundedCornerShape(6.dp)))
+                                    Spacer(Modifier.width(8.dp))
+                                }
+                                Column(Modifier.weight(1f)) {
+                                    Text(app.label, color = c.text, fontSize = 12.sp, maxLines = 1)
+                                    Text(app.packageName, color = c.textSecondary, fontSize = 10.sp, maxLines = 1)
+                                }
+                                Text(stringResource(if (assigned) R.string.remove_from_group else R.string.add_to_group), color = if (assigned) c.error else c.accent, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        Spacer(Modifier.height(6.dp))
+    }
+}
 
 @Composable
 private fun CategoryRulesSection(rules: List<AppCategoryRule>, c: LauncherColors, vm: LauncherViewModel) {

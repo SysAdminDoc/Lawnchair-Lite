@@ -91,6 +91,7 @@ data class LauncherSettings(
     val swipeUpAction: GestureAction = GestureAction.APP_DRAWER,
     val gestureAppSwipeUp: String = "",
     val categoryRules: List<AppCategoryRule> = emptyList(),
+    val drawerGroups: List<DrawerGroup> = emptyList(),
 )
 
 class LauncherPrefs(private val context: Context) {
@@ -164,6 +165,7 @@ class LauncherPrefs(private val context: Context) {
         val SWIPE_UP_ACTION = stringPreferencesKey("swipe_up_action")
         val GESTURE_APP_SWIPE_UP = stringPreferencesKey("gesture_app_swipe_up")
         val CATEGORY_RULES = stringPreferencesKey("category_rules_v1")
+        val DRAWER_GROUPS = stringPreferencesKey("drawer_groups_v1")
     }
 
     // Safe data flow: catches IOException (disk errors) and emits defaults
@@ -233,6 +235,7 @@ class LauncherPrefs(private val context: Context) {
             swipeUpAction = p[SWIPE_UP_ACTION]?.let { runCatching { GestureAction.valueOf(it) }.getOrNull() } ?: GestureAction.APP_DRAWER,
             gestureAppSwipeUp = p[GESTURE_APP_SWIPE_UP] ?: "",
             categoryRules = p[CATEGORY_RULES]?.let { parseCategoryRules(it) } ?: emptyList(),
+            drawerGroups = p[DRAWER_GROUPS]?.let { parseDrawerGroups(it) } ?: emptyList(),
         )
     }
 
@@ -312,6 +315,7 @@ class LauncherPrefs(private val context: Context) {
                 p[SEARCH_ENGINE] = d.searchEngine.name
                 p[SWIPE_UP_ACTION] = d.swipeUpAction.name
                 p[CATEGORY_RULES] = ""
+                p[DRAWER_GROUPS] = ""
                 p[FAVORITE_APPS] = ""
             }
         }.onFailure { Log.e(TAG, "resetToDefaults failed", it) }
@@ -378,6 +382,12 @@ class LauncherPrefs(private val context: Context) {
         runCatching {
             context.dataStore.edit { it[CATEGORY_RULES] = serializeCategoryRules(rules) }
         }.onFailure { Log.e(TAG, "Failed to save category rules", it) }
+    }
+
+    suspend fun saveDrawerGroups(groups: List<DrawerGroup>) {
+        runCatching {
+            context.dataStore.edit { it[DRAWER_GROUPS] = serializeDrawerGroups(groups) }
+        }.onFailure { Log.e(TAG, "Failed to save drawer groups", it) }
     }
 
     private fun serializeCategoryRules(rules: List<AppCategoryRule>): String = JSONArray().apply {
@@ -533,6 +543,7 @@ class LauncherPrefs(private val context: Context) {
             put("accent_override", p[ACCENT_OVERRIDE] ?: "")
             put("drawer_categories", p[DRAWER_CATEGORIES] ?: false)
             put("category_rules", p[CATEGORY_RULES] ?: "")
+            put("drawer_groups", p[DRAWER_GROUPS] ?: "")
             put("dock_style", p[DOCK_STYLE] ?: "SOLID")
             put("dock_labels", p[DOCK_LABELS] ?: false)
             put("dock_label_opacity", p[DOCK_LABEL_OPACITY] ?: 82)
@@ -611,6 +622,7 @@ class LauncherPrefs(private val context: Context) {
             j.optString("accent_override").let { p[ACCENT_OVERRIDE] = it }
             if (j.has("drawer_categories")) p[DRAWER_CATEGORIES] = j.getBoolean("drawer_categories")
             j.optString("category_rules").let { p[CATEGORY_RULES] = serializeCategoryRules(parseCategoryRules(it)) }
+            j.optString("drawer_groups").let { p[DRAWER_GROUPS] = serializeDrawerGroups(parseDrawerGroups(it)) }
             j.optString("dock_style").takeIf { it.isNotBlank() && runCatching { DockStyle.valueOf(it) }.isSuccess }?.let { p[DOCK_STYLE] = it }
             if (j.has("dock_labels")) p[DOCK_LABELS] = j.getBoolean("dock_labels")
             if (j.has("dock_label_opacity")) p[DOCK_LABEL_OPACITY] = j.getInt("dock_label_opacity").coerceIn(35, 100)
@@ -650,3 +662,49 @@ class LauncherPrefs(private val context: Context) {
         false
     }
 }
+
+internal fun serializeDrawerGroups(groups: List<DrawerGroup>): String = JSONArray().apply {
+    sanitizeDrawerGroups(groups).forEach { group ->
+        put(JSONObject().apply {
+            put("id", group.id)
+            put("name", group.name)
+            put("enabled", group.enabled)
+            put("apps", JSONArray(group.appKeys.sorted()))
+            put("prefixes", JSONArray(group.packagePrefixes.sorted()))
+        })
+    }
+}.toString()
+
+internal fun parseDrawerGroups(raw: String): List<DrawerGroup> = runCatching {
+    if (raw.isBlank()) return@runCatching emptyList()
+    val array = JSONArray(raw)
+    val groups = buildList {
+        for (i in 0 until array.length().coerceAtMost(24)) {
+            val item = array.optJSONObject(i) ?: continue
+            val appArray = item.optJSONArray("apps")
+            val prefixArray = item.optJSONArray("prefixes")
+            add(
+                DrawerGroup(
+                    id = item.optString("id"),
+                    name = item.optString("name"),
+                    appKeys = if (appArray == null) {
+                        emptySet()
+                    } else {
+                        (0 until appArray.length()).mapNotNull { index ->
+                            appArray.optString(index).takeIf { it.isNotBlank() }
+                        }.toSet()
+                    },
+                    packagePrefixes = if (prefixArray == null) {
+                        emptyList()
+                    } else {
+                        (0 until prefixArray.length()).mapNotNull { index ->
+                            prefixArray.optString(index).takeIf { it.isNotBlank() }
+                        }
+                    },
+                    enabled = item.optBoolean("enabled", true),
+                )
+            )
+        }
+    }
+    sanitizeDrawerGroups(groups)
+}.getOrDefault(emptyList())

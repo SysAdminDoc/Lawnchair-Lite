@@ -59,6 +59,20 @@ class BackupImportPreviewTest {
     }
 
     @Test
+    fun drawerGroupsAreRecognizedAsDrawerSearchBackupSection() {
+        val preview = BackupImportPreview.fromFields(
+            mapOf(
+                "schema" to 1,
+                "drawer_groups" to "[]",
+            ),
+        )
+
+        assertTrue(preview.canImport)
+        assertEquals(listOf("Drawer & search"), preview.sections)
+        assertEquals(emptyList<String>(), preview.unknownFields)
+    }
+
+    @Test
     fun invalidJsonIsRejected() {
         val preview = BackupImportPreview.fromJson("{")
 

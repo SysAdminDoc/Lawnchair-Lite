@@ -29,7 +29,7 @@ data class BackupImportPreview(
             "show_dock_search", "dock_swipe_apps", "search_bar_style", "show_clock", "clock_style",
             "show_notif_badges", "auto_place_new", "hide_status_bar", "home_locked", "wallpaper_parallax",
             "haptic_level", "drawer_sort", "drawer_columns", "drawer_opacity", "drawer_categories",
-            "category_rules", "drawer_section_headers", "drawer_animation", "show_suggestions", "search_engine",
+            "category_rules", "drawer_groups", "drawer_section_headers", "drawer_animation", "show_suggestions", "search_engine",
             "favorite_apps", "folder_columns", "double_tap", "swipe_down", "swipe_up_action", "triple_tap",
             "pinch_action", "dock_tap_action", "widgets", "search_history", "suggestion_usage", "app_usage",
             "hidden_apps", "custom_labels",
@@ -100,7 +100,7 @@ data class BackupImportPreview(
         private fun sectionGroups(fields: Map<String, Any?>): List<String> = buildList {
             addIfPresent(fields, "Appearance", "theme", "icon_shape", "icon_size", "icon_pack", "themed_icons", "icon_shadow", "grayscale_icons", "accent_override", "wallpaper_dim", "page_transition", "badge_style", "label_style", "label_size", "label_weight")
             addIfPresent(fields, "Layout & widgets", "grid_cols", "grid_rows", "grid_padding_h", "grid_padding_v", "home_grid", "dock_grid", "dock_count", "dock_style", "dock_labels", "dock_label_opacity", "hide_dock", "widgets")
-            addIfPresent(fields, "Drawer & search", "drawer_sort", "drawer_columns", "drawer_opacity", "drawer_categories", "category_rules", "drawer_section_headers", "drawer_animation", "show_suggestions", "search_engine", "favorite_apps", "folder_columns")
+            addIfPresent(fields, "Drawer & search", "drawer_sort", "drawer_columns", "drawer_opacity", "drawer_categories", "category_rules", "drawer_groups", "drawer_section_headers", "drawer_animation", "show_suggestions", "search_engine", "favorite_apps", "folder_columns")
             addIfPresent(fields, "Gestures", "double_tap", "swipe_down", "swipe_up_action", "triple_tap", "pinch_action", "dock_tap_action", "dock_swipe_apps")
             addIfPresent(fields, "Feature settings", "show_clock", "clock_style", "show_notif_badges", "auto_place_new", "hide_status_bar", "home_locked", "wallpaper_parallax", "haptic_level", "search_bar_style", "show_dock_search")
             addIfPresent(fields, "Private data", "search_history", "suggestion_usage", "app_usage", "hidden_apps")

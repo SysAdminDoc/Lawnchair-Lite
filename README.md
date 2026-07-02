@@ -28,6 +28,7 @@ Built on crash patterns identified across Lawnchair v14-v15 beta releases:
 - Multiple home pages with swipe navigation, add/remove pages from long-press menu
 - App drawer with alphabetical fast scroller (haptic feedback on letter changes)
 - Material 3 drawer tabs for All, Recent, Favorites, and Work profile apps
+- Drawer groups/folders that filter any drawer tab by selected apps or package-prefix rules
 - Folder creation via drag-and-drop with 3x3 preview, app-icon covers, and emoji covers
 - Icon pack support (ADW/Nova format) with 4-icon preview per pack
 - Custom icon labels, hide apps from drawer with batch unhide
@@ -80,6 +81,7 @@ Built on crash patterns identified across Lawnchair v14-v15 beta releases:
 - **Permission audit panel** - Advanced Settings explains each broad/runtime permission, current status, recovery action, and degraded behavior
 - **Restore preview** - Backup import now validates schema compatibility and shows sections, skipped fields, and private-data handling before applying
 - **Local diagnostics** - Crashes are saved to private app storage with Settings copy/share/delete support even when notifications are unavailable
+- **Drawer groups** - Drawer folders can be created in Settings, populated manually or by package-prefix rule, filtered across All/Recent/Favorites/Work, and backed up with launcher JSON
 
 ### v2.26.0
 

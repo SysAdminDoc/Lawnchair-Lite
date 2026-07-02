@@ -44,6 +44,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.lawnchairlite.R
 import app.lawnchairlite.data.AppInfo
+import app.lawnchairlite.data.DrawerGroup
 import app.lawnchairlite.data.DrawerTab
 import app.lawnchairlite.data.IconShape
 import kotlinx.coroutines.launch
@@ -65,6 +66,9 @@ fun AppDrawer(
     recentApps: List<AppInfo>,
     favoriteApps: List<AppInfo>,
     workProfileApps: List<AppInfo>,
+    drawerGroups: List<DrawerGroup>,
+    selectedDrawerGroupId: String?,
+    onDrawerGroupChange: (String?) -> Unit,
     categorizedApps: Map<app.lawnchairlite.data.DrawerCategory, List<AppInfo>>,
     showCategories: Boolean,
     selectedCategory: app.lawnchairlite.data.DrawerCategory,
@@ -186,18 +190,23 @@ fun AppDrawer(
 
     val translationY = (1f - progress) * screenHeightPx
     val effectiveTab = if (searchQuery.isBlank()) selectedTab else DrawerTab.ALL
-    val showCategoriesForTab = showCategories && searchQuery.isBlank() && effectiveTab == DrawerTab.ALL
     val tabApps = when (effectiveTab) {
         DrawerTab.ALL -> apps
         DrawerTab.RECENT -> recentApps
         DrawerTab.FAVORITES -> favoriteApps
         DrawerTab.WORK -> workProfileApps
     }
+    val enabledGroups = drawerGroups.filter { it.enabled }
+    val selectedGroup = enabledGroups.firstOrNull { it.id == selectedDrawerGroupId }
+    val groupFilteredApps = if (searchQuery.isBlank() && selectedGroup != null) {
+        tabApps.filter { selectedGroup.matches(it) }
+    } else tabApps
+    val showCategoriesForTab = showCategories && searchQuery.isBlank() && effectiveTab == DrawerTab.ALL && selectedGroup == null
     val showRecent = false
     // Use categorized apps when categories are enabled on the All tab, otherwise use the selected tab list.
     val displayApps = if (showCategoriesForTab && selectedCategory != app.lawnchairlite.data.DrawerCategory.ALL) {
         categorizedApps[selectedCategory] ?: apps
-    } else tabApps
+    } else groupFilteredApps
 
     // Compute letters/index from displayApps so fast scroller is correct when
     // categories are active or section headers shift grid positions.
@@ -271,6 +280,15 @@ fun AppDrawer(
                         workCount = workProfileApps.size,
                         onTabChange = onTabChange,
                     )
+                    if (enabledGroups.isNotEmpty()) {
+                        Spacer(Modifier.height(4.dp))
+                        DrawerGroupChips(
+                            groups = enabledGroups,
+                            tabApps = tabApps,
+                            selectedGroupId = selectedGroup?.id,
+                            onGroupChange = onDrawerGroupChange,
+                        )
+                    }
                 }
                 if (showCategoriesForTab) {
                     Spacer(Modifier.height(4.dp))
@@ -309,6 +327,7 @@ fun AppDrawer(
                 Row(Modifier.padding(horizontal = 24.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                     val countLabel = when {
                         searchQuery.isNotBlank() -> stringResource(R.string.drawer_results_count, displayApps.size)
+                        selectedGroup != null -> stringResource(R.string.drawer_group_count, selectedGroup.name, displayApps.size)
                         effectiveTab == DrawerTab.RECENT -> stringResource(R.string.drawer_recent_count, displayApps.size)
                         effectiveTab == DrawerTab.FAVORITES -> stringResource(R.string.drawer_favorites_count, displayApps.size)
                         effectiveTab == DrawerTab.WORK -> stringResource(R.string.drawer_work_count, displayApps.size)
@@ -378,6 +397,7 @@ fun AppDrawer(
                         Spacer(Modifier.height(8.dp))
                         val emptyText = when {
                             searchQuery.isNotBlank() -> stringResource(R.string.no_apps_found)
+                            selectedGroup != null -> stringResource(R.string.no_apps_in_drawer_group)
                             effectiveTab == DrawerTab.RECENT -> stringResource(R.string.no_recent_apps)
                             effectiveTab == DrawerTab.FAVORITES -> stringResource(R.string.no_favorites_yet)
                             effectiveTab == DrawerTab.WORK -> stringResource(R.string.no_work_profile_apps)
@@ -580,6 +600,63 @@ private fun DrawerTabs(
                         fontWeight = if (selectedTab == tab) FontWeight.Bold else FontWeight.Medium,
                     )
                 },
+            )
+        }
+    }
+}
+
+@Composable
+private fun DrawerGroupChips(
+    groups: List<DrawerGroup>,
+    tabApps: List<AppInfo>,
+    selectedGroupId: String?,
+    onGroupChange: (String?) -> Unit,
+) {
+    val colors = LocalLauncherColors.current
+    val selectedState = stringResource(R.string.selected)
+    val notSelectedState = stringResource(R.string.not_selected)
+    Row(
+        Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        val allSelected = selectedGroupId == null
+        val allDescription = stringResource(R.string.drawer_group_content_description, stringResource(R.string.all_groups), tabApps.size)
+        Text(
+            stringResource(R.string.all_groups),
+            color = if (allSelected) colors.accent else colors.textSecondary,
+            fontSize = 12.sp,
+            fontWeight = if (allSelected) FontWeight.Bold else FontWeight.Medium,
+            modifier = Modifier.clip(RoundedCornerShape(16.dp))
+                .background(if (allSelected) colors.accent.copy(alpha = 0.12f) else colors.card)
+                .semantics {
+                    contentDescription = allDescription
+                    role = Role.Button
+                    selected = allSelected
+                    stateDescription = if (allSelected) selectedState else notSelectedState
+                }
+                .clickable(role = Role.Button) { onGroupChange(null) }
+                .padding(horizontal = 12.dp, vertical = 6.dp),
+        )
+        groups.forEach { group ->
+            val count = tabApps.count { group.matches(it) }
+            val selected = selectedGroupId == group.id
+            val label = stringResource(R.string.tab_count_format, group.name, count)
+            val description = stringResource(R.string.drawer_group_content_description, group.name, count)
+            Text(
+                label,
+                color = if (selected) colors.accent else colors.textSecondary,
+                fontSize = 12.sp,
+                fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                modifier = Modifier.clip(RoundedCornerShape(16.dp))
+                    .background(if (selected) colors.accent.copy(alpha = 0.12f) else colors.card)
+                    .semantics {
+                        contentDescription = description
+                        role = Role.Button
+                        this.selected = selected
+                        stateDescription = if (selected) selectedState else notSelectedState
+                    }
+                    .clickable(role = Role.Button) { onGroupChange(group.id) }
+                    .padding(horizontal = 12.dp, vertical = 6.dp),
             )
         }
     }

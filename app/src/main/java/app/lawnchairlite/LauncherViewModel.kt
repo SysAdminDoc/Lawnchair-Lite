@@ -156,12 +156,27 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
 
     private val _selectedCategory = MutableStateFlow(DrawerCategory.ALL)
     val selectedCategory: StateFlow<DrawerCategory> = _selectedCategory.asStateFlow()
-    fun setSelectedCategory(c: DrawerCategory) { _selectedCategory.value = c }
+    fun setSelectedCategory(c: DrawerCategory) {
+        _selectedCategory.value = c
+        if (c != DrawerCategory.ALL) _selectedDrawerGroupId.value = null
+    }
     private val _selectedDrawerTab = MutableStateFlow(DrawerTab.ALL)
     val selectedDrawerTab: StateFlow<DrawerTab> = _selectedDrawerTab.asStateFlow()
     fun setSelectedDrawerTab(tab: DrawerTab) {
         _selectedDrawerTab.value = tab
         if (tab != DrawerTab.ALL) _selectedCategory.value = DrawerCategory.ALL
+    }
+    private val _selectedDrawerGroupId = MutableStateFlow<String?>(null)
+    val selectedDrawerGroupId: StateFlow<String?> = _selectedDrawerGroupId.asStateFlow()
+    fun setSelectedDrawerGroup(groupId: String?) {
+        val selected = groupId?.takeIf { id -> settings.value.drawerGroups.any { it.id == id && it.enabled } }
+        _selectedDrawerGroupId.value = selected
+        if (selected != null) _selectedCategory.value = DrawerCategory.ALL
+    }
+    fun resetDrawerFilters() {
+        _selectedCategory.value = DrawerCategory.ALL
+        _selectedDrawerTab.value = DrawerTab.ALL
+        _selectedDrawerGroupId.value = null
     }
 
     // Recent apps: top N most recently used (not hidden)
@@ -400,10 +415,10 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         if (q.length >= 2) searchContacts(q) else _contactResults.value = emptyList()
     }
     fun openDrawer() { _drawerOpen.value = true }
-    fun closeDrawer() { _drawerOpen.value = false; _search.value = ""; _selectedCategory.value = DrawerCategory.ALL; _selectedDrawerTab.value = DrawerTab.ALL }
+    fun closeDrawer() { _drawerOpen.value = false; _search.value = ""; resetDrawerFilters() }
     fun openSettings() { _settingsOpen.value = true }
     fun closeSettings() { _settingsOpen.value = false }
-    fun closeAllOverlays() { _drawerOpen.value = false; _settingsOpen.value = false; _openFolder.value = null; _drawerMenuApp.value = null; _folderRename.value = null; _labelEdit.value = null; _homeMenu.value = null; _editMode.value = false; _widgetPickerOpen.value = false; _homeSpaceMenu.value = false; _search.value = ""; _shortcuts.value = emptyList(); _selectedCategory.value = DrawerCategory.ALL; _selectedDrawerTab.value = DrawerTab.ALL }
+    fun closeAllOverlays() { _drawerOpen.value = false; _settingsOpen.value = false; _openFolder.value = null; _drawerMenuApp.value = null; _folderRename.value = null; _labelEdit.value = null; _homeMenu.value = null; _editMode.value = false; _widgetPickerOpen.value = false; _homeSpaceMenu.value = false; _search.value = ""; _shortcuts.value = emptyList(); resetDrawerFilters() }
     fun hasOpenOverlay(): Boolean = _drawerOpen.value || _settingsOpen.value || _openFolder.value != null || _drawerMenuApp.value != null || _labelEdit.value != null || _homeMenu.value != null || _widgetPickerOpen.value || _editMode.value || _homeSpaceMenu.value
 
     // -- Home/Dock Context Menu --
@@ -729,6 +744,16 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
             if (favorites.size != _favoriteApps.value.size) {
                 _favoriteApps.value = favorites
                 prefs.saveFavoriteApps(favorites)
+            }
+            val groups = settings.value.drawerGroups
+            val cleanedGroups = sanitizeDrawerGroups(groups.map { group ->
+                group.copy(appKeys = group.appKeys.filter { it in valid }.toSet())
+            })
+            if (cleanedGroups != groups) {
+                prefs.saveDrawerGroups(cleanedGroups)
+                if (_selectedDrawerGroupId.value !in cleanedGroups.map { it.id }.toSet()) {
+                    _selectedDrawerGroupId.value = null
+                }
             }
         } catch (e: Exception) {
             Log.e(TAG, "cleanupStaleKeys failed", e)
@@ -1095,6 +1120,108 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     fun setIconShadow(v: Boolean) = pref(LauncherPrefs.ICON_SHADOW, v)
     fun setAccentOverride(hex: String) = pref(LauncherPrefs.ACCENT_OVERRIDE, hex)
     fun setDrawerCategories(v: Boolean) = pref(LauncherPrefs.DRAWER_CATEGORIES, v)
+    fun addDrawerGroup(name: String) {
+        val cleanName = normalizeDrawerGroupName(name)
+        if (cleanName.isBlank()) {
+            toast(R.string.choose_drawer_group_name)
+            return
+        }
+        val existing = settings.value.drawerGroups
+        if (existing.any { it.name.equals(cleanName, ignoreCase = true) }) {
+            toast(R.string.drawer_group_duplicate)
+            return
+        }
+        viewModelScope.launch {
+            val group = DrawerGroup(
+                id = drawerGroupIdFromName(cleanName, existing.map { it.id }.toSet()),
+                name = cleanName,
+            )
+            val groups = sanitizeDrawerGroups(existing + group)
+            prefs.saveDrawerGroups(groups)
+            _selectedDrawerGroupId.value = group.id
+            toast(R.string.drawer_group_added)
+        }
+    }
+
+    fun renameDrawerGroup(groupId: String, name: String) {
+        val cleanName = normalizeDrawerGroupName(name)
+        if (cleanName.isBlank()) {
+            toast(R.string.choose_drawer_group_name)
+            return
+        }
+        val existing = settings.value.drawerGroups
+        if (existing.any { it.id != groupId && it.name.equals(cleanName, ignoreCase = true) }) {
+            toast(R.string.drawer_group_duplicate)
+            return
+        }
+        viewModelScope.launch {
+            prefs.saveDrawerGroups(existing.map { if (it.id == groupId) it.copy(name = cleanName) else it })
+            toast(R.string.drawer_group_updated)
+        }
+    }
+
+    fun removeDrawerGroup(groupId: String) {
+        viewModelScope.launch {
+            val groups = settings.value.drawerGroups.filterNot { it.id == groupId }
+            prefs.saveDrawerGroups(groups)
+            if (_selectedDrawerGroupId.value == groupId) _selectedDrawerGroupId.value = null
+            toast(R.string.drawer_group_removed)
+        }
+    }
+
+    fun setDrawerGroupEnabled(groupId: String, enabled: Boolean) {
+        viewModelScope.launch {
+            val groups = settings.value.drawerGroups.map { if (it.id == groupId) it.copy(enabled = enabled) else it }
+            prefs.saveDrawerGroups(groups)
+            if (!enabled && _selectedDrawerGroupId.value == groupId) _selectedDrawerGroupId.value = null
+        }
+    }
+
+    fun addAppToDrawerGroup(groupId: String, appKey: String) {
+        if (appKey.isBlank()) return
+        viewModelScope.launch {
+            val groups = settings.value.drawerGroups.map { group ->
+                if (group.id == groupId) group.copy(appKeys = (group.appKeys + appKey).take(200).toSet()) else group
+            }
+            prefs.saveDrawerGroups(groups)
+        }
+    }
+
+    fun removeAppFromDrawerGroup(groupId: String, appKey: String) {
+        viewModelScope.launch {
+            val groups = settings.value.drawerGroups.map { group ->
+                if (group.id == groupId) group.copy(appKeys = group.appKeys - appKey) else group
+            }
+            prefs.saveDrawerGroups(groups)
+        }
+    }
+
+    fun addDrawerGroupPrefix(groupId: String, prefix: String) {
+        val cleanPrefix = normalizeDrawerGroupPrefix(prefix)
+        if (cleanPrefix.isBlank() || !cleanPrefix.contains(".")) {
+            toast(R.string.invalid_package_prefix)
+            return
+        }
+        viewModelScope.launch {
+            val groups = settings.value.drawerGroups.map { group ->
+                if (group.id == groupId) {
+                    group.copy(packagePrefixes = (group.packagePrefixes + cleanPrefix).distinct().take(20))
+                } else group
+            }
+            prefs.saveDrawerGroups(groups)
+        }
+    }
+
+    fun removeDrawerGroupPrefix(groupId: String, prefix: String) {
+        val cleanPrefix = normalizeDrawerGroupPrefix(prefix)
+        viewModelScope.launch {
+            val groups = settings.value.drawerGroups.map { group ->
+                if (group.id == groupId) group.copy(packagePrefixes = group.packagePrefixes - cleanPrefix) else group
+            }
+            prefs.saveDrawerGroups(groups)
+        }
+    }
+
     fun addCategoryRule(type: CategoryRuleType, pattern: String, category: DrawerCategory) {
         val cleanPattern = pattern.trim().take(120)
         if (cleanPattern.isBlank() || category == DrawerCategory.ALL) {
