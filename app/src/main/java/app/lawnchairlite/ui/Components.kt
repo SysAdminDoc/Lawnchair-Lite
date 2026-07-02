@@ -40,6 +40,11 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.font.FontWeight
@@ -464,7 +469,7 @@ fun AtAGlanceClock(
 @Composable
 fun SearchPill(onClick: () -> Unit, modifier: Modifier = Modifier, searchEngineLabel: String = "Google") {
     val c = LocalLauncherColors.current
-    Row(modifier.fillMaxWidth().height(44.dp).clip(RoundedCornerShape(22.dp)).background(Color.Black.copy(alpha = 0.35f)).border(0.5.dp, c.textSecondary.copy(alpha = 0.25f), RoundedCornerShape(22.dp)).clickable { onClick() }.padding(horizontal = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(modifier.fillMaxWidth().height(44.dp).clip(RoundedCornerShape(22.dp)).background(Color.Black.copy(alpha = 0.35f)).border(0.5.dp, c.textSecondary.copy(alpha = 0.25f), RoundedCornerShape(22.dp)).semantics { contentDescription = "Search apps"; role = Role.Button }.clickable(role = Role.Button) { onClick() }.padding(horizontal = 14.dp), verticalAlignment = Alignment.CenterVertically) {
         Icon(Icons.Default.Search, null, tint = c.textSecondary, modifier = Modifier.size(18.dp))
         Spacer(Modifier.width(10.dp)); Text("Search apps\u2026", color = c.textSecondary, fontSize = 14.sp); Spacer(Modifier.weight(1f))
     }
@@ -474,7 +479,7 @@ fun SearchPill(onClick: () -> Unit, modifier: Modifier = Modifier, searchEngineL
 fun DrawerSearch(query: String, onQueryChange: (String) -> Unit, modifier: Modifier = Modifier, focusRequester: androidx.compose.ui.focus.FocusRequester? = null) {
     val c = LocalLauncherColors.current
     val keyboardController = LocalSoftwareKeyboardController.current
-    TextField(value = query, onValueChange = onQueryChange, modifier = modifier.fillMaxWidth().height(50.dp).clip(RoundedCornerShape(25.dp)).background(c.searchBg).then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier),
+    TextField(value = query, onValueChange = onQueryChange, modifier = modifier.fillMaxWidth().height(50.dp).clip(RoundedCornerShape(25.dp)).background(c.searchBg).semantics { contentDescription = "Search apps" }.then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier),
         placeholder = { Text("Search apps\u2026", color = c.textSecondary, fontSize = 14.sp) },
         leadingIcon = { Icon(Icons.Default.Search, null, tint = c.textSecondary, modifier = Modifier.size(18.dp)) },
         trailingIcon = if (query.isNotBlank()) {{ IconButton(onClick = { onQueryChange("") }, modifier = Modifier.size(32.dp)) { Icon(Icons.Default.Close, "Clear", tint = c.textSecondary, modifier = Modifier.size(16.dp)) } }} else null,
@@ -870,7 +875,10 @@ fun HomeSpaceMenuOverlay(
 private fun HomeSpaceMenuItem(label: String, icon: androidx.compose.ui.graphics.vector.ImageVector, c: LauncherColors, enabled: Boolean = true, onClick: () -> Unit) {
     val alpha = if (enabled) 1f else 0.35f
     Row(
-        Modifier.fillMaxWidth().then(if (enabled) Modifier.clickable { onClick() } else Modifier).padding(horizontal = 20.dp, vertical = 14.dp),
+        Modifier.fillMaxWidth()
+            .semantics { contentDescription = label; role = Role.Button; stateDescription = if (enabled) "Enabled" else "Disabled" }
+            .then(if (enabled) Modifier.clickable(role = Role.Button) { onClick() } else Modifier)
+            .padding(horizontal = 20.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(icon, null, tint = c.accent.copy(alpha = alpha), modifier = Modifier.size(20.dp))
@@ -979,9 +987,12 @@ fun WidgetPickerDialog(
                         val label = info.loadLabel(pm).toString()
                         val appLabel = try { pm.getApplicationLabel(pm.getApplicationInfo(info.provider.packageName, 0)).toString() } catch (_: Exception) { info.provider.packageName }
                         val minW = info.minWidth; val minH = info.minHeight
+                        val a11ySpanCols = ((minW + 72) / 73).coerceIn(1, 5)
+                        val a11ySpanRows = ((minH + 72) / 73).coerceIn(1, 5)
                         Row(
                             Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
-                                .clickable { onSelect(info) }
+                                .semantics { contentDescription = "Add widget $label from $appLabel, $a11ySpanCols by $a11ySpanRows cells"; role = Role.Button }
+                                .clickable(role = Role.Button) { onSelect(info) }
                                 .padding(horizontal = 10.dp, vertical = 10.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {

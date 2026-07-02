@@ -31,6 +31,12 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
@@ -719,7 +725,8 @@ private fun SectionHeader(title: String, expanded: Boolean, c: LauncherColors, s
             .clip(RoundedCornerShape(12.dp))
             .background(c.card)
             .border(0.5.dp, if (expanded) c.accent.copy(alpha = 0.3f) else c.border, RoundedCornerShape(12.dp))
-            .clickable { onToggle() }
+            .semantics { contentDescription = "$title section"; role = Role.Button; stateDescription = if (expanded) "Expanded" else "Collapsed" }
+            .clickable(role = Role.Button) { onToggle() }
             .padding(horizontal = 16.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -934,14 +941,15 @@ private fun IconPackSection(
         opts.forEach { (v, l) -> val s = v == sel
             Box(Modifier.clip(RoundedCornerShape(10.dp)).background(if (s) c.accent.copy(alpha = 0.15f) else c.card)
                 .border(0.5.dp, if (s) c.accent.copy(alpha = 0.4f) else c.border, RoundedCornerShape(10.dp))
-                .clickable { onSel(v) }.padding(horizontal = 16.dp, vertical = 8.dp))
+                .semantics { contentDescription = l; role = Role.RadioButton; selected = s; stateDescription = if (s) "Selected" else "Not selected" }
+                .clickable(role = Role.RadioButton) { onSel(v) }.padding(horizontal = 16.dp, vertical = 8.dp))
             { Text(l, color = if (s) c.accent else c.textSecondary, fontSize = 13.sp, fontWeight = if (s) FontWeight.Bold else FontWeight.Normal) }
         }
     }
 }
 
 @Composable private fun Tog(label: String, value: Boolean, c: LauncherColors, onChange: (Boolean) -> Unit) {
-    Row(Modifier.fillMaxWidth().clickable { onChange(!value) }.padding(vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.fillMaxWidth().semantics { contentDescription = label; role = Role.Switch; stateDescription = if (value) "On" else "Off" }.clickable(role = Role.Switch) { onChange(!value) }.padding(vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
         Text(label, color = c.text, fontSize = 14.sp, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
         Switch(checked = value, onCheckedChange = { onChange(it) }, colors = SwitchDefaults.colors(checkedThumbColor = Color.White, checkedTrackColor = c.accent, uncheckedThumbColor = c.textSecondary, uncheckedTrackColor = c.card, uncheckedBorderColor = c.border))
     }
@@ -949,7 +957,7 @@ private fun IconPackSection(
 }
 
 @Composable private fun ActionBtn(label: String, sub: String, c: LauncherColors, onClick: () -> Unit) {
-    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(c.card).border(0.5.dp, c.border, RoundedCornerShape(12.dp)).clickable { onClick() }.padding(horizontal = 16.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(c.card).border(0.5.dp, c.border, RoundedCornerShape(12.dp)).semantics { contentDescription = "$label, $sub"; role = Role.Button }.clickable(role = Role.Button) { onClick() }.padding(horizontal = 16.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
         Text(label, color = c.text, fontSize = 14.sp, fontWeight = FontWeight.Medium); Spacer(Modifier.weight(1f)); Text(sub, color = c.accent, fontSize = 12.sp)
     }
 }

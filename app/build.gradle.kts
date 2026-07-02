@@ -14,6 +14,8 @@ android {
         targetSdk = 34
         versionCode = 56
         versionName = "2.27.0"
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        testProguardFiles("test-proguard-rules.pro")
     }
 
     signingConfigs {
@@ -37,6 +39,11 @@ android {
         }
         debug {
             isMinifyEnabled = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+                "debug-proguard-rules.pro"
+            )
         }
     }
 
@@ -84,5 +91,11 @@ dependencies {
     implementation("com.google.accompanist:accompanist-drawablepainter:0.34.0")
 
     debugImplementation("androidx.compose.ui:ui-tooling")
+    debugImplementation("androidx.compose.ui:ui-test-manifest")
+    androidTestImplementation(platform("androidx.compose:compose-bom:2024.01.00"))
+    androidTestImplementation("androidx.compose.ui:ui-test-junit4")
+    androidTestImplementation("androidx.test.ext:junit:1.1.5")
+    androidTestImplementation("androidx.test:runner:1.5.2")
+    androidTestImplementation("com.google.guava:guava:33.6.0-android")
     testImplementation("junit:junit:4.13.2")
 }

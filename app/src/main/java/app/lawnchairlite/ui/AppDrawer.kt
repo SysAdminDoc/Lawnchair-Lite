@@ -30,6 +30,12 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.Velocity
@@ -236,7 +242,7 @@ fun AppDrawer(
     ) {
         Column(Modifier.fillMaxSize()) {
             Column(Modifier.fillMaxWidth()) {
-                Box(Modifier.fillMaxWidth().padding(vertical = 14.dp).clickable {
+                Box(Modifier.fillMaxWidth().padding(vertical = 14.dp).semantics { contentDescription = "Scroll drawer to top"; role = Role.Button }.clickable(role = Role.Button) {
                     scope.launch { gridState.animateScrollToItem(0) }
                 }, Alignment.Center) {
                     Box(Modifier.width(48.dp).height(4.dp).clip(RoundedCornerShape(2.dp))
@@ -280,7 +286,8 @@ fun AppDrawer(
                                     modifier = Modifier
                                         .clip(RoundedCornerShape(16.dp))
                                         .background(if (sel) colors.accent.copy(alpha = 0.12f) else colors.card)
-                                        .clickable { onCategoryChange(cat) }
+                                        .semantics { contentDescription = "${cat.label} category, $count apps"; role = Role.Button; selected = sel; stateDescription = if (sel) "Selected" else "Not selected" }
+                                        .clickable(role = Role.Button) { onCategoryChange(cat) }
                                         .padding(horizontal = 12.dp, vertical = 6.dp),
                                 )
                             }
@@ -301,7 +308,8 @@ fun AppDrawer(
                         Spacer(Modifier.weight(1f))
                         Text("Clear", color = colors.textSecondary, fontSize = 11.sp,
                             modifier = Modifier.clip(RoundedCornerShape(8.dp))
-                                .clickable { onClearRecents() }
+                                .semantics { contentDescription = "Clear recent apps"; role = Role.Button }
+                                .clickable(role = Role.Button) { onClearRecents() }
                                 .padding(horizontal = 8.dp, vertical = 4.dp))
                     }
                     if (searchQuery.isBlank() && effectiveTab == DrawerTab.ALL && drawerSort != app.lawnchairlite.data.DrawerSort.NAME) {
@@ -321,7 +329,8 @@ fun AppDrawer(
                     Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 4.dp)
                         .clip(RoundedCornerShape(12.dp))
                         .background(colors.accent.copy(alpha = 0.06f))
-                        .clickable { onRequestContactPermission() }
+                        .semantics { contentDescription = "Enable contact search"; role = Role.Button }
+                        .clickable(role = Role.Button) { onRequestContactPermission() }
                         .padding(horizontal = 14.dp, vertical = 10.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
@@ -367,7 +376,8 @@ fun AppDrawer(
                             Row(
                                 Modifier.clip(RoundedCornerShape(20.dp))
                                     .background(colors.accent.copy(alpha = 0.12f))
-                                    .clickable { onSearchWeb(searchQuery) }
+                                    .semantics { contentDescription = "Search web for $searchQuery"; role = Role.Button }
+                                    .clickable(role = Role.Button) { onSearchWeb(searchQuery) }
                                     .padding(horizontal = 16.dp, vertical = 10.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
@@ -403,7 +413,8 @@ fun AppDrawer(
                                         Spacer(Modifier.weight(1f))
                                         Text("Clear", color = colors.textSecondary, fontSize = 11.sp,
                                             modifier = Modifier.clip(RoundedCornerShape(8.dp))
-                                                .clickable { onClearRecents() }
+                                                .semantics { contentDescription = "Clear recent apps"; role = Role.Button }
+                                                .clickable(role = Role.Button) { onClearRecents() }
                                                 .padding(horizontal = 8.dp, vertical = 4.dp))
                                     }
                                     LazyRow(
@@ -480,7 +491,8 @@ fun AppDrawer(
                                     Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp)
                                         .clip(RoundedCornerShape(16.dp))
                                         .background(colors.accent.copy(alpha = 0.08f))
-                                        .clickable { onSearchWeb(searchQuery) }
+                                        .semantics { contentDescription = "Search $searchEngineLabel for $searchQuery"; role = Role.Button }
+                                        .clickable(role = Role.Button) { onSearchWeb(searchQuery) }
                                         .padding(horizontal = 16.dp, vertical = 12.dp),
                                     verticalAlignment = Alignment.CenterVertically,
                                 ) {
