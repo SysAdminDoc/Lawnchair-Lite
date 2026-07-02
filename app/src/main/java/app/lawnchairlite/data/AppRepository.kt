@@ -70,12 +70,12 @@ class AppRepository(private val context: Context) {
                 } catch (_: Exception) { null }
                 val icon = if (packLoaded && systemIcon != null) {
                     try {
-                        iconPackManager?.resolveIcon(ComponentName(ai.packageName, ai.name)) ?: systemIcon
+                        iconPackManager.resolveIcon(ComponentName(ai.packageName, ai.name)) ?: systemIcon
                     } catch (_: Exception) { systemIcon }
                 } else systemIcon
                 val installTime = try { pm.getPackageInfo(ai.packageName, 0).firstInstallTime } catch (_: Exception) { 0L }
                 AppInfo(
-                    label = ri.loadLabel(pm)?.toString() ?: ai.packageName,
+                    label = ri.loadLabel(pm).toString(),
                     packageName = ai.packageName,
                     activityName = ai.name,
                     icon = icon,
@@ -120,14 +120,14 @@ class AppRepository(private val context: Context) {
         val systemIcon: Drawable? = runCatching { info.getIcon(0) }.getOrNull()
         val packLoaded = iconPackManager?.isLoaded() == true
         val icon = if (packLoaded && systemIcon != null) {
-            runCatching { iconPackManager?.resolveIcon(component) ?: systemIcon }.getOrDefault(systemIcon)
+            runCatching { iconPackManager.resolveIcon(component) ?: systemIcon }.getOrDefault(systemIcon)
         } else systemIcon
         val workProfile = user != currentUser
         val serial = if (workProfile) {
             runCatching { userManager?.getSerialNumberForUser(user) ?: 0L }.getOrDefault(0L)
         } else 0L
         AppInfo(
-            label = info.label?.toString() ?: component.packageName,
+            label = info.label.toString(),
             packageName = component.packageName,
             activityName = component.className,
             icon = icon,

@@ -74,7 +74,7 @@ class IconPackManager(private val context: Context) {
                     val appInfo = pm.getApplicationInfo(pkg, 0)
                     packs.add(IconPackInfo(
                         pkg,
-                        pm.getApplicationLabel(appInfo)?.toString() ?: pkg,
+                        pm.getApplicationLabel(appInfo).toString(),
                         try { pm.getApplicationIcon(appInfo) } catch (_: Exception) { null }
                     ))
                 } catch (e: Exception) {

@@ -7,3 +7,4 @@
 -keep class androidx.concurrent.futures.** { *; }
 -keep class androidx.test.espresso.** { *; }
 -keep class com.google.common.util.concurrent.** { *; }
+-keep class kotlin.** { *; }

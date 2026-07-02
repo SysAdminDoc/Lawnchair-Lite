@@ -291,7 +291,7 @@ JAVA_HOME="C:/Program Files/Android/Android Studio/jbr" ANDROID_HOME="$HOME/AppD
 
 Debug build: `./gradlew assembleDebug`
 
-Requires Android SDK 28+ (Android 9), targets SDK 34 (Android 14).
+Requires Android SDK 28+ (Android 9), compiles against SDK 37, and targets SDK 36.
 
 Local launcher smoke test after a debug or release build:
 

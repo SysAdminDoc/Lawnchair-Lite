@@ -40,6 +40,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -64,7 +65,6 @@ import app.lawnchairlite.data.DragSource
 import app.lawnchairlite.data.GridCell
 import app.lawnchairlite.data.IconShape
 import app.lawnchairlite.data.SmartspaceState
-import com.google.accompanist.drawablepainter.rememberDrawablePainter
 import java.text.SimpleDateFormat
 import java.util.*
 import android.app.AlarmManager
@@ -545,7 +545,6 @@ fun HomeContextMenu(
     val c = LocalLauncherColors.current
     val cell = menuState.cell
     val app = menuState.appInfo
-    val isFolder = cell is GridCell.Folder
     val sourceLabel = stringResource(if (menuState.source == DragSource.DOCK) R.string.dock_source else R.string.home_source)
     var showFolderCoverPicker by remember(cell) { mutableStateOf(false) }
 
@@ -587,14 +586,14 @@ fun HomeContextMenu(
             // App Shortcuts
             if (shortcuts.isNotEmpty() && cell is GridCell.App) {
                 Spacer(Modifier.height(8.dp))
-                Divider(color = c.border.copy(alpha = 0.3f), thickness = 0.5.dp)
+                HorizontalDivider(color = c.border.copy(alpha = 0.3f), thickness = 0.5.dp)
                 shortcuts.forEach { shortcut ->
                     ShortcutItem(shortcut, c) { vm.launchShortcut(shortcut) }
                 }
             }
 
             Spacer(Modifier.height(if (shortcuts.isEmpty()) 12.dp else 4.dp))
-            Divider(color = c.border.copy(alpha = 0.3f), thickness = 0.5.dp)
+            HorizontalDivider(color = c.border.copy(alpha = 0.3f), thickness = 0.5.dp)
 
             if (cell is GridCell.App && app != null) {
                 CtxItem(stringResource(R.string.rename), c) { vm.startLabelEdit(cell.appKey) }
@@ -627,15 +626,15 @@ fun HomeContextMenu(
                         }
                     }
                 }
-                Divider(color = c.border.copy(alpha = 0.3f), thickness = 0.5.dp)
+                HorizontalDivider(color = c.border.copy(alpha = 0.3f), thickness = 0.5.dp)
                 CtxItem(stringResource(R.string.app_info), c) { vm.appInfo(app); onDismiss() }
                 CtxItem(stringResource(R.string.remove_from_source, sourceLabel), c) { vm.removeFromGrid(menuState.source, menuState.index) }
                 if (!app.isSystemApp) {
-                    Divider(color = c.border.copy(alpha = 0.3f), thickness = 0.5.dp)
+                    HorizontalDivider(color = c.border.copy(alpha = 0.3f), thickness = 0.5.dp)
                     CtxItem(stringResource(R.string.uninstall), c, isRed = true) { vm.requestUninstall(app, menuState.source, menuState.index) }
                 }
-            } else if (isFolder) {
-                val folder = cell as GridCell.Folder
+            } else if (cell is GridCell.Folder) {
+                val folder = cell
                 CtxItem(stringResource(R.string.open_folder), c) { vm.openFolderView(folder, menuState.source, menuState.index); onDismiss() }
                 CtxItem(stringResource(R.string.rename_folder), c) { vm.startFolderRename(menuState.source, menuState.index, folder.name); onDismiss() }
                 CtxItem(stringResource(if (folder.coverEmoji.isBlank() && folder.coverAppKey.isBlank()) R.string.set_folder_cover else R.string.change_folder_cover), c) {
@@ -652,7 +651,7 @@ fun HomeContextMenu(
                     )
                 }
                 CtxItem(stringResource(R.string.rearrange_icons), c) { vm.enterEditMode() }
-                Divider(color = c.border.copy(alpha = 0.3f), thickness = 0.5.dp)
+                HorizontalDivider(color = c.border.copy(alpha = 0.3f), thickness = 0.5.dp)
                 CtxItem(stringResource(R.string.remove_from_source, sourceLabel), c, isRed = true) { vm.removeFromGrid(menuState.source, menuState.index) }
             }
         }
@@ -833,14 +832,14 @@ fun DrawerContextMenu(app: AppInfo, shape: IconShape, vm: LauncherViewModel, sho
             val launchInfo = if (launchCount > 0) " · ${stringResource(R.string.launches_count, launchCount)}" else ""
             Text("${app.packageName}${if (verInfo != null) " $verInfo" else ""}${if (sizeInfo != null) " · $sizeInfo" else ""}$launchInfo", color = c.textSecondary, fontSize = 10.sp, textAlign = TextAlign.Center, modifier = Modifier.padding(horizontal = 16.dp))
             if (shortcuts.isNotEmpty()) {
-                Spacer(Modifier.height(8.dp)); Divider(color = c.border.copy(alpha = 0.3f), thickness = 0.5.dp)
+                Spacer(Modifier.height(8.dp)); HorizontalDivider(color = c.border.copy(alpha = 0.3f), thickness = 0.5.dp)
                 shortcuts.forEach { shortcut -> ShortcutItem(shortcut, c) { onShortcutClick(shortcut) } }
             }
-            Spacer(Modifier.height(if (shortcuts.isEmpty()) 12.dp else 4.dp)); Divider(color = c.border.copy(alpha = 0.3f), thickness = 0.5.dp)
+            Spacer(Modifier.height(if (shortcuts.isEmpty()) 12.dp else 4.dp)); HorizontalDivider(color = c.border.copy(alpha = 0.3f), thickness = 0.5.dp)
             CtxItem(stringResource(R.string.add_to_home_screen), c, onClick = onPinHome); CtxItem(stringResource(R.string.add_to_dock), c, onClick = onPinDock)
             CtxItem(stringResource(if (isFavorite) R.string.remove_favorite else R.string.add_favorite), c, onClick = onToggleFavorite)
             CtxItem(stringResource(R.string.hide_from_drawer), c, onClick = onHide); CtxItem(stringResource(R.string.app_info), c, onClick = onAppInfo)
-            if (!app.isSystemApp) { Divider(color = c.border.copy(alpha = 0.3f), thickness = 0.5.dp); CtxItem(stringResource(R.string.uninstall), c, isRed = true, onClick = onUninstall) }
+            if (!app.isSystemApp) { HorizontalDivider(color = c.border.copy(alpha = 0.3f), thickness = 0.5.dp); CtxItem(stringResource(R.string.uninstall), c, isRed = true, onClick = onUninstall) }
         }
     }
 }
@@ -866,15 +865,15 @@ fun HomeSpaceMenuOverlay(
                 .pointerInput(Unit) { detectTapGestures { } }.padding(vertical = 8.dp),
         ) {
             HomeSpaceMenuItem(stringResource(R.string.rearrange_icons), Icons.Default.GridView, c, onClick = onEditMode)
-            Divider(color = c.border.copy(alpha = 0.2f), thickness = 0.5.dp)
+            HorizontalDivider(color = c.border.copy(alpha = 0.2f), thickness = 0.5.dp)
             HomeSpaceMenuItem(stringResource(R.string.add_widget), Icons.Default.Widgets, c, onClick = onAddWidget)
-            Divider(color = c.border.copy(alpha = 0.2f), thickness = 0.5.dp)
+            HorizontalDivider(color = c.border.copy(alpha = 0.2f), thickness = 0.5.dp)
             HomeSpaceMenuItem(stringResource(R.string.add_page), Icons.Default.Add, c, onClick = onAddPage)
-            Divider(color = c.border.copy(alpha = 0.2f), thickness = 0.5.dp)
+            HorizontalDivider(color = c.border.copy(alpha = 0.2f), thickness = 0.5.dp)
             HomeSpaceMenuItem(stringResource(R.string.remove_page), Icons.Default.Remove, c, enabled = canRemovePage, onClick = onRemovePage)
-            Divider(color = c.border.copy(alpha = 0.2f), thickness = 0.5.dp)
+            HorizontalDivider(color = c.border.copy(alpha = 0.2f), thickness = 0.5.dp)
             HomeSpaceMenuItem(stringResource(R.string.wallpaper_action), Icons.Default.Wallpaper, c, onClick = onWallpaper)
-            Divider(color = c.border.copy(alpha = 0.2f), thickness = 0.5.dp)
+            HorizontalDivider(color = c.border.copy(alpha = 0.2f), thickness = 0.5.dp)
             HomeSpaceMenuItem(stringResource(R.string.settings), Icons.Default.Settings, c, onClick = onSettings)
         }
     }
@@ -966,6 +965,7 @@ fun WidgetPickerDialog(
 ) {
     val c = LocalLauncherColors.current
     val context = androidx.compose.ui.platform.LocalContext.current
+    val resources = LocalResources.current
     val pm = context.packageManager
     var search by remember { mutableStateOf("") }
     val filtered = remember(widgets, search) {
@@ -1000,14 +1000,15 @@ fun WidgetPickerDialog(
                         val minW = info.minWidth; val minH = info.minHeight
                         val a11ySpanCols = ((minW + 72) / 73).coerceIn(1, 5)
                         val a11ySpanRows = ((minH + 72) / 73).coerceIn(1, 5)
+                        val addWidgetDescription = stringResource(R.string.add_widget_content_description, label, appLabel, a11ySpanCols, a11ySpanRows)
                         Row(
                             Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
-                                .semantics { contentDescription = context.getString(R.string.add_widget_content_description, label, appLabel, a11ySpanCols, a11ySpanRows); role = Role.Button }
+                                .semantics { contentDescription = addWidgetDescription; role = Role.Button }
                                 .clickable(role = Role.Button) { onSelect(info) }
                                 .padding(horizontal = 10.dp, vertical = 10.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            val icon = try { info.loadIcon(context, context.resources.displayMetrics.densityDpi) } catch (_: Exception) { null }
+                            val icon = try { info.loadIcon(context, resources.displayMetrics.densityDpi) } catch (_: Exception) { null }
                             if (icon != null) {
                                 Image(rememberDrawablePainter(icon), label, Modifier.size(40.dp).clip(RoundedCornerShape(8.dp)))
                                 Spacer(Modifier.width(10.dp))
@@ -1017,10 +1018,10 @@ fun WidgetPickerDialog(
                                 Text(appLabel, color = c.textSecondary, fontSize = 10.sp, maxLines = 1)
                                 val spanCols = ((minW + 72) / 73).coerceIn(1, 5)
                                 val spanRows = ((minH + 72) / 73).coerceIn(1, 5)
-                                Text(context.getString(R.string.widget_cells_description, spanCols, spanRows), color = c.textSecondary.copy(alpha = 0.6f), fontSize = 9.sp)
+                                Text(stringResource(R.string.widget_cells_description, spanCols, spanRows), color = c.textSecondary.copy(alpha = 0.6f), fontSize = 9.sp)
                             }
                         }
-                        Divider(color = c.border.copy(alpha = 0.2f), thickness = 0.5.dp)
+                        HorizontalDivider(color = c.border.copy(alpha = 0.2f), thickness = 0.5.dp)
                     }
                 }
             }
@@ -1052,14 +1053,16 @@ fun WidgetHostViewComposable(
 fun CalculatorResultRow(result: String, modifier: Modifier = Modifier) {
     val c = LocalLauncherColors.current
     val context = androidx.compose.ui.platform.LocalContext.current
+    val resultClipLabel = stringResource(R.string.result_clip_label)
+    val copiedResultLabel = stringResource(R.string.copied_result, result)
     Row(
         modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 6.dp)
             .clip(RoundedCornerShape(14.dp)).background(c.accent.copy(alpha = 0.1f))
             .border(0.5.dp, c.accent.copy(alpha = 0.2f), RoundedCornerShape(14.dp))
             .clickable {
                 val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager
-                cm?.setPrimaryClip(android.content.ClipData.newPlainText(context.getString(R.string.result_clip_label), result))
-                android.widget.Toast.makeText(context, context.getString(R.string.copied_result, result), android.widget.Toast.LENGTH_SHORT).show()
+                cm?.setPrimaryClip(android.content.ClipData.newPlainText(resultClipLabel, result))
+                android.widget.Toast.makeText(context, copiedResultLabel, android.widget.Toast.LENGTH_SHORT).show()
             }
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,

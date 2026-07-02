@@ -3,5 +3,4 @@
 -keep class androidx.compose.** { *; }
 -keep class app.lawnchairlite.ui.** { *; }
 -keep class kotlinx.coroutines.** { *; }
--keep class kotlin.coroutines.** { *; }
--keep class kotlin.time.** { *; }
+-keep class kotlin.** { *; }

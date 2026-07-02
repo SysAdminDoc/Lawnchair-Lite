@@ -186,19 +186,30 @@ function Get-UiXml {
 function Find-BoundsByText {
     param(
         [string]$Xml,
-        [string[]]$Needles
+        [string[]]$Needles,
+        [int]$MinCenterY = 0,
+        [int]$MaxCenterY = [int]::MaxValue
     )
 
+    $nodes = [regex]::Matches($Xml, '<node\b[^>]*>')
     foreach ($needle in $Needles) {
         $escaped = [regex]::Escape($needle)
-        $patterns = @(
-            '<node[^>]+(?:text|content-desc)="[^"]*' + $escaped + '[^"]*"[^>]+bounds="(?<bounds>\[[0-9]+,[0-9]+\]\[[0-9]+,[0-9]+\])"',
-            '<node[^>]+bounds="(?<bounds>\[[0-9]+,[0-9]+\]\[[0-9]+,[0-9]+\])"[^>]+(?:text|content-desc)="[^"]*' + $escaped + '[^"]*"'
-        )
-        foreach ($pattern in $patterns) {
-            $match = [regex]::Match($Xml, $pattern, [System.Text.RegularExpressions.RegexOptions]::IgnoreCase)
-            if ($match.Success) {
-                return $match.Groups["bounds"].Value
+        foreach ($node in $nodes) {
+            $nodeText = $node.Value
+            $hasNeedle = [regex]::IsMatch($nodeText, '(?:text|content-desc)="[^"]*' + $escaped + '[^"]*"', [System.Text.RegularExpressions.RegexOptions]::IgnoreCase)
+            if (-not $hasNeedle) {
+                continue
+            }
+            $bounds = [regex]::Match($nodeText, 'bounds="(?<bounds>\[[0-9]+,[0-9]+\]\[[0-9]+,[0-9]+\])"')
+            if ($bounds.Success) {
+                $boundsValue = $bounds.Groups["bounds"].Value
+                if ($boundsValue -match "\[(\d+),(\d+)\]\[(\d+),(\d+)\]") {
+                    $centerY = [int](([int]$matches[2] + [int]$matches[4]) / 2)
+                    if ($centerY -lt $MinCenterY -or $centerY -gt $MaxCenterY) {
+                        continue
+                    }
+                }
+                return $boundsValue
             }
         }
     }
@@ -382,10 +393,12 @@ function Run-SettingsSmoke {
         return
     }
 
-    $x = [int]($Size.Width / 2)
-    $y = [int]($Size.Height * 0.633)
-    [void](Invoke-AdbShell -Command "input tap $x $y" -TimeoutSec 15)
-    Start-Sleep -Milliseconds $StepDelayMs
+    $settingsBounds = Find-BoundsByText -Xml $xml -Needles @("Settings") -MinCenterY ([int]($Size.Height * 0.25)) -MaxCenterY ([int]($Size.Height * 0.82))
+    if (-not $settingsBounds) {
+        Fail "settings" "home long-press menu did not expose Settings"
+        return
+    }
+    Tap-Bounds -Bounds $settingsBounds
     $xml = Get-UiXml
     if ($xml -match "Settings" -and ($xml -match "Search settings" -or $xml -match "Theme")) {
         Pass "settings" "settings panel opened"
@@ -406,10 +419,12 @@ function Run-WidgetPickerSmoke {
         return
     }
 
-    $x = [int]($Size.Width / 2)
-    $y = [int]($Size.Height * 0.42)
-    [void](Invoke-AdbShell -Command "input tap $x $y" -TimeoutSec 15)
-    Start-Sleep -Milliseconds $StepDelayMs
+    $widgetBounds = Find-BoundsByText -Xml $xml -Needles @("Add Widget") -MinCenterY ([int]($Size.Height * 0.25)) -MaxCenterY ([int]($Size.Height * 0.82))
+    if (-not $widgetBounds) {
+        Fail "widget-picker" "home long-press menu did not expose Add Widget"
+        return
+    }
+    Tap-Bounds -Bounds $widgetBounds
     $xml = Get-UiXml
     if ($xml -match "Add Widget" -or $xml -match "Search widgets") {
         Pass "widget-picker" "widget picker opened"

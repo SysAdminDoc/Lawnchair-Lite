@@ -45,7 +45,6 @@ import androidx.compose.ui.unit.sp
 import app.lawnchairlite.R
 import app.lawnchairlite.LauncherViewModel
 import app.lawnchairlite.data.*
-import com.google.accompanist.drawablepainter.rememberDrawablePainter
 import kotlinx.coroutines.launch
 
 @Composable
@@ -56,6 +55,10 @@ fun SettingsPanel(
     val colors = LocalLauncherColors.current
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val backupExportedMessage = stringResource(R.string.backup_exported)
+    val exportFailedMessage = stringResource(R.string.export_failed)
+    val invalidImportMessage = stringResource(R.string.import_failed_invalid_file)
+    val restoreFailedMessage = stringResource(R.string.restore_failed)
     val hiddenApps by vm.hiddenApps.collectAsState()
     val allAppsRaw by vm.allApps.collectAsState()
     val availablePacks by vm.availablePacks.collectAsState()
@@ -80,9 +83,9 @@ fun SettingsPanel(
             runCatching {
                 context.contentResolver.openOutputStream(uri)?.use { it.write(json.toByteArray()) }
             }.onSuccess {
-                android.widget.Toast.makeText(context, context.getString(R.string.backup_exported), android.widget.Toast.LENGTH_SHORT).show()
+                android.widget.Toast.makeText(context, backupExportedMessage, android.widget.Toast.LENGTH_SHORT).show()
             }.onFailure {
-                android.widget.Toast.makeText(context, context.getString(R.string.export_failed), android.widget.Toast.LENGTH_SHORT).show()
+                android.widget.Toast.makeText(context, exportFailedMessage, android.widget.Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -91,12 +94,12 @@ fun SettingsPanel(
         scope.launch {
             val json = runCatching { context.contentResolver.openInputStream(uri)?.bufferedReader()?.readText() }.getOrNull()
             if (json == null) {
-                android.widget.Toast.makeText(context, context.getString(R.string.import_failed_invalid_file), android.widget.Toast.LENGTH_SHORT).show()
+                android.widget.Toast.makeText(context, invalidImportMessage, android.widget.Toast.LENGTH_SHORT).show()
                 return@launch
             }
             val preview = vm.previewBackup(json)
             if (!preview.canImport) {
-                android.widget.Toast.makeText(context, preview.error ?: context.getString(R.string.restore_failed), android.widget.Toast.LENGTH_SHORT).show()
+                android.widget.Toast.makeText(context, preview.error ?: restoreFailedMessage, android.widget.Toast.LENGTH_SHORT).show()
                 restorePreview = preview
                 pendingRestoreJson = null
                 return@launch
@@ -192,7 +195,7 @@ fun SettingsPanel(
                 Spacer(Modifier.weight(1f)); Text(stringResource(R.string.settings), color = colors.text, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
                 Spacer(Modifier.weight(1f)); Spacer(Modifier.size(48.dp))
             }
-            Divider(color = colors.border, thickness = 0.5.dp)
+            HorizontalDivider(color = colors.border, thickness = 0.5.dp)
 
             // Settings search bar
             Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -961,7 +964,7 @@ private fun IconPackSection(
         Text(label, color = c.text, fontSize = 14.sp, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
         Switch(checked = value, onCheckedChange = { onChange(it) }, colors = SwitchDefaults.colors(checkedThumbColor = Color.White, checkedTrackColor = c.accent, uncheckedThumbColor = c.textSecondary, uncheckedTrackColor = c.card, uncheckedBorderColor = c.border))
     }
-    Divider(color = c.border.copy(alpha = 0.3f), thickness = 0.5.dp)
+    HorizontalDivider(color = c.border.copy(alpha = 0.3f), thickness = 0.5.dp)
 }
 
 @Composable private fun ActionBtn(label: String, sub: String, c: LauncherColors, onClick: () -> Unit) {
@@ -1005,7 +1008,7 @@ private fun IconPackSection(
             )
         }
     }
-    Divider(color = c.border.copy(alpha = 0.22f), thickness = 0.5.dp)
+    HorizontalDivider(color = c.border.copy(alpha = 0.22f), thickness = 0.5.dp)
 }
 
 @Composable private fun RestorePreviewDialog(
@@ -1147,7 +1150,7 @@ private fun IconPackSection(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         if (pickApp.icon != null) {
-                            Image(com.google.accompanist.drawablepainter.rememberDrawablePainter(pickApp.icon), null, Modifier.size(24.dp).clip(RoundedCornerShape(6.dp)))
+                            Image(rememberDrawablePainter(pickApp.icon), null, Modifier.size(24.dp).clip(RoundedCornerShape(6.dp)))
                             Spacer(Modifier.width(8.dp))
                         }
                         Text(pickApp.label, color = c.text, fontSize = 12.sp, maxLines = 1)
