@@ -7,6 +7,8 @@ import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -27,10 +29,11 @@ class AccessibilitySemanticsTest {
             }
         }
 
-        compose.onNodeWithContentDescription("Search apps")
-            .assertIsDisplayed()
-            .assertHasClickAction()
-            .assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
+        compose.onNode(
+            hasContentDescription("Search apps") and
+                hasClickAction() and
+                SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button),
+        ).assertIsDisplayed()
     }
 
     @Test

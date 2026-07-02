@@ -8,7 +8,6 @@ import android.app.admin.DevicePolicyManager
 import android.appwidget.AppWidgetHost
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProviderInfo
-import android.content.ContentUris
 import android.content.ComponentName
 import android.content.ClipData
 import android.content.ClipboardManager
@@ -17,12 +16,9 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.database.Cursor
 import android.hardware.camera2.CameraManager
-import android.location.Location
-import android.location.LocationManager
 import android.os.Build
 import android.os.VibrationEffect
 import android.os.Vibrator
-import android.provider.CalendarContract
 import android.provider.ContactsContract
 import android.provider.Settings
 import android.util.Log
@@ -33,19 +29,12 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import app.lawnchairlite.data.*
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import org.json.JSONObject
-import java.net.HttpURLConnection
-import java.net.URL
 import java.util.Calendar
-import java.util.concurrent.TimeUnit
 import kotlin.math.max
-import kotlin.math.roundToInt
 
 /** Lawnchair Lite - ViewModel */
 class LauncherViewModel(app: Application) : AndroidViewModel(app) {
@@ -56,7 +45,6 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         private const val MAX_RECENT_APPS = 8
         private const val WIDGET_HOST_ID = 1024
         private const val SMARTSPACE_REFRESH_MS = 15 * 60 * 1000L
-        private const val WEATHER_TIMEOUT_MS = 3500
     }
 
     private val ctx = app.applicationContext
@@ -66,6 +54,8 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     val shortcutRepo = ShortcutRepository(app)
     val widgetHost = AppWidgetHost(app, WIDGET_HOST_ID)
     val widgetManager: AppWidgetManager = AppWidgetManager.getInstance(app)
+    private val smartspaceService = SmartspaceService(ctx)
+    private val backupService = LauncherBackupService(LauncherPrefsBackupGateway(prefs))
 
     private val _allApps = MutableStateFlow<List<AppInfo>>(emptyList())
     val allApps: StateFlow<List<AppInfo>> = _allApps.asStateFlow()
@@ -102,16 +92,6 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     val shortcuts: StateFlow<List<AppShortcut>> = _shortcuts.asStateFlow()
 
     // Widget state
-    data class PendingWidgetPlacement(
-        val appWidgetId: Int,
-        val providerInfo: AppWidgetProviderInfo,
-        val page: Int,
-        val row: Int,
-        val col: Int,
-        val spanX: Int,
-        val spanY: Int,
-    )
-
     private val _widgets = MutableStateFlow<List<WidgetInfo>>(emptyList())
     val widgets: StateFlow<List<WidgetInfo>> = _widgets.asStateFlow()
     private val _widgetPickerOpen = MutableStateFlow(false)
@@ -162,7 +142,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         } else {
             // Fuzzy search with relevance scoring
             visible.mapNotNull { app ->
-                val score = searchScore(app.label, app.packageName, q)
+                val score = SearchScorer.score(app.label, app.packageName, q)
                 if (score > 0) app to score else null
             }.sortedByDescending { it.second }.map { it.first }
         }
@@ -930,31 +910,6 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    // -- Fuzzy Search --
-
-    private fun searchScore(label: String, packageName: String, query: String): Int {
-        val q = query.lowercase()
-        val l = label.lowercase()
-        val p = packageName.lowercase()
-        return when {
-            l == q -> 100
-            l.startsWith(q) -> 90
-            l.split(" ").any { it.startsWith(q) } -> 80
-            l.contains(q) -> 70
-            p.contains(q) -> 60
-            isSubsequence(q, l) -> 50
-            else -> 0
-        }
-    }
-
-    private fun isSubsequence(query: String, text: String): Boolean {
-        var qi = 0
-        for (ch in text) {
-            if (qi < query.length && ch == query[qi]) qi++
-        }
-        return qi == query.length
-    }
-
     // -- Inline Calculator --
 
     private fun tryEvaluate(expr: String): String? {
@@ -1073,115 +1028,12 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     private suspend fun refreshSmartspaceInternal() {
-        val calendarNeeded = !hasCalendarPermission()
-        val locationNeeded = !hasLocationPermission()
-        val event = if (calendarNeeded) null else loadNextCalendarEvent()
-        val weather = if (locationNeeded) null else loadWeather()
-        _smartspace.value = SmartspaceState(
-            weather = weather,
-            nextEvent = event,
-            locationPermissionNeeded = locationNeeded,
-            calendarPermissionNeeded = calendarNeeded,
-            lastUpdatedMillis = System.currentTimeMillis(),
-        )
+        _smartspace.value = smartspaceService.refresh()
     }
 
-    private suspend fun loadNextCalendarEvent(): SmartspaceEvent? = withContext(Dispatchers.IO) {
-        val now = System.currentTimeMillis()
-        val end = now + TimeUnit.DAYS.toMillis(7)
-        val uriBuilder = CalendarContract.Instances.CONTENT_URI.buildUpon()
-        ContentUris.appendId(uriBuilder, now)
-        ContentUris.appendId(uriBuilder, end)
-        val projection = arrayOf(
-            CalendarContract.Instances.TITLE,
-            CalendarContract.Instances.BEGIN,
-            CalendarContract.Instances.EVENT_LOCATION,
-        )
-        try {
-            ctx.contentResolver.query(
-                uriBuilder.build(),
-                projection,
-                null,
-                null,
-                "${CalendarContract.Instances.BEGIN} ASC",
-            )?.use { cursor ->
-                while (cursor.moveToNext()) {
-                    val title = cursor.getString(0)?.trim().orEmpty()
-                    val startsAt = cursor.getLong(1)
-                    val location = cursor.getString(2)?.trim().orEmpty()
-                    if (title.isNotBlank() && startsAt >= now) {
-                        return@withContext SmartspaceEvent(title, startsAt, location)
-                    }
-                }
-            }
-        } catch (e: Exception) {
-            Log.w(TAG, "Calendar smartspace query failed", e)
-        }
-        null
-    }
+    fun hasCalendarPermission(): Boolean = smartspaceService.hasCalendarPermission()
 
-    private suspend fun loadWeather(): SmartspaceWeather? = withContext(Dispatchers.IO) {
-        val location = lastKnownLocation() ?: return@withContext null
-        val url = URL(
-            "https://api.open-meteo.com/v1/forecast" +
-                "?latitude=${location.latitude}&longitude=${location.longitude}" +
-                "&current=temperature_2m,weather_code&temperature_unit=fahrenheit&timezone=auto"
-        )
-        var connection: HttpURLConnection? = null
-        try {
-            connection = (url.openConnection() as HttpURLConnection).apply {
-                connectTimeout = WEATHER_TIMEOUT_MS
-                readTimeout = WEATHER_TIMEOUT_MS
-                requestMethod = "GET"
-            }
-            if (connection.responseCode !in 200..299) return@withContext null
-            val body = connection.inputStream.bufferedReader().use { it.readText() }
-            val current = JSONObject(body).optJSONObject("current") ?: return@withContext null
-            val temp = current.optDouble("temperature_2m", Double.NaN)
-            if (temp.isNaN()) return@withContext null
-            SmartspaceWeather(
-                temperature = temp.roundToInt(),
-                unit = "F",
-                condition = weatherCondition(current.optInt("weather_code", -1)),
-            )
-        } catch (e: Exception) {
-            Log.w(TAG, "Weather smartspace fetch failed", e)
-            null
-        } finally {
-            connection?.disconnect()
-        }
-    }
-
-    @SuppressLint("MissingPermission")
-    private fun lastKnownLocation(): Location? {
-        if (!hasLocationPermission()) return null
-        val lm = ctx.getSystemService(Context.LOCATION_SERVICE) as? LocationManager ?: return null
-        return listOf(
-            LocationManager.NETWORK_PROVIDER,
-            LocationManager.GPS_PROVIDER,
-            LocationManager.PASSIVE_PROVIDER,
-        ).mapNotNull { provider ->
-            runCatching { lm.getLastKnownLocation(provider) }.getOrNull()
-        }.maxByOrNull { it.time }
-    }
-
-    private fun weatherCondition(code: Int): String = when (code) {
-        0 -> ctx.getString(R.string.weather_clear)
-        1, 2 -> ctx.getString(R.string.weather_partly_cloudy)
-        3 -> ctx.getString(R.string.weather_cloudy)
-        45, 48 -> ctx.getString(R.string.weather_fog)
-        51, 53, 55, 56, 57 -> ctx.getString(R.string.weather_drizzle)
-        61, 63, 65, 66, 67, 80, 81, 82 -> ctx.getString(R.string.weather_rain)
-        71, 73, 75, 77, 85, 86 -> ctx.getString(R.string.weather_snow)
-        95, 96, 99 -> ctx.getString(R.string.weather_storm)
-        else -> ctx.getString(R.string.weather_generic)
-    }
-
-    fun hasCalendarPermission(): Boolean =
-        ctx.checkSelfPermission(Manifest.permission.READ_CALENDAR) == PackageManager.PERMISSION_GRANTED
-
-    fun hasLocationPermission(): Boolean =
-        ctx.checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+    fun hasLocationPermission(): Boolean = smartspaceService.hasLocationPermission()
 
     fun openWeatherApp() {
         try {
@@ -1442,21 +1294,21 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         nn.forEachIndexed { i, c -> if (i < total) g[i] = c }; _homeGrid.value = g; prefs.saveHome(g)
     }
 
-    suspend fun exportBackup(options: BackupExportOptions = BackupExportOptions()): String = prefs.exportBackup(options)
-    fun previewBackup(json: String): BackupImportPreview = prefs.previewBackup(json)
+    suspend fun exportBackup(options: BackupExportOptions = BackupExportOptions()): String = backupService.export(options)
+    fun previewBackup(json: String): BackupImportPreview = backupService.preview(json)
     suspend fun importBackup(json: String): Boolean {
-        val ok = prefs.importBackup(json)
-        if (ok) {
+        val result = backupService.importAndLoadRestoredSettings(json)
+        if (result.imported) {
             toast(R.string.layout_restored)
             try {
-                val restored = prefs.settings.first()
+                val restored = result.restoredSettings ?: prefs.settings.first()
                 if (restored.iconPack.isNotBlank()) applyIconPack(restored.iconPack) else loadAppsInternal()
             } catch (e: Exception) {
                 Log.e(TAG, "Post-restore reload failed", e)
                 loadAppsInternal()
             }
         } else toast(R.string.restore_failed)
-        return ok
+        return result.imported
     }
 
     private fun <T> pref(key: androidx.datastore.preferences.core.Preferences.Key<T>, v: T) { viewModelScope.launch { prefs.set(key, v) } }
@@ -1538,7 +1390,10 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         }.getOrDefault(false)
     }
 
-    fun pendingWidgetNeedsConfiguration(): Boolean = _pendingWidgetPlacement.value?.providerInfo?.configure != null
+    fun pendingWidgetNeedsConfiguration(): Boolean {
+        val hasConfigureActivity = _pendingWidgetPlacement.value?.providerInfo?.configure != null
+        return WidgetPlacementService.setupStep(hasConfigureActivity) == WidgetSetupStep.CONFIGURE_PROVIDER
+    }
 
     fun getPendingWidgetBindIntent(): Intent? {
         val pending = _pendingWidgetPlacement.value ?: return null
@@ -1560,17 +1415,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     fun completePendingWidget() {
         val pending = _pendingWidgetPlacement.value ?: return
         _pendingWidgetPlacement.value = null
-        addWidget(
-            WidgetInfo(
-                pending.appWidgetId,
-                pending.page,
-                pending.row,
-                pending.col,
-                pending.spanX,
-                pending.spanY,
-                pending.providerInfo.provider.flattenToString(),
-            )
-        )
+        addWidget(WidgetPlacementService.createWidgetInfo(pending))
     }
 
     fun cancelPendingWidget(@StringRes messageRes: Int = R.string.widget_setup_canceled) {
@@ -1619,8 +1464,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     fun widgetForId(id: Int): WidgetInfo? = _widgets.value.find { it.appWidgetId == id }
 
     fun findFirstEmptySpan(page: Int, spanX: Int, spanY: Int): Pair<Int, Int>? {
-        val s = settings.value
-        return WidgetGridPlanner.findFirstEmptySpan(_homeGrid.value, page, s.gridColumns, s.gridRows, spanX, spanY)
+        return WidgetPlacementService.findFirstEmptySpan(_homeGrid.value, settings.value, page, spanX, spanY)
     }
 
     // -- Contact Search --
