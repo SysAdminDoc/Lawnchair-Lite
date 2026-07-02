@@ -27,6 +27,7 @@ import android.provider.ContactsContract
 import android.provider.Settings
 import android.util.Log
 import android.widget.Toast
+import androidx.annotation.StringRes
 import androidx.compose.ui.geometry.Offset
 import androidx.core.app.NotificationManagerCompat
 import androidx.lifecycle.AndroidViewModel
@@ -367,7 +368,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
 
     fun launch(app: AppInfo) {
         if (!repo.isAppAvailable(app)) {
-            toast("App no longer installed")
+            toast(R.string.app_no_longer_installed)
             debouncedReload()
             return
         }
@@ -428,7 +429,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     // -- Home/Dock Context Menu --
 
     fun showHomeMenu(cell: GridCell, source: DragSource, index: Int) {
-        if (settings.value.homeLocked) { toast("Home screen is locked"); return }
+        if (settings.value.homeLocked) { toast(R.string.home_screen_locked); return }
         val info = if (cell is GridCell.App) resolveApp(cell.appKey) else null
         _homeMenu.value = HomeMenuState(cell, source, index, info)
         // Load shortcuts for the app
@@ -448,7 +449,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         _homeMenu.value = null; _shortcuts.value = emptyList()
     }}
 
-    fun enterEditMode() { if (settings.value.homeLocked) { toast("Home screen is locked"); return }; _homeMenu.value = null; _shortcuts.value = emptyList(); _editMode.value = true }
+    fun enterEditMode() { if (settings.value.homeLocked) { toast(R.string.home_screen_locked); return }; _homeMenu.value = null; _shortcuts.value = emptyList(); _editMode.value = true }
     fun exitEditMode() { _editMode.value = false }
 
     // -- App Shortcuts --
@@ -471,7 +472,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     fun setIconPack(packageName: String) { viewModelScope.launch { pref(LauncherPrefs.ICON_PACK, packageName); applyIconPack(packageName) } }
 
     fun clearIconPack() { viewModelScope.launch {
-        pref(LauncherPrefs.ICON_PACK, ""); iconPackManager.clearPack(); loadAppsInternal(); toast("System icons restored")
+        pref(LauncherPrefs.ICON_PACK, ""); iconPackManager.clearPack(); loadAppsInternal(); toast(R.string.system_icons_restored)
     }}
 
     fun refreshIconPacks() { discoverIconPacks() }
@@ -487,11 +488,11 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         _iconPackLoading.value = true
         try {
             val ok = iconPackManager.loadPack(packageName)
-            if (ok) { loadAppsInternal(); toast("Icon pack applied (${iconPackManager.mappedCount()} icons)") }
-            else toast("Failed to load icon pack")
+            if (ok) { loadAppsInternal(); toast(R.string.icon_pack_applied, iconPackManager.mappedCount()) }
+            else toast(R.string.failed_to_load_icon_pack)
         } catch (e: Exception) {
             Log.e(TAG, "Icon pack apply failed", e)
-            toast("Icon pack error")
+            toast(R.string.icon_pack_error)
         }
         _iconPackLoading.value = false
     }
@@ -508,7 +509,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
                 GestureAction.SETTINGS -> openSettings()
                 GestureAction.KILL_APPS -> killBackgroundApps()
                 GestureAction.FLASHLIGHT -> toggleFlashlight()
-                GestureAction.EDIT_MODE -> { if (!settings.value.homeLocked) { _editMode.value = !_editMode.value } else toast("Home screen is locked") }
+                GestureAction.EDIT_MODE -> { if (!settings.value.homeLocked) { _editMode.value = !_editMode.value } else toast(R.string.home_screen_locked) }
                 GestureAction.RECENT_APP -> {
                     val hidden = _hiddenApps.value
                     val lastUsed = _appUsage.value.entries
@@ -529,7 +530,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
                         else -> ""
                     }
                     if (appKey.isNotBlank()) resolveApp(appKey)?.let { launch(it) }
-                    else toast("No app configured for this gesture")
+                    else toast(R.string.no_app_configured_for_gesture)
                 }
             }
         } catch (e: Exception) {
@@ -544,7 +545,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
             val cameraId = cm.cameraIdList.firstOrNull() ?: return
             flashlightOn = !flashlightOn
             cm.setTorchMode(cameraId, flashlightOn)
-            toast(if (flashlightOn) "Flashlight on" else "Flashlight off")
+            toast(if (flashlightOn) R.string.flashlight_on else R.string.flashlight_off)
         } catch (e: Exception) {
             Log.e(TAG, "toggleFlashlight failed", e)
             flashlightOn = false
@@ -554,7 +555,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     fun lockScreen() { runCatching {
         val dpm = ctx.getSystemService(Context.DEVICE_POLICY_SERVICE) as? DevicePolicyManager ?: return
         if (dpm.isAdminActive(ComponentName(ctx, AdminReceiver::class.java))) dpm.lockNow()
-        else toast("Enable Device Admin in Settings to lock screen")
+        else toast(R.string.enable_device_admin_to_lock)
     }.onFailure { Log.e(TAG, "lockScreen failed", it) }}
 
     fun isDeviceAdminEnabled(): Boolean = runCatching {
@@ -564,7 +565,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     fun requestDeviceAdmin() { runCatching {
         ctx.startActivity(Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN).apply {
             putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, ComponentName(ctx, AdminReceiver::class.java))
-            putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION, "Required for double-tap to lock screen.")
+            putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION, ctx.getString(R.string.device_admin_lock_explanation))
             flags = Intent.FLAG_ACTIVITY_NEW_TASK
         })
     }.onFailure { Log.e(TAG, "requestDeviceAdmin failed", it) }}
@@ -586,7 +587,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
             val am = ctx.getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager ?: return
             val pkgs = am.runningAppProcesses?.flatMap { it.pkgList?.toList() ?: emptyList() }?.distinct() ?: emptyList()
             var n = 0; pkgs.forEach { if (it != ctx.packageName) { am.killBackgroundProcesses(it); n++ } }
-            toast("Cleared $n background apps")
+            toast(R.string.cleared_background_apps, n)
         } catch (e: Exception) {
             Log.e(TAG, "killBackgroundApps failed", e)
         }
@@ -635,35 +636,35 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     fun copyDiagnosticReport(fileName: String? = null) {
         val text = if (fileName == null) DiagnosticsStore.buildSupportBundle(ctx) else DiagnosticsStore.readReport(ctx, fileName)
         if (text.isNullOrBlank()) {
-            toast("No diagnostics available")
+            toast(R.string.no_diagnostics_available)
             return
         }
         runCatching {
             val clipboard = ctx.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-            clipboard.setPrimaryClip(ClipData.newPlainText("Lawnchair Lite Diagnostics", text))
-            toast("Diagnostics copied")
+            clipboard.setPrimaryClip(ClipData.newPlainText(ctx.getString(R.string.diagnostics_clip_label), text))
+            toast(R.string.diagnostics_copied)
         }.onFailure { Log.e(TAG, "copyDiagnosticReport failed", it) }
     }
 
     fun shareDiagnosticReport(fileName: String? = null) {
         val text = if (fileName == null) DiagnosticsStore.buildSupportBundle(ctx) else DiagnosticsStore.readReport(ctx, fileName)
         if (text.isNullOrBlank()) {
-            toast("No diagnostics available")
+            toast(R.string.no_diagnostics_available)
             return
         }
         runCatching {
             ctx.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply {
                 type = "text/plain"
-                putExtra(Intent.EXTRA_SUBJECT, "Lawnchair Lite diagnostics")
+                putExtra(Intent.EXTRA_SUBJECT, ctx.getString(R.string.diagnostics_share_subject))
                 putExtra(Intent.EXTRA_TEXT, text)
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK
-            }, "Share diagnostics").apply { flags = Intent.FLAG_ACTIVITY_NEW_TASK })
+            }, ctx.getString(R.string.share_diagnostics)).apply { flags = Intent.FLAG_ACTIVITY_NEW_TASK })
         }.onFailure { Log.e(TAG, "shareDiagnosticReport failed", it) }
     }
 
     fun deleteDiagnosticReport(fileName: String) {
-        if (DiagnosticsStore.deleteReport(ctx, fileName)) toast("Diagnostic report deleted")
-        else toast("Delete failed")
+        if (DiagnosticsStore.deleteReport(ctx, fileName)) toast(R.string.diagnostic_report_deleted)
+        else toast(R.string.delete_failed)
     }
 
     // -- Auto-Place New Apps --
@@ -691,7 +692,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
 
     // -- Hidden Apps --
 
-    fun hideApp(key: String) { viewModelScope.launch { val u = _hiddenApps.value + key; _hiddenApps.value = u; prefs.saveHidden(u); toast("Hidden from drawer"); _drawerMenuApp.value = null; _shortcuts.value = emptyList() } }
+    fun hideApp(key: String) { viewModelScope.launch { val u = _hiddenApps.value + key; _hiddenApps.value = u; prefs.saveHidden(u); toast(R.string.hidden_from_drawer); _drawerMenuApp.value = null; _shortcuts.value = emptyList() } }
     fun unhideApp(key: String) { viewModelScope.launch { val u = _hiddenApps.value - key; _hiddenApps.value = u; prefs.saveHidden(u) } }
 
     // -- Page Helpers --
@@ -703,14 +704,14 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         val grid = _homeGrid.value.toMutableList()
         grid.addAll(List(ps) { null })
         _homeGrid.value = grid; prefs.saveHome(grid)
-        toast("Page added")
+        toast(R.string.page_added)
     }}
     fun removePage(pageIndex: Int) { viewModelScope.launch {
         val ps = pageSize(); val np = numPages()
-        if (np <= 1) { toast("Can't remove the last page"); return@launch }
+        if (np <= 1) { toast(R.string.cant_remove_last_page); return@launch }
         val start = pageIndex * ps; val end = (start + ps).coerceAtMost(_homeGrid.value.size)
         val pageSlice = _homeGrid.value.subList(start, end)
-        if (pageSlice.any { it != null }) { toast("Page is not empty — clear it first"); return@launch }
+        if (pageSlice.any { it != null }) { toast(R.string.page_not_empty_clear_first); return@launch }
         val grid = _homeGrid.value.toMutableList()
         grid.subList(start, end).clear()
         _homeGrid.value = grid; prefs.saveHome(grid)
@@ -719,7 +720,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
             when { w.page == pageIndex -> null; w.page > pageIndex -> w.copy(page = w.page - 1); else -> w }
         }
         _widgets.value = updated; prefs.saveWidgets(updated)
-        toast("Page removed")
+        toast(R.string.page_removed)
     }}
 
     private fun padGrid(grid: List<GridCell?>, ps: Int): List<GridCell?> {
@@ -836,23 +837,23 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         if (!added) favorites.remove(app.key)
         _favoriteApps.value = favorites
         prefs.saveFavoriteApps(favorites)
-        toast(if (added) "Added to favorites" else "Removed from favorites")
+        toast(if (added) R.string.added_to_favorites else R.string.removed_from_favorites)
         _drawerMenuApp.value = null; _shortcuts.value = emptyList()
     }}
 
     fun pinToHome(app: AppInfo) { viewModelScope.launch {
         val ps = pageSize(); val grid = padGrid(_homeGrid.value, ps).toMutableList()
-        if (grid.any { it is GridCell.App && it.appKey == app.key }) { toast("Already on home"); _drawerMenuApp.value = null; _shortcuts.value = emptyList(); return@launch }
+        if (grid.any { it is GridCell.App && it.appKey == app.key }) { toast(R.string.already_on_home); _drawerMenuApp.value = null; _shortcuts.value = emptyList(); return@launch }
         var i = grid.indexOfFirst { it == null }; if (i < 0) { grid.addAll(List(ps) { null }); i = grid.indexOfFirst { it == null } }
-        if (i >= 0) { grid[i] = GridCell.App(app.key); _homeGrid.value = grid; prefs.saveHome(grid); toast("Added to home") }
+        if (i >= 0) { grid[i] = GridCell.App(app.key); _homeGrid.value = grid; prefs.saveHome(grid); toast(R.string.added_to_home) }
         _drawerMenuApp.value = null; _shortcuts.value = emptyList()
     }}
 
     fun pinToDock(app: AppInfo) { viewModelScope.launch {
         val dc = settings.value.dockCount; val dock = _dockGrid.value.toMutableList(); while (dock.size < dc) dock.add(null)
-        if (dock.any { it is GridCell.App && it.appKey == app.key }) { toast("Already in dock"); _drawerMenuApp.value = null; _shortcuts.value = emptyList(); return@launch }
-        val i = dock.indexOfFirst { it == null }; if (i < 0) { toast("Dock full"); _drawerMenuApp.value = null; _shortcuts.value = emptyList(); return@launch }
-        dock[i] = GridCell.App(app.key); _dockGrid.value = dock; prefs.saveDock(dock); toast("Added to dock"); _drawerMenuApp.value = null; _shortcuts.value = emptyList()
+        if (dock.any { it is GridCell.App && it.appKey == app.key }) { toast(R.string.already_in_dock); _drawerMenuApp.value = null; _shortcuts.value = emptyList(); return@launch }
+        val i = dock.indexOfFirst { it == null }; if (i < 0) { toast(R.string.dock_full); _drawerMenuApp.value = null; _shortcuts.value = emptyList(); return@launch }
+        dock[i] = GridCell.App(app.key); _dockGrid.value = dock; prefs.saveDock(dock); toast(R.string.added_to_dock); _drawerMenuApp.value = null; _shortcuts.value = emptyList()
     }}
 
     // -- Drag and Drop --
@@ -1165,15 +1166,15 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     private fun weatherCondition(code: Int): String = when (code) {
-        0 -> "Clear"
-        1, 2 -> "Partly cloudy"
-        3 -> "Cloudy"
-        45, 48 -> "Fog"
-        51, 53, 55, 56, 57 -> "Drizzle"
-        61, 63, 65, 66, 67, 80, 81, 82 -> "Rain"
-        71, 73, 75, 77, 85, 86 -> "Snow"
-        95, 96, 99 -> "Storm"
-        else -> "Weather"
+        0 -> ctx.getString(R.string.weather_clear)
+        1, 2 -> ctx.getString(R.string.weather_partly_cloudy)
+        3 -> ctx.getString(R.string.weather_cloudy)
+        45, 48 -> ctx.getString(R.string.weather_fog)
+        51, 53, 55, 56, 57 -> ctx.getString(R.string.weather_drizzle)
+        61, 63, 65, 66, 67, 80, 81, 82 -> ctx.getString(R.string.weather_rain)
+        71, 73, 75, 77, 85, 86 -> ctx.getString(R.string.weather_snow)
+        95, 96, 99 -> ctx.getString(R.string.weather_storm)
+        else -> ctx.getString(R.string.weather_generic)
     }
 
     fun hasCalendarPermission(): Boolean =
@@ -1213,7 +1214,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             _appUsage.value = emptyMap()
             prefs.saveAppUsage(emptyMap())
-            toast("Recents cleared")
+            toast(R.string.recents_cleared)
         }
     }
 
@@ -1238,25 +1239,25 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     fun setGridPaddingV(v: Int) = pref(LauncherPrefs.GRID_PADDING_V, v.coerceIn(0, 24))
     fun setHideStatusBar(v: Boolean) = pref(LauncherPrefs.HIDE_STATUS_BAR, v)
     fun setDrawerColumns(c: Int) = pref(LauncherPrefs.DRAWER_COLUMNS, c.coerceIn(0, 6))
-    fun setHomeLocked(v: Boolean) { pref(LauncherPrefs.HOME_LOCKED, v); if (v) { _editMode.value = false }; toast(if (v) "Home screen locked" else "Home screen unlocked") }
+    fun setHomeLocked(v: Boolean) { pref(LauncherPrefs.HOME_LOCKED, v); if (v) { _editMode.value = false }; toast(if (v) R.string.home_screen_locked_toast else R.string.home_screen_unlocked_toast) }
     fun setIconShadow(v: Boolean) = pref(LauncherPrefs.ICON_SHADOW, v)
     fun setAccentOverride(hex: String) = pref(LauncherPrefs.ACCENT_OVERRIDE, hex)
     fun setDrawerCategories(v: Boolean) = pref(LauncherPrefs.DRAWER_CATEGORIES, v)
     fun addCategoryRule(type: CategoryRuleType, pattern: String, category: DrawerCategory) {
         val cleanPattern = pattern.trim().take(120)
         if (cleanPattern.isBlank() || category == DrawerCategory.ALL) {
-            toast("Choose a pattern and category")
+            toast(R.string.choose_pattern_and_category)
             return
         }
         if (type == CategoryRuleType.APP_NAME_REGEX && runCatching { Regex(cleanPattern) }.isFailure) {
-            toast("Invalid name regex")
+            toast(R.string.invalid_name_regex)
             return
         }
         viewModelScope.launch {
             val rules = (settings.value.categoryRules + AppCategoryRule(type, cleanPattern, category)).take(40)
             prefs.saveCategoryRules(rules)
             pref(LauncherPrefs.DRAWER_CATEGORIES, true)
-            toast("Category rule added")
+            toast(R.string.category_rule_added)
         }
     }
     fun removeCategoryRule(index: Int) {
@@ -1354,7 +1355,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
                 prefs.resetToDefaults()
                 iconPackManager.clearPack()
                 loadAppsInternal()
-                toast("Settings reset to defaults")
+                toast(R.string.settings_reset_to_defaults)
             } catch (e: Exception) {
                 Log.e(TAG, "resetAllSettings failed", e)
             }
@@ -1446,7 +1447,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     suspend fun importBackup(json: String): Boolean {
         val ok = prefs.importBackup(json)
         if (ok) {
-            toast("Layout restored")
+            toast(R.string.layout_restored)
             try {
                 val restored = prefs.settings.first()
                 if (restored.iconPack.isNotBlank()) applyIconPack(restored.iconPack) else loadAppsInternal()
@@ -1454,7 +1455,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
                 Log.e(TAG, "Post-restore reload failed", e)
                 loadAppsInternal()
             }
-        } else toast("Restore failed")
+        } else toast(R.string.restore_failed)
         return ok
     }
 
@@ -1476,6 +1477,10 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         } catch (e: Exception) {
             Log.w(TAG, "Vibration failed", e)
         }
+    }
+
+    private fun toast(@StringRes messageRes: Int, vararg args: Any) {
+        try { Toast.makeText(ctx, ctx.getString(messageRes, *args), Toast.LENGTH_SHORT).show() } catch (_: Exception) {}
     }
 
     private fun toast(msg: String) { try { Toast.makeText(ctx, msg, Toast.LENGTH_SHORT).show() } catch (_: Exception) {} }
@@ -1511,13 +1516,13 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         discardPendingWidget()
         val widgetId = runCatching { widgetHost.allocateAppWidgetId() }.getOrElse {
             Log.e(TAG, "allocateWidgetId failed", it)
-            toast("Couldn't start widget setup")
+            toast(R.string.couldnt_start_widget_setup)
             return null
         }
         val span = findFirstEmptySpan(page, spanX, spanY)
         if (span == null) {
             runCatching { widgetHost.deleteAppWidgetId(widgetId) }
-            toast("No room on this page - clear some cells first")
+            toast(R.string.no_room_on_page)
             return null
         }
         return PendingWidgetPlacement(widgetId, providerInfo, page, span.first, span.second, spanX, spanY)
@@ -1568,12 +1573,12 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         )
     }
 
-    fun cancelPendingWidget(message: String = "Widget setup canceled") {
+    fun cancelPendingWidget(@StringRes messageRes: Int = R.string.widget_setup_canceled) {
         val pending = _pendingWidgetPlacement.value ?: return
         _pendingWidgetPlacement.value = null
         runCatching { widgetHost.deleteAppWidgetId(pending.appWidgetId) }
             .onFailure { Log.w(TAG, "delete pending widget id failed: ${pending.appWidgetId}", it) }
-        if (message.isNotBlank()) toast(message)
+        toast(messageRes)
     }
 
     private fun discardPendingWidget() {
@@ -1597,7 +1602,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         }
         _homeGrid.value = grid; prefs.saveHome(grid)
         _widgetPickerOpen.value = false
-        toast("Widget added")
+        toast(R.string.widget_added)
     }}
 
     fun removeWidget(appWidgetId: Int) { viewModelScope.launch {
@@ -1608,7 +1613,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         val grid = _homeGrid.value.toMutableList()
         for (i in grid.indices) { if (grid[i] is GridCell.Widget && (grid[i] as GridCell.Widget).widgetId == appWidgetId) grid[i] = null }
         _homeGrid.value = trimGrid(grid, pageSize()); prefs.saveHome(_homeGrid.value)
-        toast("Widget removed")
+        toast(R.string.widget_removed)
     }}
 
     fun widgetForId(id: Int): WidgetInfo? = _widgets.value.find { it.appWidgetId == id }

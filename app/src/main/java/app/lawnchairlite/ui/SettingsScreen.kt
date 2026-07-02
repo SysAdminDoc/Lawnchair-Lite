@@ -31,6 +31,7 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
@@ -41,6 +42,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import app.lawnchairlite.R
 import app.lawnchairlite.LauncherViewModel
 import app.lawnchairlite.data.*
 import com.google.accompanist.drawablepainter.rememberDrawablePainter
@@ -78,9 +80,9 @@ fun SettingsPanel(
             runCatching {
                 context.contentResolver.openOutputStream(uri)?.use { it.write(json.toByteArray()) }
             }.onSuccess {
-                android.widget.Toast.makeText(context, "Backup exported", android.widget.Toast.LENGTH_SHORT).show()
+                android.widget.Toast.makeText(context, context.getString(R.string.backup_exported), android.widget.Toast.LENGTH_SHORT).show()
             }.onFailure {
-                android.widget.Toast.makeText(context, "Export failed", android.widget.Toast.LENGTH_SHORT).show()
+                android.widget.Toast.makeText(context, context.getString(R.string.export_failed), android.widget.Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -89,12 +91,12 @@ fun SettingsPanel(
         scope.launch {
             val json = runCatching { context.contentResolver.openInputStream(uri)?.bufferedReader()?.readText() }.getOrNull()
             if (json == null) {
-                android.widget.Toast.makeText(context, "Import failed — invalid file", android.widget.Toast.LENGTH_SHORT).show()
+                android.widget.Toast.makeText(context, context.getString(R.string.import_failed_invalid_file), android.widget.Toast.LENGTH_SHORT).show()
                 return@launch
             }
             val preview = vm.previewBackup(json)
             if (!preview.canImport) {
-                android.widget.Toast.makeText(context, preview.error ?: "Restore failed", android.widget.Toast.LENGTH_SHORT).show()
+                android.widget.Toast.makeText(context, preview.error ?: context.getString(R.string.restore_failed), android.widget.Toast.LENGTH_SHORT).show()
                 restorePreview = preview
                 pendingRestoreJson = null
                 return@launch
@@ -186,8 +188,8 @@ fun SettingsPanel(
                 Box(Modifier.width(48.dp).height(4.dp).clip(RoundedCornerShape(2.dp)).background(colors.textSecondary.copy(alpha = 0.5f)))
             }
             Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = onClose) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = colors.textSecondary, modifier = Modifier.size(22.dp)) }
-                Spacer(Modifier.weight(1f)); Text("Settings", color = colors.text, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+                IconButton(onClick = onClose) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back), tint = colors.textSecondary, modifier = Modifier.size(22.dp)) }
+                Spacer(Modifier.weight(1f)); Text(stringResource(R.string.settings), color = colors.text, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
                 Spacer(Modifier.weight(1f)); Spacer(Modifier.size(48.dp))
             }
             Divider(color = colors.border, thickness = 0.5.dp)
@@ -197,9 +199,9 @@ fun SettingsPanel(
                 TextField(
                     value = settingsSearch, onValueChange = { settingsSearch = it },
                     modifier = Modifier.weight(1f).clip(RoundedCornerShape(22.dp)),
-                    placeholder = { Text("Search settings\u2026", color = colors.textSecondary, fontSize = 13.sp) },
+                    placeholder = { Text(stringResource(R.string.settings_search_hint), color = colors.textSecondary, fontSize = 13.sp) },
                     leadingIcon = { Icon(Icons.Default.Search, null, tint = colors.textSecondary, modifier = Modifier.size(16.dp)) },
-                    trailingIcon = if (settingsSearch.isNotBlank()) {{ IconButton(onClick = { settingsSearch = "" }, modifier = Modifier.size(28.dp)) { Icon(Icons.Default.Close, "Clear", tint = colors.textSecondary, modifier = Modifier.size(14.dp)) } }} else null,
+                    trailingIcon = if (settingsSearch.isNotBlank()) {{ IconButton(onClick = { settingsSearch = "" }, modifier = Modifier.size(28.dp)) { Icon(Icons.Default.Close, stringResource(R.string.clear), tint = colors.textSecondary, modifier = Modifier.size(14.dp)) } }} else null,
                     colors = TextFieldDefaults.colors(focusedTextColor = colors.text, unfocusedTextColor = colors.text, cursorColor = colors.accent, focusedContainerColor = colors.card, unfocusedContainerColor = colors.card, focusedIndicatorColor = Color.Transparent, unfocusedIndicatorColor = Color.Transparent),
                     singleLine = true, textStyle = androidx.compose.ui.text.TextStyle(fontSize = 13.sp),
                 )
@@ -209,10 +211,10 @@ fun SettingsPanel(
 
                 // ── THEME & WALLPAPER ──
                 if (showTheme) {
-                SectionHeader("Theme & Wallpaper", searching || themeExpanded, colors, summary = if (!searching && !themeExpanded) settings.themeMode.label else null) { themeExpanded = !themeExpanded }
+                SectionHeader(stringResource(R.string.theme_wallpaper), searching || themeExpanded, colors, summary = if (!searching && !themeExpanded) settings.themeMode.localizedLabel() else null) { themeExpanded = !themeExpanded }
                 AnimatedVisibility(searching || themeExpanded) {
                     Column {
-                        Lbl("Theme", colors)
+                        Lbl(stringResource(R.string.theme), colors)
                         Row(
                             modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -230,15 +232,15 @@ fun SettingsPanel(
                                         listOf(tc.background, tc.accent, tc.card, tc.text).forEach { Box(Modifier.size(10.dp).clip(CircleShape).background(it).border(0.5.dp, tc.border, CircleShape)) }
                                     }
                                     Spacer(Modifier.height(4.dp))
-                                    Text(mode.label, color = if (sel) tc.accent else colors.textSecondary, fontSize = 10.sp, fontWeight = if (sel) FontWeight.Bold else FontWeight.Normal)
+                                    Text(mode.localizedLabel(), color = if (sel) tc.accent else colors.textSecondary, fontSize = 10.sp, fontWeight = if (sel) FontWeight.Bold else FontWeight.Normal)
                                 }
                             }
                         }
 
-                        Lbl("Wallpaper", colors)
-                        ActionBtn("Change Wallpaper", "System Picker", colors) { vm.openWallpaperPicker() }
+                        Lbl(stringResource(R.string.wallpaper), colors)
+                        ActionBtn(stringResource(R.string.change_wallpaper), stringResource(R.string.system_picker), colors) { vm.openWallpaperPicker() }
                         Spacer(Modifier.height(10.dp))
-                        Text("Wallpaper Dim: ${settings.wallpaperDim}%", color = colors.text, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                        Text(stringResource(R.string.wallpaper_dim_format, settings.wallpaperDim), color = colors.text, fontSize = 13.sp, fontWeight = FontWeight.Medium)
                         Spacer(Modifier.height(4.dp))
                         Slider(
                             value = settings.wallpaperDim.toFloat(),
@@ -248,7 +250,7 @@ fun SettingsPanel(
                         )
 
                         // Accent Color Override
-                        Lbl("Accent Color", colors)
+                        Lbl(stringResource(R.string.accent_color), colors)
                         val presetColors = listOf("#F44336", "#E91E63", "#9C27B0", "#673AB7", "#3F51B5", "#2196F3", "#00BCD4", "#4CAF50", "#FF9800", "#FF5722", "#795548", "#607D8B")
                         Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                             // Default (theme native accent) chip
@@ -283,12 +285,12 @@ fun SettingsPanel(
                                 singleLine = true, textStyle = androidx.compose.ui.text.TextStyle(fontSize = 13.sp),
                             )
                             Spacer(Modifier.width(8.dp))
-                            Text("Apply", color = colors.accent, fontSize = 12.sp, fontWeight = FontWeight.Medium,
+                            Text(stringResource(R.string.apply), color = colors.accent, fontSize = 12.sp, fontWeight = FontWeight.Medium,
                                 modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(colors.accent.copy(alpha = 0.12f))
                                     .clickable { vm.setAccentOverride(accentInput.trim()) }.padding(horizontal = 10.dp, vertical = 6.dp))
                             if (settings.accentOverride.isNotBlank()) {
                                 Spacer(Modifier.width(6.dp))
-                                Text("Reset", color = colors.error, fontSize = 12.sp, fontWeight = FontWeight.Medium,
+                                Text(stringResource(R.string.reset), color = colors.error, fontSize = 12.sp, fontWeight = FontWeight.Medium,
                                     modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(colors.error.copy(alpha = 0.1f))
                                         .clickable { accentInput = ""; vm.setAccentOverride("") }.padding(horizontal = 10.dp, vertical = 6.dp))
                             }
@@ -300,33 +302,33 @@ fun SettingsPanel(
                 }
                 // ── ICONS & LABELS ──
                 if (showIcons) {
-                SectionHeader("Icons & Labels", searching || iconsExpanded, colors, summary = if (!searching && !iconsExpanded) "${settings.iconShape.label} · ${settings.iconSize.label}" else null) { iconsExpanded = !iconsExpanded }
+                SectionHeader(stringResource(R.string.icons_labels), searching || iconsExpanded, colors, summary = if (!searching && !iconsExpanded) stringResource(R.string.two_part_summary, settings.iconShape.localizedLabel(), settings.iconSize.localizedLabel()) else null) { iconsExpanded = !iconsExpanded }
                 AnimatedVisibility(searching || iconsExpanded) {
                     Column {
-                        Lbl("Icon Shape", colors)
-                        Chips(IconShape.entries.map { it to it.label }, settings.iconShape, colors) { vm.setShape(it) }
+                        Lbl(stringResource(R.string.icon_shape), colors)
+                        Chips(IconShape.entries.map { it to it.localizedLabel() }, settings.iconShape, colors) { vm.setShape(it) }
                         Spacer(Modifier.height(10.dp))
-                        Lbl("Icon Size", colors)
-                        Chips(IconSize.entries.map { it to it.label }, settings.iconSize, colors) { vm.setIconSize(it) }
+                        Lbl(stringResource(R.string.icon_size), colors)
+                        Chips(IconSize.entries.map { it to it.localizedLabel() }, settings.iconSize, colors) { vm.setIconSize(it) }
 
-                        Lbl("Icon Pack", colors)
+                        Lbl(stringResource(R.string.icon_pack), colors)
                         IconPackSection(settings, availablePacks, iconPackLoading, colors, vm)
                         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
                             Spacer(Modifier.height(6.dp))
-                            Tog("Themed Icons (Android 13+)", settings.themedIcons, colors) { vm.setThemedIcons(it) }
+                            Tog(stringResource(R.string.themed_icons_android_13), settings.themedIcons, colors) { vm.setThemedIcons(it) }
                         }
 
-                        Lbl("Icon Labels", colors)
-                        Chips(LabelStyle.entries.map { it to it.label }, settings.labelStyle, colors) { vm.setLabelStyle(it) }
+                        Lbl(stringResource(R.string.icon_labels), colors)
+                        Chips(LabelStyle.entries.map { it to it.localizedLabel() }, settings.labelStyle, colors) { vm.setLabelStyle(it) }
                         Spacer(Modifier.height(10.dp))
-                        Lbl("Label Weight", colors)
-                        Chips(LabelWeight.entries.map { it to it.label }, settings.labelWeight, colors) { vm.setLabelWeight(it) }
+                        Lbl(stringResource(R.string.label_weight), colors)
+                        Chips(LabelWeight.entries.map { it to it.localizedLabel() }, settings.labelWeight, colors) { vm.setLabelWeight(it) }
                         Spacer(Modifier.height(10.dp))
-                        Lbl("Label Size", colors)
-                        Chips(LabelSize.entries.map { it to it.label }, settings.labelSize, colors) { vm.setLabelSize(it) }
+                        Lbl(stringResource(R.string.label_size), colors)
+                        Chips(LabelSize.entries.map { it to it.localizedLabel() }, settings.labelSize, colors) { vm.setLabelSize(it) }
 
-                        Tog("Icon Shadow", settings.iconShadow, colors) { vm.setIconShadow(it) }
-                        Tog("Grayscale Icons", settings.grayscaleIcons, colors) { vm.setGrayscaleIcons(it) }
+                        Tog(stringResource(R.string.icon_shadow), settings.iconShadow, colors) { vm.setIconShadow(it) }
+                        Tog(stringResource(R.string.grayscale_icons), settings.grayscaleIcons, colors) { vm.setGrayscaleIcons(it) }
                         Spacer(Modifier.height(8.dp))
                     }
                 }
@@ -334,24 +336,24 @@ fun SettingsPanel(
                 }
                 // ── GRID & LAYOUT ──
                 if (showGrid) {
-                SectionHeader("Grid & Layout", searching || gridExpanded, colors, summary = if (!searching && !gridExpanded) "${settings.gridColumns}x${settings.gridRows} · ${settings.pageTransition.label}" else null) { gridExpanded = !gridExpanded }
+                SectionHeader(stringResource(R.string.grid_layout), searching || gridExpanded, colors, summary = if (!searching && !gridExpanded) stringResource(R.string.grid_summary, settings.gridColumns, settings.gridRows, settings.pageTransition.localizedLabel()) else null) { gridExpanded = !gridExpanded }
                 AnimatedVisibility(searching || gridExpanded) {
                     Column {
-                        Lbl("Grid Columns", colors)
+                        Lbl(stringResource(R.string.grid_columns), colors)
                         Chips((3..8).map { it to it.toString() }, settings.gridColumns, colors) { vm.setGridCols(it) }
                         Spacer(Modifier.height(10.dp))
-                        Lbl("Grid Rows", colors)
+                        Lbl(stringResource(R.string.grid_rows), colors)
                         Chips((3..10).map { it to it.toString() }, settings.gridRows, colors) { vm.setGridRows(it) }
                         Spacer(Modifier.height(10.dp))
-                        Lbl("Grid Padding", colors)
-                        Text("Horizontal: ${settings.gridPaddingH}dp", color = colors.text, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                        Lbl(stringResource(R.string.grid_padding), colors)
+                        Text(stringResource(R.string.grid_padding_horizontal, settings.gridPaddingH), color = colors.text, fontSize = 13.sp, fontWeight = FontWeight.Medium)
                         Slider(
                             value = settings.gridPaddingH.toFloat(),
                             onValueChange = { vm.setGridPaddingH(it.toInt()) },
                             valueRange = 0f..24f, steps = 23,
                             colors = SliderDefaults.colors(thumbColor = colors.accent, activeTrackColor = colors.accent, inactiveTrackColor = colors.card),
                         )
-                        Text("Vertical: ${settings.gridPaddingV}dp", color = colors.text, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                        Text(stringResource(R.string.grid_padding_vertical, settings.gridPaddingV), color = colors.text, fontSize = 13.sp, fontWeight = FontWeight.Medium)
                         Slider(
                             value = settings.gridPaddingV.toFloat(),
                             onValueChange = { vm.setGridPaddingV(it.toInt()) },
@@ -359,16 +361,16 @@ fun SettingsPanel(
                             colors = SliderDefaults.colors(thumbColor = colors.accent, activeTrackColor = colors.accent, inactiveTrackColor = colors.card),
                         )
 
-                        Lbl("Page Transition", colors)
-                        Chips(PageTransition.entries.map { it to it.label }, settings.pageTransition, colors) { vm.setPageTransition(it) }
+                        Lbl(stringResource(R.string.page_transition), colors)
+                        Chips(PageTransition.entries.map { it to it.localizedLabel() }, settings.pageTransition, colors) { vm.setPageTransition(it) }
                         Spacer(Modifier.height(10.dp))
-                        Lbl("Page Indicator", colors)
-                        Chips(PageIndicatorStyle.entries.map { it to it.label }, settings.pageIndicatorStyle, colors) { vm.setPageIndicatorStyle(it) }
+                        Lbl(stringResource(R.string.page_indicator), colors)
+                        Chips(PageIndicatorStyle.entries.map { it to it.localizedLabel() }, settings.pageIndicatorStyle, colors) { vm.setPageIndicatorStyle(it) }
                         Spacer(Modifier.height(10.dp))
-                        Lbl("Badge Style", colors)
-                        Chips(BadgeStyle.entries.map { it to it.label }, settings.badgeStyle, colors) { vm.setBadgeStyle(it) }
+                        Lbl(stringResource(R.string.badge_style), colors)
+                        Chips(BadgeStyle.entries.map { it to it.localizedLabel() }, settings.badgeStyle, colors) { vm.setBadgeStyle(it) }
                         Spacer(Modifier.height(10.dp))
-                        Lbl("Folder Columns", colors)
+                        Lbl(stringResource(R.string.folder_columns), colors)
                         Chips((3..5).map { it to it.toString() }, settings.folderColumns, colors) { vm.setFolderColumns(it) }
                         Spacer(Modifier.height(8.dp))
                     }
@@ -377,33 +379,33 @@ fun SettingsPanel(
                 }
                 // ── DRAWER ──
                 if (showDrawer) {
-                SectionHeader("Drawer", searching || drawerExpanded, colors, summary = if (!searching && !drawerExpanded) "${settings.drawerSort.label} · ${settings.searchEngine.label}" else null) { drawerExpanded = !drawerExpanded }
+                SectionHeader(stringResource(R.string.drawer), searching || drawerExpanded, colors, summary = if (!searching && !drawerExpanded) stringResource(R.string.two_part_summary, settings.drawerSort.localizedLabel(), settings.searchEngine.localizedLabel()) else null) { drawerExpanded = !drawerExpanded }
                 AnimatedVisibility(searching || drawerExpanded) {
                     Column {
-                        Lbl("Drawer Sort", colors)
-                        Chips(DrawerSort.entries.map { it to it.label }, settings.drawerSort, colors) { vm.setDrawerSort(it) }
+                        Lbl(stringResource(R.string.drawer_sort), colors)
+                        Chips(DrawerSort.entries.map { it to it.localizedLabel() }, settings.drawerSort, colors) { vm.setDrawerSort(it) }
                         Spacer(Modifier.height(10.dp))
-                        Lbl("Drawer Columns", colors)
-                        Chips((0..6).map { it to if (it == 0) "Auto" else it.toString() }, settings.drawerColumns, colors) { vm.setDrawerColumns(it) }
+                        Lbl(stringResource(R.string.drawer_columns), colors)
+                        Chips((0..6).map { it to if (it == 0) stringResource(R.string.auto) else it.toString() }, settings.drawerColumns, colors) { vm.setDrawerColumns(it) }
                         Spacer(Modifier.height(10.dp))
-                        Lbl("Drawer Background", colors)
-                        Text("Opacity: ${settings.drawerOpacity}%", color = colors.text, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                        Lbl(stringResource(R.string.drawer_background), colors)
+                        Text(stringResource(R.string.drawer_opacity, settings.drawerOpacity), color = colors.text, fontSize = 13.sp, fontWeight = FontWeight.Medium)
                         Slider(
                             value = settings.drawerOpacity.toFloat(),
                             onValueChange = { vm.setDrawerOpacity(it.toInt()) },
                             valueRange = 50f..100f, steps = 49,
                             colors = SliderDefaults.colors(thumbColor = colors.accent, activeTrackColor = colors.accent, inactiveTrackColor = colors.card),
                         )
-                        Tog("Drawer Categories", settings.drawerCategories, colors) { vm.setDrawerCategories(it) }
+                        Tog(stringResource(R.string.drawer_categories), settings.drawerCategories, colors) { vm.setDrawerCategories(it) }
                         if (settings.drawerCategories || settings.categoryRules.isNotEmpty()) {
                             CategoryRulesSection(settings.categoryRules, colors, vm)
                         }
-                        Tog("Drawer Section Headers", settings.drawerSectionHeaders, colors) { vm.setDrawerSectionHeaders(it) }
-                        Tog("Drawer Animation", settings.drawerAnimation, colors) { vm.setDrawerAnimation(it) }
-                        Tog("App Suggestions", settings.showSuggestions, colors) { vm.setShowSuggestions(it) }
+                        Tog(stringResource(R.string.drawer_section_headers), settings.drawerSectionHeaders, colors) { vm.setDrawerSectionHeaders(it) }
+                        Tog(stringResource(R.string.drawer_animation), settings.drawerAnimation, colors) { vm.setDrawerAnimation(it) }
+                        Tog(stringResource(R.string.app_suggestions), settings.showSuggestions, colors) { vm.setShowSuggestions(it) }
 
-                        Lbl("Search Engine", colors)
-                        Chips(SearchEngine.entries.map { it to it.label }, settings.searchEngine, colors) { vm.setSearchEngine(it) }
+                        Lbl(stringResource(R.string.search_engine), colors)
+                        Chips(SearchEngine.entries.map { it to it.localizedLabel() }, settings.searchEngine, colors) { vm.setSearchEngine(it) }
                         Spacer(Modifier.height(8.dp))
                     }
                 }
@@ -411,23 +413,23 @@ fun SettingsPanel(
                 }
                 // ── DOCK ──
                 if (showDock) {
-                val dockSummary = if (!searching && !dockExpanded) "${settings.dockCount} icons · ${settings.dockStyle.label}${if (settings.dockLabels) " · Labels" else ""}" else null
-                SectionHeader("Dock", searching || dockExpanded, colors, summary = dockSummary) { dockExpanded = !dockExpanded }
+                val dockSummary = if (!searching && !dockExpanded) stringResource(if (settings.dockLabels) R.string.dock_summary_with_labels else R.string.dock_summary, settings.dockCount, settings.dockStyle.localizedLabel()) else null
+                SectionHeader(stringResource(R.string.dock), searching || dockExpanded, colors, summary = dockSummary) { dockExpanded = !dockExpanded }
                 AnimatedVisibility(searching || dockExpanded) {
                     Column {
-                        Lbl("Dock Icons", colors)
+                        Lbl(stringResource(R.string.dock_icons), colors)
                         Chips((3..7).map { it to it.toString() }, settings.dockCount, colors) { vm.setDockCount(it) }
                         Spacer(Modifier.height(10.dp))
-                        Lbl("Dock Style", colors)
-                        Chips(DockStyle.entries.map { it to it.label }, settings.dockStyle, colors) { vm.setDockStyle(it) }
+                        Lbl(stringResource(R.string.dock_style), colors)
+                        Chips(DockStyle.entries.map { it to it.localizedLabel() }, settings.dockStyle, colors) { vm.setDockStyle(it) }
                         Spacer(Modifier.height(10.dp))
-                        Lbl("Search Bar", colors)
-                        Chips(SearchBarStyle.entries.map { it to it.label }, settings.searchBarStyle, colors) { vm.setSearchBarStyle(it) }
-                        Tog("Dock Search Bar", settings.showDockSearch, colors) { vm.setShowDockSearch(it) }
-                        Tog("Hide Dock", settings.hideDock, colors) { vm.setHideDock(it) }
-                        Tog("Dock Labels", settings.dockLabels, colors) { vm.setDockLabels(it) }
+                        Lbl(stringResource(R.string.search_bar), colors)
+                        Chips(SearchBarStyle.entries.map { it to it.localizedLabel() }, settings.searchBarStyle, colors) { vm.setSearchBarStyle(it) }
+                        Tog(stringResource(R.string.dock_search_bar), settings.showDockSearch, colors) { vm.setShowDockSearch(it) }
+                        Tog(stringResource(R.string.hide_dock), settings.hideDock, colors) { vm.setHideDock(it) }
+                        Tog(stringResource(R.string.dock_labels), settings.dockLabels, colors) { vm.setDockLabels(it) }
                         if (settings.dockLabels) {
-                            Text("Label Opacity: ${settings.dockLabelOpacity}%", color = colors.text, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                            Text(stringResource(R.string.dock_label_opacity, settings.dockLabelOpacity), color = colors.text, fontSize = 13.sp, fontWeight = FontWeight.Medium)
                             Slider(
                                 value = settings.dockLabelOpacity.toFloat(),
                                 onValueChange = { vm.setDockLabelOpacity(it.toInt()) },
@@ -442,23 +444,23 @@ fun SettingsPanel(
                 }
                 // ── GESTURES ──
                 if (showGestures) {
-                SectionHeader("Gestures", searching || gesturesExpanded, colors) { gesturesExpanded = !gesturesExpanded }
+                SectionHeader(stringResource(R.string.gestures), searching || gesturesExpanded, colors) { gesturesExpanded = !gesturesExpanded }
                 AnimatedVisibility(searching || gesturesExpanded) {
                     Column {
-                        GesturePicker("Double-Tap", settings.doubleTapAction, colors, vm = vm, gestureSource = "double_tap") { vm.setDoubleTapAction(it) }
-                        GesturePicker("Swipe Down", settings.swipeDownAction, colors, vm = vm, gestureSource = "swipe_down") { vm.setSwipeDownAction(it) }
-                        GesturePicker("Triple-Tap", settings.tripleTapAction, colors, vm = vm, gestureSource = "triple_tap") { vm.setTripleTapAction(it) }
-                        GesturePicker("Pinch In", settings.pinchAction, colors, vm = vm, gestureSource = "pinch") { vm.setPinchAction(it) }
-                        GesturePicker("Swipe Up", settings.swipeUpAction, colors, vm = vm, gestureSource = "swipe_up") { vm.setSwipeUpAction(it) }
-                        GesturePicker("Dock Handle Tap", settings.dockTapAction, colors, vm = vm, gestureSource = "dock_tap") { vm.setDockTapAction(it) }
+                        GesturePicker(stringResource(R.string.double_tap), settings.doubleTapAction, colors, vm = vm, gestureSource = "double_tap") { vm.setDoubleTapAction(it) }
+                        GesturePicker(stringResource(R.string.swipe_down), settings.swipeDownAction, colors, vm = vm, gestureSource = "swipe_down") { vm.setSwipeDownAction(it) }
+                        GesturePicker(stringResource(R.string.triple_tap), settings.tripleTapAction, colors, vm = vm, gestureSource = "triple_tap") { vm.setTripleTapAction(it) }
+                        GesturePicker(stringResource(R.string.pinch_in), settings.pinchAction, colors, vm = vm, gestureSource = "pinch") { vm.setPinchAction(it) }
+                        GesturePicker(stringResource(R.string.swipe_up), settings.swipeUpAction, colors, vm = vm, gestureSource = "swipe_up") { vm.setSwipeUpAction(it) }
+                        GesturePicker(stringResource(R.string.dock_handle_tap), settings.dockTapAction, colors, vm = vm, gestureSource = "dock_tap") { vm.setDockTapAction(it) }
 
                         val adminEnabled = remember { mutableStateOf(vm.isDeviceAdminEnabled()) }
                         if (listOf(settings.doubleTapAction, settings.swipeDownAction, settings.swipeUpAction, settings.tripleTapAction, settings.pinchAction, settings.dockTapAction).any { it == GestureAction.LOCK_SCREEN }) {
                             Spacer(Modifier.height(6.dp))
                             if (!adminEnabled.value) {
-                                ActionBtn("Enable Lock Screen", "Requires Device Admin", colors) { vm.requestDeviceAdmin(); adminEnabled.value = vm.isDeviceAdminEnabled() }
+                                ActionBtn(stringResource(R.string.enable_lock_screen), stringResource(R.string.requires_device_admin), colors) { vm.requestDeviceAdmin(); adminEnabled.value = vm.isDeviceAdminEnabled() }
                             } else {
-                                Text("Device Admin: Enabled", color = colors.accent, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                                Text(stringResource(R.string.device_admin_enabled), color = colors.accent, fontSize = 12.sp, fontWeight = FontWeight.Medium)
                             }
                         }
                         Spacer(Modifier.height(8.dp))
@@ -468,36 +470,36 @@ fun SettingsPanel(
                 }
                 // ── FEATURES ──
                 if (showFeatures) {
-                SectionHeader("Features", searching || featuresExpanded, colors) { featuresExpanded = !featuresExpanded }
+                SectionHeader(stringResource(R.string.features), searching || featuresExpanded, colors) { featuresExpanded = !featuresExpanded }
                 AnimatedVisibility(searching || featuresExpanded) {
                     Column {
-                        Tog("Smartspace", settings.showClock, colors) { vm.setShowClock(it) }
+                        Tog(stringResource(R.string.smartspace), settings.showClock, colors) { vm.setShowClock(it) }
                         if (settings.showClock) {
-                            Lbl("Clock Style", colors)
-                            Chips(ClockStyle.entries.map { it to it.label }, settings.clockStyle, colors) { vm.setClockStyle(it) }
+                            Lbl(stringResource(R.string.clock_style), colors)
+                            Chips(ClockStyle.entries.map { it to it.localizedLabel() }, settings.clockStyle, colors) { vm.setClockStyle(it) }
                         }
-                        Tog("Auto-Place New Apps", settings.autoPlaceNew, colors) { vm.setAutoPlaceNew(it) }
-                        Tog("Notification Badges", settings.showNotifBadges, colors) { vm.setShowNotifBadges(it) }
+                        Tog(stringResource(R.string.auto_place_new_apps), settings.autoPlaceNew, colors) { vm.setAutoPlaceNew(it) }
+                        Tog(stringResource(R.string.notification_badges), settings.showNotifBadges, colors) { vm.setShowNotifBadges(it) }
                         if (settings.showNotifBadges) {
                             val notifConnected = remember { mutableStateOf(vm.isNotificationAccessGranted()) }
                             if (!notifConnected.value) {
                                 Spacer(Modifier.height(4.dp))
-                                ActionBtn("Grant Notification Access", "Required for badges", colors) {
+                                ActionBtn(stringResource(R.string.grant_notification_access), stringResource(R.string.required_for_badges), colors) {
                                     vm.openNotificationAccess()
                                     notifConnected.value = vm.isNotificationAccessGranted()
                                 }
                             } else {
                                 Spacer(Modifier.height(4.dp))
-                                Text("Notification Access: Granted", color = colors.accent, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                                Text(stringResource(R.string.notification_access_granted), color = colors.accent, fontSize = 12.sp, fontWeight = FontWeight.Medium)
                             }
                             Spacer(Modifier.height(4.dp))
                         }
-                        Tog("Hide Status Bar", settings.hideStatusBar, colors) { vm.setHideStatusBar(it) }
-                        Tog("Lock Home Screen", settings.homeLocked, colors) { vm.setHomeLocked(it) }
-                        Tog("Wallpaper Parallax", settings.wallpaperParallax, colors) { vm.setWallpaperParallax(it) }
+                        Tog(stringResource(R.string.hide_status_bar), settings.hideStatusBar, colors) { vm.setHideStatusBar(it) }
+                        Tog(stringResource(R.string.lock_home_screen), settings.homeLocked, colors) { vm.setHomeLocked(it) }
+                        Tog(stringResource(R.string.wallpaper_parallax), settings.wallpaperParallax, colors) { vm.setWallpaperParallax(it) }
 
-                        Lbl("Haptic Feedback", colors)
-                        Chips(HapticLevel.entries.map { it to it.label }, settings.hapticLevel, colors) { vm.setHapticLevel(it) }
+                        Lbl(stringResource(R.string.haptic_feedback), colors)
+                        Chips(HapticLevel.entries.map { it to it.localizedLabel() }, settings.hapticLevel, colors) { vm.setHapticLevel(it) }
                         Spacer(Modifier.height(8.dp))
                     }
                 }
@@ -505,43 +507,43 @@ fun SettingsPanel(
                 }
                 // ── ADVANCED ──
                 if (showAdvanced) {
-                SectionHeader("Advanced", searching || advancedExpanded, colors) { advancedExpanded = !advancedExpanded }
+                SectionHeader(stringResource(R.string.advanced), searching || advancedExpanded, colors) { advancedExpanded = !advancedExpanded }
                 AnimatedVisibility(searching || advancedExpanded) {
                     Column {
-                        Lbl("Quick Actions", colors)
-                        ActionBtn("Kill Background Apps", "Free memory", colors) { vm.killBackgroundApps() }
+                        Lbl(stringResource(R.string.quick_actions), colors)
+                        ActionBtn(stringResource(R.string.kill_background_apps), stringResource(R.string.free_memory), colors) { vm.killBackgroundApps() }
                         Spacer(Modifier.height(8.dp))
-                        ActionBtn("Clear Search History", "Remove saved searches", colors) { vm.clearSearchHistory() }
+                        ActionBtn(stringResource(R.string.clear_search_history), stringResource(R.string.remove_saved_searches), colors) { vm.clearSearchHistory() }
                         Spacer(Modifier.height(8.dp))
                         var showResetConfirm by remember { mutableStateOf(false) }
-                        ActionBtn("Reset All Settings", "Restore defaults", colors) { showResetConfirm = true }
+                        ActionBtn(stringResource(R.string.reset_all_settings), stringResource(R.string.restore_defaults), colors) { showResetConfirm = true }
                         if (showResetConfirm) {
                             androidx.compose.ui.window.Dialog(onDismissRequest = { showResetConfirm = false }) {
                                 Column(Modifier.clip(RoundedCornerShape(20.dp)).background(colors.surface)
                                     .border(0.5.dp, colors.border, RoundedCornerShape(20.dp)).padding(24.dp)) {
-                                    Text("Reset All Settings", color = colors.text, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+                                    Text(stringResource(R.string.reset_all_settings), color = colors.text, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
                                     Spacer(Modifier.height(10.dp))
-                                    Text("This will restore all settings to defaults. Your home screen layout will be preserved.", color = colors.textSecondary, fontSize = 14.sp)
+                                    Text(stringResource(R.string.reset_all_settings_body), color = colors.textSecondary, fontSize = 14.sp)
                                     Spacer(Modifier.height(18.dp))
                                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                                        TextButton(onClick = { showResetConfirm = false }) { Text("Cancel", color = colors.textSecondary) }
+                                        TextButton(onClick = { showResetConfirm = false }) { Text(stringResource(R.string.cancel), color = colors.textSecondary) }
                                         Spacer(Modifier.width(8.dp))
                                         Button(onClick = { showResetConfirm = false; vm.resetAllSettings() },
                                             colors = ButtonDefaults.buttonColors(containerColor = colors.error),
-                                            shape = RoundedCornerShape(12.dp)) { Text("Reset", color = Color.White) }
+                                            shape = RoundedCornerShape(12.dp)) { Text(stringResource(R.string.reset), color = Color.White) }
                                     }
                                 }
                             }
                         }
 
-                        Lbl("Backup & Restore", colors)
-                        Text("Private data is excluded unless enabled below.", color = colors.textSecondary, fontSize = 12.sp, modifier = Modifier.padding(bottom = 6.dp))
-                        Tog("Include Search History", includeBackupSearchHistory, colors) { includeBackupSearchHistory = it }
-                        Tog("Include Usage & Recents", includeBackupUsage, colors) { includeBackupUsage = it }
-                        Tog("Include Hidden Apps", includeBackupHiddenApps, colors) { includeBackupHiddenApps = it }
-                        val privateSummary = if (includeBackupSearchHistory || includeBackupUsage || includeBackupHiddenApps) "With selected private data" else "Private data excluded"
+                        Lbl(stringResource(R.string.backup_restore), colors)
+                        Text(stringResource(R.string.private_data_backup_note), color = colors.textSecondary, fontSize = 12.sp, modifier = Modifier.padding(bottom = 6.dp))
+                        Tog(stringResource(R.string.include_search_history), includeBackupSearchHistory, colors) { includeBackupSearchHistory = it }
+                        Tog(stringResource(R.string.include_usage_recents), includeBackupUsage, colors) { includeBackupUsage = it }
+                        Tog(stringResource(R.string.include_hidden_apps), includeBackupHiddenApps, colors) { includeBackupHiddenApps = it }
+                        val privateSummary = stringResource(if (includeBackupSearchHistory || includeBackupUsage || includeBackupHiddenApps) R.string.with_selected_private_data else R.string.private_data_excluded)
                         Spacer(Modifier.height(8.dp))
-                        ActionBtn("Export Layout", privateSummary, colors) {
+                        ActionBtn(stringResource(R.string.export_layout), privateSummary, colors) {
                             pendingBackupOptions = BackupExportOptions(
                                 includeSearchHistory = includeBackupSearchHistory,
                                 includeAppUsage = includeBackupUsage,
@@ -550,7 +552,7 @@ fun SettingsPanel(
                             exportLauncher.launch("lawnchair-lite-backup.json")
                         }
                         Spacer(Modifier.height(8.dp))
-                        ActionBtn("Restore Layout", "Omitted private data is kept", colors) { importLauncher.launch(arrayOf("application/json", "*/*")) }
+                        ActionBtn(stringResource(R.string.restore_layout), stringResource(R.string.omitted_private_data_kept), colors) { importLauncher.launch(arrayOf("application/json", "*/*")) }
                         val preview = restorePreview
                         val restoreJson = pendingRestoreJson
                         if (preview != null) {
@@ -572,13 +574,13 @@ fun SettingsPanel(
                             )
                         }
 
-                        Lbl("Diagnostics", colors)
-                        ActionBtn("Copy Support Bundle", "${diagnosticReports.size} crash reports", colors) { vm.copyDiagnosticReport() }
+                        Lbl(stringResource(R.string.diagnostics), colors)
+                        ActionBtn(stringResource(R.string.copy_support_bundle), stringResource(R.string.crash_reports_count, diagnosticReports.size), colors) { vm.copyDiagnosticReport() }
                         Spacer(Modifier.height(8.dp))
-                        ActionBtn("Share Support Bundle", "Build, device, crash history", colors) { vm.shareDiagnosticReport() }
+                        ActionBtn(stringResource(R.string.share_support_bundle), stringResource(R.string.build_device_crash_history), colors) { vm.shareDiagnosticReport() }
                         Spacer(Modifier.height(8.dp))
                         if (diagnosticReports.isEmpty()) {
-                            Text("No saved crash reports", color = colors.textSecondary, fontSize = 12.sp, modifier = Modifier.padding(vertical = 4.dp))
+                            Text(stringResource(R.string.no_saved_crash_reports), color = colors.textSecondary, fontSize = 12.sp, modifier = Modifier.padding(vertical = 4.dp))
                         } else {
                             diagnosticReports.forEach { report ->
                                 DiagnosticReportRow(
@@ -595,8 +597,8 @@ fun SettingsPanel(
                             }
                         }
 
-                        Lbl("Permissions", colors)
-                        Text("Optional features keep working in degraded mode when access is denied.", color = colors.textSecondary, fontSize = 12.sp, modifier = Modifier.padding(bottom = 8.dp))
+                        Lbl(stringResource(R.string.permissions), colors)
+                        Text(stringResource(R.string.permissions_degraded_note), color = colors.textSecondary, fontSize = 12.sp, modifier = Modifier.padding(bottom = 8.dp))
                         key(permissionRefresh) {
                             val notificationsOk = vm.areCrashNotificationsEnabled()
                             val notificationAccessGranted = vm.isNotificationAccessGranted()
@@ -604,76 +606,76 @@ fun SettingsPanel(
                             val calendarGranted = vm.hasCalendarPermission()
                             val locationGranted = vm.hasLocationPermission()
                             PermissionStatusRow(
-                                title = "All Apps Visibility",
-                                status = "Declared",
-                                description = "Required for launcher app list, drawer search, hidden apps, categories, and gesture app binding.",
+                                title = stringResource(R.string.all_apps_visibility),
+                                status = stringResource(R.string.declared),
+                                description = stringResource(R.string.all_apps_visibility_desc),
                                 c = colors,
                             )
                             PermissionStatusRow(
-                                title = "Widget Binding",
-                                status = "System prompt",
-                                description = "Uses Android's per-widget bind flow; no protected widget-bind permission is declared.",
+                                title = stringResource(R.string.widget_binding),
+                                status = stringResource(R.string.system_prompt),
+                                description = stringResource(R.string.widget_binding_desc),
                                 c = colors,
                             )
                             PermissionStatusRow(
-                                title = "Crash Notifications",
-                                status = if (notificationsOk) "Allowed" else "Blocked",
-                                description = "Used only to surface local crash-copy reports after an uncaught exception.",
+                                title = stringResource(R.string.crash_notifications),
+                                status = stringResource(if (notificationsOk) R.string.allowed else R.string.blocked),
+                                description = stringResource(R.string.crash_notifications_desc),
                                 c = colors,
-                                actionLabel = if (notificationsOk) null else "Allow",
+                                actionLabel = if (notificationsOk) null else stringResource(R.string.allow),
                                 onAction = {
                                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
                                     else vm.openAppNotificationSettings()
                                 },
                             )
                             PermissionStatusRow(
-                                title = "Notification Badges",
-                                status = if (notificationAccessGranted) "Granted" else "Needs access",
-                                description = "Reads active notification counts through Android notification-listener settings.",
+                                title = stringResource(R.string.notification_badges),
+                                status = stringResource(if (notificationAccessGranted) R.string.granted else R.string.needs_access),
+                                description = stringResource(R.string.notification_badges_desc),
                                 c = colors,
-                                actionLabel = if (notificationAccessGranted) null else "Open",
+                                actionLabel = if (notificationAccessGranted) null else stringResource(R.string.open),
                                 onAction = { vm.openNotificationAccess() },
                             )
                             PermissionStatusRow(
-                                title = "Contacts Search",
-                                status = if (contactGranted) "Granted" else "Optional",
-                                description = "Only queried when drawer search is active; denied access hides contact results.",
+                                title = stringResource(R.string.contacts_search),
+                                status = stringResource(if (contactGranted) R.string.granted else R.string.optional),
+                                description = stringResource(R.string.contacts_search_desc),
                                 c = colors,
-                                actionLabel = if (contactGranted) null else "Grant",
+                                actionLabel = if (contactGranted) null else stringResource(R.string.grant),
                                 onAction = { contactPermissionLauncher.launch(Manifest.permission.READ_CONTACTS) },
                             )
                             PermissionStatusRow(
-                                title = "Calendar Smartspace",
-                                status = if (calendarGranted) "Granted" else "Optional",
-                                description = "Denied access keeps the calendar chip hidden and leaves the clock/weather usable.",
+                                title = stringResource(R.string.calendar_smartspace),
+                                status = stringResource(if (calendarGranted) R.string.granted else R.string.optional),
+                                description = stringResource(R.string.calendar_smartspace_desc),
                                 c = colors,
-                                actionLabel = if (calendarGranted) null else "Grant",
+                                actionLabel = if (calendarGranted) null else stringResource(R.string.grant),
                                 onAction = { calendarPermissionLauncher.launch(Manifest.permission.READ_CALENDAR) },
                             )
                             PermissionStatusRow(
-                                title = "Weather Location",
-                                status = if (locationGranted) "Granted" else "Optional",
-                                description = "Uses coarse last-known location for local weather; denied access hides weather.",
+                                title = stringResource(R.string.weather_location),
+                                status = stringResource(if (locationGranted) R.string.granted else R.string.optional),
+                                description = stringResource(R.string.weather_location_desc),
                                 c = colors,
-                                actionLabel = if (locationGranted) null else "Grant",
+                                actionLabel = if (locationGranted) null else stringResource(R.string.grant),
                                 onAction = { locationPermissionLauncher.launch(Manifest.permission.ACCESS_COARSE_LOCATION) },
                             )
                             PermissionStatusRow(
-                                title = "Quick Actions",
-                                status = "Best effort",
-                                description = "Status shade and background-process cleanup can be blocked by Android or OEM policy and fail without crashing.",
+                                title = stringResource(R.string.quick_actions),
+                                status = stringResource(R.string.best_effort),
+                                description = stringResource(R.string.quick_actions_desc),
                                 c = colors,
                             )
                         }
                         Spacer(Modifier.height(8.dp))
 
                         // Hidden apps
-                        Lbl("Hidden Apps", colors)
+                        Lbl(stringResource(R.string.hidden_apps), colors)
                         val hiddenInfos = remember(hiddenApps, allAppsRaw) { allAppsRaw.filter { it.key in hiddenApps } }
-                        if (hiddenInfos.isEmpty()) Text("No hidden apps", color = colors.textSecondary, fontSize = 13.sp, modifier = Modifier.padding(vertical = 8.dp))
+                        if (hiddenInfos.isEmpty()) Text(stringResource(R.string.no_hidden_apps), color = colors.textSecondary, fontSize = 13.sp, modifier = Modifier.padding(vertical = 8.dp))
                         else {
                             if (hiddenInfos.size > 1) {
-                                Text("Unhide All (${hiddenInfos.size})", color = colors.accent, fontSize = 12.sp, fontWeight = FontWeight.Medium,
+                                Text(stringResource(R.string.unhide_all_count, hiddenInfos.size), color = colors.accent, fontSize = 12.sp, fontWeight = FontWeight.Medium,
                                     modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(colors.accent.copy(alpha = 0.12f))
                                         .clickable { hiddenInfos.forEach { vm.unhideApp(it.key) } }.padding(horizontal = 12.dp, vertical = 6.dp))
                                 Spacer(Modifier.height(8.dp))
@@ -689,15 +691,15 @@ fun SettingsPanel(
                                         }; Spacer(Modifier.width(10.dp))
                                     }
                                     Column(Modifier.weight(1f)) { Text(app.label, color = colors.text, fontSize = 13.sp, fontWeight = FontWeight.Medium); Text(app.packageName, color = colors.textSecondary, fontSize = 10.sp) }
-                                    Icon(Icons.Default.Visibility, "Unhide", tint = colors.accent, modifier = Modifier.size(18.dp))
+                                    Icon(Icons.Default.Visibility, stringResource(R.string.unhide), tint = colors.accent, modifier = Modifier.size(18.dp))
                                 }; Spacer(Modifier.height(6.dp))
                             }
-                            Text("Tap to unhide", color = colors.textSecondary, fontSize = 10.sp, modifier = Modifier.padding(top = 2.dp))
+                            Text(stringResource(R.string.tap_to_unhide), color = colors.textSecondary, fontSize = 10.sp, modifier = Modifier.padding(top = 2.dp))
                         }
 
-                        Lbl("About", colors)
-                        Text("Lawnchair Lite v${app.lawnchairlite.BuildConfig.VERSION_NAME}", color = colors.text, fontSize = 14.sp, fontWeight = FontWeight.Medium)
-                        Text("Lightweight launcher inspired by Lawnchair/Pixel Launcher.", color = colors.textSecondary, fontSize = 12.sp, modifier = Modifier.padding(top = 2.dp, bottom = 32.dp))
+                        Lbl(stringResource(R.string.about), colors)
+                        Text(stringResource(R.string.about_version, app.lawnchairlite.BuildConfig.VERSION_NAME), color = colors.text, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                        Text(stringResource(R.string.about_body), color = colors.textSecondary, fontSize = 12.sp, modifier = Modifier.padding(top = 2.dp, bottom = 32.dp))
                     }
                 }
                 }
@@ -705,7 +707,7 @@ fun SettingsPanel(
                 // No results
                 if (searching && !showTheme && !showIcons && !showGrid && !showDrawer && !showDock && !showGestures && !showFeatures && !showAdvanced) {
                     Box(Modifier.fillMaxWidth().padding(vertical = 40.dp), Alignment.Center) {
-                        Text("No settings match \"$settingsSearch\"", color = colors.textSecondary, fontSize = 13.sp)
+                        Text(stringResource(R.string.no_settings_match, settingsSearch), color = colors.textSecondary, fontSize = 13.sp)
                     }
                 }
 
@@ -719,13 +721,16 @@ fun SettingsPanel(
 
 @Composable
 private fun SectionHeader(title: String, expanded: Boolean, c: LauncherColors, summary: String? = null, onToggle: () -> Unit) {
+    val sectionDescription = stringResource(R.string.section_content_description, title)
+    val state = stringResource(if (expanded) R.string.expanded else R.string.collapsed)
+    val iconDescription = stringResource(if (expanded) R.string.collapse else R.string.expand)
     Row(
         Modifier.fillMaxWidth()
             .padding(top = 16.dp, bottom = 4.dp)
             .clip(RoundedCornerShape(12.dp))
             .background(c.card)
             .border(0.5.dp, if (expanded) c.accent.copy(alpha = 0.3f) else c.border, RoundedCornerShape(12.dp))
-            .semantics { contentDescription = "$title section"; role = Role.Button; stateDescription = if (expanded) "Expanded" else "Collapsed" }
+            .semantics { contentDescription = sectionDescription; role = Role.Button; stateDescription = state }
             .clickable(role = Role.Button) { onToggle() }
             .padding(horizontal = 16.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -738,7 +743,7 @@ private fun SectionHeader(title: String, expanded: Boolean, c: LauncherColors, s
         }
         Icon(
             if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-            contentDescription = if (expanded) "Collapse" else "Expand",
+            contentDescription = iconDescription,
             tint = if (expanded) c.accent else c.textSecondary,
             modifier = Modifier.size(20.dp),
         )
@@ -759,9 +764,9 @@ private fun CategoryRulesSection(rules: List<AppCategoryRule>, c: LauncherColors
         CategoryRuleType.INSTALL_SOURCE -> "com.android.vending"
     }
 
-    Lbl("Category Rules", c)
+    Lbl(stringResource(R.string.category_rules), c)
     if (rules.isEmpty()) {
-        Text("Rules override automatic categories.", color = c.textSecondary, fontSize = 12.sp, modifier = Modifier.padding(bottom = 8.dp))
+        Text(stringResource(R.string.category_rules_desc), color = c.textSecondary, fontSize = 12.sp, modifier = Modifier.padding(bottom = 8.dp))
     } else {
         rules.forEachIndexed { index, rule ->
             Column(
@@ -771,8 +776,8 @@ private fun CategoryRulesSection(rules: List<AppCategoryRule>, c: LauncherColors
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
-                        Text(rule.category.label, color = c.accent, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                        Text("${rule.type.label}: ${rule.pattern}", color = c.textSecondary, fontSize = 11.sp, maxLines = 1)
+                        Text(rule.category.localizedLabel(), color = c.accent, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                        Text(stringResource(R.string.category_rule_pattern, rule.type.localizedLabel(), rule.pattern), color = c.textSecondary, fontSize = 11.sp, maxLines = 1)
                     }
                     Switch(
                         checked = rule.enabled,
@@ -786,7 +791,7 @@ private fun CategoryRulesSection(rules: List<AppCategoryRule>, c: LauncherColors
                         ),
                     )
                     Spacer(Modifier.width(8.dp))
-                    Text("Remove", color = c.error, fontSize = 12.sp, fontWeight = FontWeight.Medium,
+                    Text(stringResource(R.string.remove), color = c.error, fontSize = 12.sp, fontWeight = FontWeight.Medium,
                         modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(c.error.copy(alpha = 0.1f))
                             .clickable { vm.removeCategoryRule(index) }.padding(horizontal = 10.dp, vertical = 5.dp))
                 }
@@ -795,7 +800,7 @@ private fun CategoryRulesSection(rules: List<AppCategoryRule>, c: LauncherColors
         }
     }
 
-    Chips(CategoryRuleType.entries.map { it to it.label }, type, c) { type = it }
+    Chips(CategoryRuleType.entries.map { it to it.localizedLabel() }, type, c) { type = it }
     Spacer(Modifier.height(8.dp))
     TextField(
         value = pattern,
@@ -815,9 +820,9 @@ private fun CategoryRulesSection(rules: List<AppCategoryRule>, c: LauncherColors
         textStyle = androidx.compose.ui.text.TextStyle(fontSize = 13.sp),
     )
     Spacer(Modifier.height(8.dp))
-    Chips(categories.map { it to it.label }, category, c) { category = it }
+    Chips(categories.map { it to it.localizedLabel() }, category, c) { category = it }
     Spacer(Modifier.height(8.dp))
-    Text("Add Rule", color = if (pattern.isBlank()) c.textSecondary else c.accent, fontSize = 12.sp, fontWeight = FontWeight.Medium,
+    Text(stringResource(R.string.add_rule), color = if (pattern.isBlank()) c.textSecondary else c.accent, fontSize = 12.sp, fontWeight = FontWeight.Medium,
         modifier = Modifier.clip(RoundedCornerShape(8.dp))
             .background(if (pattern.isBlank()) c.card else c.accent.copy(alpha = 0.12f))
             .clickable {
@@ -834,7 +839,7 @@ private fun IconPackSection(
 ) {
     var expanded by remember { mutableStateOf(false) }
     val activePack = settings.iconPack
-    val activeLabel = if (activePack.isBlank()) "System Default" else packs.find { it.packageName == activePack }?.label ?: activePack.substringAfterLast(".")
+    val activeLabel = if (activePack.isBlank()) stringResource(R.string.system_default) else packs.find { it.packageName == activePack }?.label ?: activePack.substringAfterLast(".")
 
     Row(
         Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(c.card)
@@ -850,16 +855,16 @@ private fun IconPackSection(
             Spacer(Modifier.width(10.dp))
         }
         Column(Modifier.weight(1f)) {
-            Text("Active Pack", color = c.text, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+            Text(stringResource(R.string.active_pack), color = c.text, fontSize = 14.sp, fontWeight = FontWeight.Medium)
             Text(activeLabel, color = if (activePack.isNotBlank()) c.accent else c.textSecondary, fontSize = 12.sp)
         }
         if (activePack.isNotBlank()) {
-            Text("Reset", color = c.error, fontSize = 12.sp, fontWeight = FontWeight.Medium,
+            Text(stringResource(R.string.reset), color = c.error, fontSize = 12.sp, fontWeight = FontWeight.Medium,
                 modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(c.error.copy(alpha = 0.1f))
                     .clickable { vm.clearIconPack(); expanded = false }.padding(horizontal = 10.dp, vertical = 4.dp))
             Spacer(Modifier.width(8.dp))
         }
-        Text(if (expanded) "Close" else "Browse", color = c.accent, fontSize = 12.sp, fontWeight = FontWeight.Medium,
+        Text(stringResource(if (expanded) R.string.close else R.string.browse), color = c.accent, fontSize = 12.sp, fontWeight = FontWeight.Medium,
             modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(c.accent.copy(alpha = 0.1f))
                 .clickable {
                     if (packs.isEmpty()) vm.refreshIconPacks()
@@ -875,11 +880,11 @@ private fun IconPackSection(
                         .border(0.5.dp, c.border, RoundedCornerShape(12.dp)).padding(16.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
-                    Text("No icon packs found", color = c.textSecondary, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                    Text(stringResource(R.string.no_icon_packs_found), color = c.textSecondary, fontSize = 13.sp, fontWeight = FontWeight.Medium)
                     Spacer(Modifier.height(4.dp))
-                    Text("Install icon packs from Play Store", color = c.textSecondary, fontSize = 11.sp)
+                    Text(stringResource(R.string.install_icon_packs_from_play_store), color = c.textSecondary, fontSize = 11.sp)
                     Spacer(Modifier.height(8.dp))
-                    Text("Refresh", color = c.accent, fontSize = 12.sp, fontWeight = FontWeight.Medium,
+                    Text(stringResource(R.string.refresh), color = c.accent, fontSize = 12.sp, fontWeight = FontWeight.Medium,
                         modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(c.accent.copy(alpha = 0.12f))
                             .clickable { vm.refreshIconPacks() }.padding(horizontal = 14.dp, vertical = 6.dp))
                 }
@@ -934,6 +939,8 @@ private fun IconPackSection(
 @Composable private fun Lbl(t: String, c: LauncherColors) { Text(t.uppercase(), color = c.accent, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp, modifier = Modifier.padding(top = 22.dp, bottom = 10.dp)) }
 
 @Composable private fun <T> Chips(opts: List<Pair<T, String>>, sel: T, c: LauncherColors, onSel: (T) -> Unit) {
+    val selectedState = stringResource(R.string.selected)
+    val notSelectedState = stringResource(R.string.not_selected)
     Row(
         modifier = Modifier.horizontalScroll(rememberScrollState()),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -941,7 +948,7 @@ private fun IconPackSection(
         opts.forEach { (v, l) -> val s = v == sel
             Box(Modifier.clip(RoundedCornerShape(10.dp)).background(if (s) c.accent.copy(alpha = 0.15f) else c.card)
                 .border(0.5.dp, if (s) c.accent.copy(alpha = 0.4f) else c.border, RoundedCornerShape(10.dp))
-                .semantics { contentDescription = l; role = Role.RadioButton; selected = s; stateDescription = if (s) "Selected" else "Not selected" }
+                .semantics { contentDescription = l; role = Role.RadioButton; selected = s; stateDescription = if (s) selectedState else notSelectedState }
                 .clickable(role = Role.RadioButton) { onSel(v) }.padding(horizontal = 16.dp, vertical = 8.dp))
             { Text(l, color = if (s) c.accent else c.textSecondary, fontSize = 13.sp, fontWeight = if (s) FontWeight.Bold else FontWeight.Normal) }
         }
@@ -949,7 +956,8 @@ private fun IconPackSection(
 }
 
 @Composable private fun Tog(label: String, value: Boolean, c: LauncherColors, onChange: (Boolean) -> Unit) {
-    Row(Modifier.fillMaxWidth().semantics { contentDescription = label; role = Role.Switch; stateDescription = if (value) "On" else "Off" }.clickable(role = Role.Switch) { onChange(!value) }.padding(vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+    val state = stringResource(if (value) R.string.on else R.string.off)
+    Row(Modifier.fillMaxWidth().semantics { contentDescription = label; role = Role.Switch; stateDescription = state }.clickable(role = Role.Switch) { onChange(!value) }.padding(vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
         Text(label, color = c.text, fontSize = 14.sp, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
         Switch(checked = value, onCheckedChange = { onChange(it) }, colors = SwitchDefaults.colors(checkedThumbColor = Color.White, checkedTrackColor = c.accent, uncheckedThumbColor = c.textSecondary, uncheckedTrackColor = c.card, uncheckedBorderColor = c.border))
     }
@@ -957,7 +965,8 @@ private fun IconPackSection(
 }
 
 @Composable private fun ActionBtn(label: String, sub: String, c: LauncherColors, onClick: () -> Unit) {
-    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(c.card).border(0.5.dp, c.border, RoundedCornerShape(12.dp)).semantics { contentDescription = "$label, $sub"; role = Role.Button }.clickable(role = Role.Button) { onClick() }.padding(horizontal = 16.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+    val description = stringResource(R.string.button_with_subtitle_content_description, label, sub)
+    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(c.card).border(0.5.dp, c.border, RoundedCornerShape(12.dp)).semantics { contentDescription = description; role = Role.Button }.clickable(role = Role.Button) { onClick() }.padding(horizontal = 16.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
         Text(label, color = c.text, fontSize = 14.sp, fontWeight = FontWeight.Medium); Spacer(Modifier.weight(1f)); Text(sub, color = c.accent, fontSize = 12.sp)
     }
 }
@@ -1011,31 +1020,31 @@ private fun IconPackSection(
                 .border(0.5.dp, colors.border, RoundedCornerShape(20.dp))
                 .padding(24.dp),
         ) {
-            Text("Review Restore", color = colors.text, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+            Text(stringResource(R.string.review_restore), color = colors.text, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
             Spacer(Modifier.height(8.dp))
             Text(
-                "Schema ${preview.schemaVersion}${preview.appVersion?.let { " · v$it" } ?: ""}",
+                stringResource(R.string.restore_schema_version, preview.schemaVersion, preview.appVersion?.let { stringResource(R.string.version_suffix, it) } ?: ""),
                 color = colors.textSecondary,
                 fontSize = 12.sp,
             )
             Spacer(Modifier.height(12.dp))
-            Text("Sections", color = colors.accent, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+            Text(stringResource(R.string.sections), color = colors.accent, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
             Text(preview.sectionSummary, color = colors.text, fontSize = 13.sp, lineHeight = 18.sp, modifier = Modifier.padding(top = 4.dp))
             if (preview.privateSections.isNotEmpty()) {
                 Spacer(Modifier.height(10.dp))
-                Text("Private data: ${preview.privateSections.joinToString(", ")}", color = colors.textSecondary, fontSize = 12.sp, lineHeight = 16.sp)
+                Text(stringResource(R.string.private_data_list, preview.privateSections.joinToString(", ")), color = colors.textSecondary, fontSize = 12.sp, lineHeight = 16.sp)
             }
             if (preview.omittedPrivateSections.isNotEmpty()) {
                 Spacer(Modifier.height(6.dp))
-                Text("Omitted private sections stay unchanged: ${preview.omittedPrivateSections.joinToString(", ")}", color = colors.textSecondary, fontSize = 12.sp, lineHeight = 16.sp)
+                Text(stringResource(R.string.omitted_private_sections_list, preview.omittedPrivateSections.joinToString(", ")), color = colors.textSecondary, fontSize = 12.sp, lineHeight = 16.sp)
             }
             if (preview.unknownFields.isNotEmpty()) {
                 Spacer(Modifier.height(10.dp))
-                Text("Unknown fields ignored: ${preview.unknownFields.take(5).joinToString(", ")}", color = colors.textSecondary, fontSize = 12.sp, lineHeight = 16.sp)
+                Text(stringResource(R.string.unknown_fields_ignored, preview.unknownFields.take(5).joinToString(", ")), color = colors.textSecondary, fontSize = 12.sp, lineHeight = 16.sp)
             }
             if (preview.skippedFields.isNotEmpty()) {
                 Spacer(Modifier.height(6.dp))
-                Text("Invalid values skipped: ${preview.skippedFields.take(5).joinToString(", ")}", color = colors.textSecondary, fontSize = 12.sp, lineHeight = 16.sp)
+                Text(stringResource(R.string.invalid_values_skipped, preview.skippedFields.take(5).joinToString(", ")), color = colors.textSecondary, fontSize = 12.sp, lineHeight = 16.sp)
             }
             val message = preview.error ?: preview.warning
             if (message != null) {
@@ -1044,14 +1053,14 @@ private fun IconPackSection(
             }
             Spacer(Modifier.height(18.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                TextButton(onClick = onDismiss) { Text("Cancel", color = colors.textSecondary) }
+                TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel), color = colors.textSecondary) }
                 if (onConfirm != null) {
                     Spacer(Modifier.width(8.dp))
                     Button(
                         onClick = onConfirm,
                         colors = ButtonDefaults.buttonColors(containerColor = colors.accent),
                         shape = RoundedCornerShape(12.dp),
-                    ) { Text("Restore", color = Color.White) }
+                    ) { Text(stringResource(R.string.restore), color = Color.White) }
                 }
             }
         }
@@ -1071,12 +1080,12 @@ private fun IconPackSection(
             .padding(horizontal = 12.dp, vertical = 10.dp),
     ) {
         Text(report.title, color = colors.text, fontSize = 13.sp, fontWeight = FontWeight.Medium)
-        Text("${report.bytes} bytes", color = colors.textSecondary, fontSize = 11.sp)
+        Text(stringResource(R.string.bytes_count, report.bytes), color = colors.textSecondary, fontSize = 11.sp)
         Spacer(Modifier.height(8.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            SmallDiagnosticAction("Copy", colors, onCopy)
-            SmallDiagnosticAction("Share", colors, onShare)
-            SmallDiagnosticAction("Delete", colors, onDelete, destructive = true)
+            SmallDiagnosticAction(stringResource(R.string.copy), colors, onCopy)
+            SmallDiagnosticAction(stringResource(R.string.share), colors, onShare)
+            SmallDiagnosticAction(stringResource(R.string.delete), colors, onDelete, destructive = true)
         }
     }
 }
@@ -1100,8 +1109,8 @@ private fun IconPackSection(
     var showAppPicker by remember { mutableStateOf(false) }
     val currentAppKey = if (vm != null && gestureSource.isNotBlank()) vm.getGestureApp(gestureSource) else ""
     val currentAppLabel = if (current == GestureAction.LAUNCH_APP && currentAppKey.isNotBlank()) {
-        vm?.resolveApp(currentAppKey)?.label ?: "App"
-    } else current.label
+        vm?.resolveApp(currentAppKey)?.label ?: stringResource(R.string.app_fallback)
+    } else current.localizedLabel()
 
     Column(Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
         Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(c.card).border(0.5.dp, c.border, RoundedCornerShape(10.dp)).clickable { expanded = !expanded }.padding(horizontal = 14.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -1110,12 +1119,12 @@ private fun IconPackSection(
                 val gestureAppIcon = vm?.resolveApp(currentAppKey)?.icon
                 if (gestureAppIcon != null) { Image(rememberDrawablePainter(gestureAppIcon), null, Modifier.size(18.dp).clip(RoundedCornerShape(4.dp))); Spacer(Modifier.width(6.dp)) }
             }
-            Text(if (current == GestureAction.LAUNCH_APP) "Launch: $currentAppLabel" else current.label, color = c.accent, fontSize = 13.sp)
+            Text(if (current == GestureAction.LAUNCH_APP) stringResource(R.string.launch_app_format, currentAppLabel) else current.localizedLabel(), color = c.accent, fontSize = 13.sp)
         }
         AnimatedVisibility(expanded) {
             Column(Modifier.padding(start = 8.dp, top = 4.dp)) {
                 GestureAction.entries.forEach { action -> val sel = action == current
-                    Text(action.label, color = if (sel) c.accent else c.text, fontSize = 13.sp, fontWeight = if (sel) FontWeight.Bold else FontWeight.Normal,
+                    Text(action.localizedLabel(), color = if (sel) c.accent else c.text, fontSize = 13.sp, fontWeight = if (sel) FontWeight.Bold else FontWeight.Normal,
                         modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).background(if (sel) c.accent.copy(alpha = 0.1f) else Color.Transparent)
                             .clickable {
                                 onChange(action)
@@ -1129,7 +1138,7 @@ private fun IconPackSection(
         if (showAppPicker && vm != null && gestureSource.isNotBlank()) {
             val allAppsForPicker by vm.allApps.collectAsState()
             Column(Modifier.padding(start = 16.dp, top = 4.dp).heightIn(max = 200.dp).verticalScroll(rememberScrollState())) {
-                Text("Select app:", color = c.textSecondary, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 4.dp))
+                Text(stringResource(R.string.select_app), color = c.textSecondary, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 4.dp))
                 allAppsForPicker.forEach { pickApp ->
                     Row(
                         Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp))

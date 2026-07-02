@@ -37,11 +37,13 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import android.appwidget.AppWidgetManager
 import app.lawnchairlite.LauncherViewModel
+import app.lawnchairlite.R
 import app.lawnchairlite.data.*
 import kotlinx.coroutines.launch
 
@@ -171,7 +173,7 @@ fun HomeScreen(vm: LauncherViewModel) {
         if (result.resultCode == android.app.Activity.RESULT_OK && (resultId == AppWidgetManager.INVALID_APPWIDGET_ID || resultId == pendingId)) {
             vm.completePendingWidget()
         } else {
-            vm.cancelPendingWidget("Widget setup canceled")
+            vm.cancelPendingWidget(R.string.widget_setup_canceled)
         }
     }
     fun launchPendingWidgetConfiguration() {
@@ -181,7 +183,7 @@ fun HomeScreen(vm: LauncherViewModel) {
             return
         }
         runCatching { configureWidgetLauncher.launch(intent) }
-            .onFailure { vm.cancelPendingWidget("Widget configuration unavailable") }
+            .onFailure { vm.cancelPendingWidget(R.string.widget_configuration_unavailable) }
     }
     val bindWidgetLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         val pendingId = vm.pendingWidgetPlacement.value?.appWidgetId
@@ -190,17 +192,17 @@ fun HomeScreen(vm: LauncherViewModel) {
         if (result.resultCode == android.app.Activity.RESULT_OK && (resultId == AppWidgetManager.INVALID_APPWIDGET_ID || resultId == pendingId)) {
             if (vm.pendingWidgetNeedsConfiguration()) launchPendingWidgetConfiguration() else vm.completePendingWidget()
         } else {
-            vm.cancelPendingWidget("Widget setup canceled")
+            vm.cancelPendingWidget(R.string.widget_setup_canceled)
         }
     }
     fun launchPendingWidgetBind() {
         val intent = vm.getPendingWidgetBindIntent()
         if (intent == null) {
-            vm.cancelPendingWidget("Widget setup unavailable")
+            vm.cancelPendingWidget(R.string.widget_setup_unavailable)
             return
         }
         runCatching { bindWidgetLauncher.launch(intent) }
-            .onFailure { vm.cancelPendingWidget("Widget permission unavailable") }
+            .onFailure { vm.cancelPendingWidget(R.string.widget_permission_unavailable) }
     }
 
     /**
@@ -391,13 +393,13 @@ fun HomeScreen(vm: LauncherViewModel) {
 
                 // Top bar (edit mode only)
                 if (!isDragging && editMode) Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text("Done", color = colors.accent, fontSize = 14.sp, fontWeight = FontWeight.SemiBold,
+                    Text(stringResource(R.string.done), color = colors.accent, fontSize = 14.sp, fontWeight = FontWeight.SemiBold,
                         modifier = Modifier.clip(RoundedCornerShape(10.dp))
                             .background(colors.accent.copy(alpha = 0.12f))
                             .clickable { vm.exitEditMode() }
                             .padding(horizontal = 14.dp, vertical = 6.dp))
                     Spacer(Modifier.width(8.dp))
-                    Text("Widgets", color = colors.text, fontSize = 14.sp, fontWeight = FontWeight.Medium,
+                    Text(stringResource(R.string.widgets), color = colors.text, fontSize = 14.sp, fontWeight = FontWeight.Medium,
                         modifier = Modifier.clip(RoundedCornerShape(10.dp))
                             .background(colors.card)
                             .clickable { vm.openWidgetPicker() }
@@ -797,10 +799,10 @@ fun HomeScreen(vm: LauncherViewModel) {
             FolderOverlay(folder, settings.iconShape, iconDp, { vm.resolveApp(it) }, customLabels, folderColumns = settings.folderColumns, iconShadow = settings.iconShadow, grayscale = settings.grayscaleIcons, labelWeight = resolvedLabelWeight, onAppClick = { vm.launch(it); vm.closeFolderView() }, onRemoveApp = { k -> vm.removeFolderApp(src, fi, k) }, onReorder = { keys -> vm.reorderFolderApps(src, fi, keys) }, onRename = { vm.startFolderRename(src, fi, folder.name) }, onDismiss = { vm.closeFolderView() }) }
 
         val rn = folderRename
-        if (rn != null) RenameDialog(rn.current, "Rename Folder", onConfirm = { vm.renameFolder(rn.source, rn.index, it); vm.closeFolderView() }, onDismiss = { vm.dismissFolderRename() })
+        if (rn != null) RenameDialog(rn.current, stringResource(R.string.rename_folder), onConfirm = { vm.renameFolder(rn.source, rn.index, it); vm.closeFolderView() }, onDismiss = { vm.dismissFolderRename() })
 
         val le = labelEdit
-        if (le != null) RenameDialog(le.current, "Rename Shortcut", onConfirm = { vm.saveCustomLabel(le.appKey, it) }, onDismiss = { vm.dismissLabelEdit() })
+        if (le != null) RenameDialog(le.current, stringResource(R.string.rename_shortcut), onConfirm = { vm.saveCustomLabel(le.appKey, it) }, onDismiss = { vm.dismissLabelEdit() })
 
         // Uninstall confirmation dialog
         val uninstallApp by vm.uninstallConfirm.collectAsState()

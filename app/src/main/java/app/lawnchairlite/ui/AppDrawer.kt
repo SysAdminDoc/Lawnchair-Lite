@@ -30,6 +30,8 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
@@ -41,6 +43,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import app.lawnchairlite.R
 import app.lawnchairlite.data.AppInfo
 import app.lawnchairlite.data.DrawerTab
 import app.lawnchairlite.data.IconShape
@@ -102,6 +105,7 @@ fun AppDrawer(
     onSettle: (velocityPxPerSec: Float) -> Unit,
 ) {
     val colors = LocalLauncherColors.current
+    val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val gridState = rememberLazyGridState()
 
@@ -242,7 +246,8 @@ fun AppDrawer(
     ) {
         Column(Modifier.fillMaxSize()) {
             Column(Modifier.fillMaxWidth()) {
-                Box(Modifier.fillMaxWidth().padding(vertical = 14.dp).semantics { contentDescription = "Scroll drawer to top"; role = Role.Button }.clickable(role = Role.Button) {
+                val scrollTopLabel = stringResource(R.string.scroll_drawer_to_top)
+                Box(Modifier.fillMaxWidth().padding(vertical = 14.dp).semantics { contentDescription = scrollTopLabel; role = Role.Button }.clickable(role = Role.Button) {
                     scope.launch { gridState.animateScrollToItem(0) }
                 }, Alignment.Center) {
                     Box(Modifier.width(48.dp).height(4.dp).clip(RoundedCornerShape(2.dp))
@@ -279,14 +284,20 @@ fun AppDrawer(
                             val count = categorizedApps[cat]?.size ?: 0
                             if (cat == app.lawnchairlite.data.DrawerCategory.ALL || count > 0) {
                                 val sel = selectedCategory == cat
+                                val categoryLabel = cat.localizedLabel()
                                 Text(
-                                    if (cat == app.lawnchairlite.data.DrawerCategory.ALL) cat.label else "${cat.label} ($count)",
+                                    if (cat == app.lawnchairlite.data.DrawerCategory.ALL) categoryLabel else stringResource(R.string.tab_count_format, categoryLabel, count),
                                     color = if (sel) colors.accent else colors.textSecondary,
                                     fontSize = 12.sp, fontWeight = if (sel) FontWeight.Bold else FontWeight.Medium,
                                     modifier = Modifier
                                         .clip(RoundedCornerShape(16.dp))
                                         .background(if (sel) colors.accent.copy(alpha = 0.12f) else colors.card)
-                                        .semantics { contentDescription = "${cat.label} category, $count apps"; role = Role.Button; selected = sel; stateDescription = if (sel) "Selected" else "Not selected" }
+                                        .semantics {
+                                            contentDescription = context.getString(R.string.category_content_description, categoryLabel, count)
+                                            role = Role.Button
+                                            selected = sel
+                                            stateDescription = context.getString(if (sel) R.string.selected else R.string.not_selected)
+                                        }
                                         .clickable(role = Role.Button) { onCategoryChange(cat) }
                                         .padding(horizontal = 12.dp, vertical = 6.dp),
                                 )
@@ -297,23 +308,23 @@ fun AppDrawer(
                 Spacer(Modifier.height(6.dp))
                 Row(Modifier.padding(horizontal = 24.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                     val countLabel = when {
-                        searchQuery.isNotBlank() -> "${displayApps.size} results"
-                        effectiveTab == DrawerTab.RECENT -> "${displayApps.size} recent apps"
-                        effectiveTab == DrawerTab.FAVORITES -> "${displayApps.size} favorites"
-                        effectiveTab == DrawerTab.WORK -> "${displayApps.size} work apps"
-                        else -> "${displayApps.size} apps"
+                        searchQuery.isNotBlank() -> context.getString(R.string.drawer_results_count, displayApps.size)
+                        effectiveTab == DrawerTab.RECENT -> context.getString(R.string.drawer_recent_count, displayApps.size)
+                        effectiveTab == DrawerTab.FAVORITES -> context.getString(R.string.drawer_favorites_count, displayApps.size)
+                        effectiveTab == DrawerTab.WORK -> context.getString(R.string.drawer_work_count, displayApps.size)
+                        else -> context.getString(R.string.drawer_apps_count, displayApps.size)
                     }
                     Text(countLabel, color = colors.textSecondary.copy(alpha = 0.8f), fontSize = 12.sp, fontWeight = FontWeight.Medium)
                     if (searchQuery.isBlank() && effectiveTab == DrawerTab.RECENT && recentApps.isNotEmpty()) {
                         Spacer(Modifier.weight(1f))
-                        Text("Clear", color = colors.textSecondary, fontSize = 11.sp,
+                        Text(stringResource(R.string.clear), color = colors.textSecondary, fontSize = 11.sp,
                             modifier = Modifier.clip(RoundedCornerShape(8.dp))
-                                .semantics { contentDescription = "Clear recent apps"; role = Role.Button }
+                                .semantics { contentDescription = context.getString(R.string.clear_recent_apps); role = Role.Button }
                                 .clickable(role = Role.Button) { onClearRecents() }
                                 .padding(horizontal = 8.dp, vertical = 4.dp))
                     }
                     if (searchQuery.isBlank() && effectiveTab == DrawerTab.ALL && drawerSort != app.lawnchairlite.data.DrawerSort.NAME) {
-                        Text("  ·  ${drawerSort.label}", color = colors.accent.copy(alpha = 0.6f), fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                        Text(stringResource(R.string.sort_suffix, drawerSort.localizedLabel()), color = colors.accent.copy(alpha = 0.6f), fontSize = 11.sp, fontWeight = FontWeight.Medium)
                     }
                 }
             }
@@ -329,14 +340,14 @@ fun AppDrawer(
                     Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 4.dp)
                         .clip(RoundedCornerShape(12.dp))
                         .background(colors.accent.copy(alpha = 0.06f))
-                        .semantics { contentDescription = "Enable contact search"; role = Role.Button }
+                        .semantics { contentDescription = context.getString(R.string.enable_contact_search); role = Role.Button }
                         .clickable(role = Role.Button) { onRequestContactPermission() }
                         .padding(horizontal = 14.dp, vertical = 10.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text("Enable contact search", color = colors.accent, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                    Text(stringResource(R.string.enable_contact_search), color = colors.accent, fontSize = 12.sp, fontWeight = FontWeight.Medium)
                     Spacer(Modifier.weight(1f))
-                    Text("Grant", color = colors.accent, fontSize = 11.sp, fontWeight = FontWeight.Bold,
+                    Text(stringResource(R.string.grant), color = colors.accent, fontSize = 11.sp, fontWeight = FontWeight.Bold,
                         modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(colors.accent.copy(alpha = 0.12f)).padding(horizontal = 8.dp, vertical = 4.dp))
                 }
             }
@@ -344,7 +355,7 @@ fun AppDrawer(
             // Contact search results
             if (contactResults.isNotEmpty() && searchQuery.isNotBlank()) {
                 Column(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp)) {
-                    Text("CONTACTS", color = LocalLauncherColors.current.accent, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
+                    Text(stringResource(R.string.contacts_header), color = LocalLauncherColors.current.accent, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
                     contactResults.forEach { contact ->
                         ContactResultRow(
                             name = contact.name, number = contact.number,
@@ -364,11 +375,11 @@ fun AppDrawer(
                             modifier = Modifier.size(48.dp))
                         Spacer(Modifier.height(8.dp))
                         val emptyText = when {
-                            searchQuery.isNotBlank() -> "No apps found"
-                            effectiveTab == DrawerTab.RECENT -> "No recent apps"
-                            effectiveTab == DrawerTab.FAVORITES -> "No favorites yet"
-                            effectiveTab == DrawerTab.WORK -> "No work profile apps"
-                            else -> "No apps found"
+                            searchQuery.isNotBlank() -> context.getString(R.string.no_apps_found)
+                            effectiveTab == DrawerTab.RECENT -> context.getString(R.string.no_recent_apps)
+                            effectiveTab == DrawerTab.FAVORITES -> context.getString(R.string.no_favorites_yet)
+                            effectiveTab == DrawerTab.WORK -> context.getString(R.string.no_work_profile_apps)
+                            else -> context.getString(R.string.no_apps_found)
                         }
                         Text(emptyText, color = colors.textSecondary, fontSize = 14.sp)
                         if (searchQuery.isNotBlank()) {
@@ -376,14 +387,14 @@ fun AppDrawer(
                             Row(
                                 Modifier.clip(RoundedCornerShape(20.dp))
                                     .background(colors.accent.copy(alpha = 0.12f))
-                                    .semantics { contentDescription = "Search web for $searchQuery"; role = Role.Button }
+                                    .semantics { contentDescription = context.getString(R.string.search_web_for_query, searchQuery); role = Role.Button }
                                     .clickable(role = Role.Button) { onSearchWeb(searchQuery) }
                                     .padding(horizontal = 16.dp, vertical = 10.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
                                 Text(searchEngineLabel.take(1), color = colors.accent, fontSize = 14.sp, fontWeight = FontWeight.Bold)
                                 Spacer(Modifier.width(8.dp))
-                                Text("Search \"$searchQuery\"", color = colors.accent, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                                Text(context.getString(R.string.search_query_quoted, searchQuery), color = colors.accent, fontSize = 13.sp, fontWeight = FontWeight.Medium)
                             }
                         }
                     }
@@ -407,13 +418,13 @@ fun AppDrawer(
                                         verticalAlignment = Alignment.CenterVertically,
                                     ) {
                                         Text(
-                                            "RECENT", color = colors.accent, fontSize = 11.sp,
+                                            stringResource(R.string.recent_header), color = colors.accent, fontSize = 11.sp,
                                             fontWeight = FontWeight.Bold, letterSpacing = 1.sp,
                                         )
                                         Spacer(Modifier.weight(1f))
-                                        Text("Clear", color = colors.textSecondary, fontSize = 11.sp,
+                                        Text(stringResource(R.string.clear), color = colors.textSecondary, fontSize = 11.sp,
                                             modifier = Modifier.clip(RoundedCornerShape(8.dp))
-                                                .semantics { contentDescription = "Clear recent apps"; role = Role.Button }
+                                                .semantics { contentDescription = context.getString(R.string.clear_recent_apps); role = Role.Button }
                                                 .clickable(role = Role.Button) { onClearRecents() }
                                                 .padding(horizontal = 8.dp, vertical = 4.dp))
                                     }
@@ -491,14 +502,14 @@ fun AppDrawer(
                                     Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp)
                                         .clip(RoundedCornerShape(16.dp))
                                         .background(colors.accent.copy(alpha = 0.08f))
-                                        .semantics { contentDescription = "Search $searchEngineLabel for $searchQuery"; role = Role.Button }
+                                        .semantics { contentDescription = context.getString(R.string.search_engine_for_query, searchEngineLabel, searchQuery); role = Role.Button }
                                         .clickable(role = Role.Button) { onSearchWeb(searchQuery) }
                                         .padding(horizontal = 16.dp, vertical = 12.dp),
                                     verticalAlignment = Alignment.CenterVertically,
                                 ) {
                                     Text(searchEngineLabel.take(1), color = colors.accent, fontSize = 14.sp, fontWeight = FontWeight.Bold)
                                     Spacer(Modifier.width(10.dp))
-                                    Text("Search $searchEngineLabel for \"$searchQuery\"", color = colors.accent, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                                    Text(context.getString(R.string.search_engine_for_query_quoted, searchEngineLabel, searchQuery), color = colors.accent, fontSize = 13.sp, fontWeight = FontWeight.Medium)
                                 }
                             }
                         }
@@ -532,6 +543,7 @@ private fun DrawerTabs(
     onTabChange: (DrawerTab) -> Unit,
 ) {
     val colors = LocalLauncherColors.current
+    val context = LocalContext.current
     val tabs = DrawerTab.entries
     val selectedIndex = tabs.indexOf(selectedTab).let { if (it >= 0) it else 0 }
 
@@ -543,6 +555,7 @@ private fun DrawerTabs(
         divider = {},
     ) {
         tabs.forEach { tab ->
+            val tabLabel = tab.localizedLabel()
             val count = when (tab) {
                 DrawerTab.ALL -> allCount
                 DrawerTab.RECENT -> recentCount
@@ -556,7 +569,7 @@ private fun DrawerTabs(
                 unselectedContentColor = colors.textSecondary,
                 text = {
                     Text(
-                        "${tab.label} ($count)",
+                        context.getString(R.string.tab_count_format, tabLabel, count),
                         fontSize = 12.sp,
                         fontWeight = if (selectedTab == tab) FontWeight.Bold else FontWeight.Medium,
                     )

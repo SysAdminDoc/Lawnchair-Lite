@@ -81,8 +81,8 @@ class LauncherApplication : Application() {
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             nm.createNotificationChannel(
-                NotificationChannel(CRASH_CHANNEL, "Crash Reports", NotificationManager.IMPORTANCE_HIGH).apply {
-                    description = "Notifications when the launcher crashes"
+                NotificationChannel(CRASH_CHANNEL, getString(R.string.crash_reports_channel), NotificationManager.IMPORTANCE_HIGH).apply {
+                    description = getString(R.string.crash_reports_channel_description)
                 }
             )
         }
@@ -98,12 +98,12 @@ class LauncherApplication : Application() {
 
         val notif = NotificationCompat.Builder(this, CRASH_CHANNEL)
             .setSmallIcon(android.R.drawable.ic_dialog_alert)
-            .setContentTitle("Lawnchair Lite crashed")
-            .setContentText("Tap 'Copy Report' to copy the crash log")
+            .setContentTitle(getString(R.string.launcher_crashed))
+            .setContentText(getString(R.string.copy_report_prompt))
             .setStyle(NotificationCompat.BigTextStyle().bigText(
                 report.take(500) + if (report.length > 500) "\n..." else ""
             ))
-            .addAction(android.R.drawable.ic_menu_save, "Copy Report", copyPending)
+            .addAction(android.R.drawable.ic_menu_save, getString(R.string.copy_report), copyPending)
             .setAutoCancel(true)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .build()

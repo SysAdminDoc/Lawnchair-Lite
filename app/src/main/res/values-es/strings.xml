@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Lawnchair Lite</string>
+    <string name="search_hint">Buscar apps\u2026</string>
+    <string name="settings_search_hint">Buscar ajustes\u2026</string>
+    <string name="settings">Ajustes</string>
+    <string name="settings_title">Ajustes de inicio</string>
+    <string name="search_apps_content_description">Buscar apps</string>
+    <string name="search_engine_hint">Buscar en %1$s\u2026</string>
+    <string name="back">Atras</string>
+    <string name="clear">Borrar</string>
+    <string name="cancel">Cancelar</string>
+    <string name="restore">Restaurar</string>
+    <string name="copy">Copiar</string>
+    <string name="share">Compartir</string>
+    <string name="delete">Eliminar</string>
+    <string name="no_apps_found">No se encontraron apps</string>
+    <string name="no_recent_apps">No hay apps recientes</string>
+    <string name="no_favorites_yet">Aun no hay favoritos</string>
+    <string name="no_work_profile_apps">No hay apps del perfil de trabajo</string>
+    <string name="backup_exported">Copia exportada</string>
+    <string name="export_failed">Error al exportar</string>
+    <string name="import_failed_invalid_file">Error al importar - archivo no valido</string>
+    <string name="restore_failed">Error al restaurar</string>
+    <string name="home_screen_locked">La pantalla de inicio esta bloqueada</string>
+    <string name="widget_setup_canceled">Configuracion del widget cancelada</string>
+    <string name="widget_added">Widget agregado</string>
+    <string name="widget_removed">Widget eliminado</string>
+    <string name="drawer_apps_count">%1$d apps</string>
+    <string name="drawer_results_count">%1$d resultados</string>
+    <string name="search_query_quoted">Buscar \"%1$s\"</string>
+    <string name="review_restore">Revisar restauracion</string>
+    <string name="enum_drawer_category_all">Todo</string>
+    <string name="enum_drawer_tab_all">Todo</string>
+    <string name="enum_drawer_tab_recent">Recientes</string>
+    <string name="enum_drawer_tab_favorites">Favoritos</string>
+    <string name="enum_drawer_tab_work">Trabajo</string>
+</resources>

@@ -13,6 +13,7 @@ All notable changes to Lawnchair-Lite will be documented in this file.
 - Added local diagnostics storage plus Settings copy/share/delete actions for crash reports and support bundles.
 - Added a local adb smoke harness for launcher launch, drawer search, Settings, and widget-picker checks.
 - Added accessibility semantics for custom Compose controls plus instrumentation coverage for search and home menu actions.
+- Added resource-backed UI strings, localized enum display labels, and a partial Spanish smoke resource file for translation workflow validation.
 - Added backup export metadata and unit tests for privacy defaults.
 - Updated release version metadata to v2.27.0.
 

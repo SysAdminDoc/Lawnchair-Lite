@@ -18,8 +18,8 @@ class CrashCopyReceiver : BroadcastReceiver() {
         val ctx = context ?: return
         runCatching {
             val cm = ctx.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-            cm.setPrimaryClip(ClipData.newPlainText("Crash Report", report))
-            Toast.makeText(ctx, "Crash report copied", Toast.LENGTH_SHORT).show()
+            cm.setPrimaryClip(ClipData.newPlainText(ctx.getString(R.string.crash_report), report))
+            Toast.makeText(ctx, ctx.getString(R.string.crash_report_copied), Toast.LENGTH_SHORT).show()
         }
     }
 }
