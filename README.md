@@ -292,3 +292,11 @@ JAVA_HOME="C:/Program Files/Android/Android Studio/jbr" ANDROID_HOME="$HOME/AppD
 Debug build: `./gradlew assembleDebug`
 
 Requires Android SDK 28+ (Android 9), targets SDK 34 (Android 14).
+
+Local launcher smoke test after a debug or release build:
+
+```powershell
+tools/android-smoke.ps1 -Serial emulator-5554
+```
+
+The smoke harness installs the selected APK, launches Lawnchair Lite, checks drawer search, Settings, and the widget picker, and reports `PASS`, `FAIL`, or `DEGRADED` platform checks. On emulator serials it sets Lawnchair Lite as the HOME activity so launcher flows foreground deterministically.

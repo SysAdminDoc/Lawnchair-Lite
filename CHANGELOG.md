@@ -11,6 +11,7 @@ All notable changes to Lawnchair-Lite will be documented in this file.
 - Added an Advanced Settings permission audit for package visibility, crash notifications, notification badges, contacts, calendar, location, and quick-action degradation.
 - Added a restore preview that validates backup schema compatibility and reports sections, skipped values, unknown fields, and private-data handling before import.
 - Added local diagnostics storage plus Settings copy/share/delete actions for crash reports and support bundles.
+- Added a local adb smoke harness for launcher launch, drawer search, Settings, and widget-picker checks.
 - Added backup export metadata and unit tests for privacy defaults.
 - Updated release version metadata to v2.27.0.
 
