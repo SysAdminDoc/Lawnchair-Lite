@@ -63,12 +63,21 @@ Built on crash patterns identified across Lawnchair v14-v15 beta releases:
 - **Conditional auto-focus** - keyboard only opens when drawer opened via search bar, not swipe
 - **Pager scroll guard** - horizontal paging disabled during drawer transition
 
+## Permissions
+
+- `QUERY_ALL_PACKAGES` powers the launcher app list, drawer search, categories, hidden apps, and gesture app binding.
+- `POST_NOTIFICATIONS` is used only for local crash-copy notifications on Android 13+; denied access does not block launcher use.
+- `READ_CONTACTS`, `READ_CALENDAR`, and `ACCESS_COARSE_LOCATION` are optional search/Smartspace features with Settings recovery actions.
+- `KILL_BACKGROUND_PROCESSES` and `EXPAND_STATUS_BAR` back user-triggered quick actions and degrade gracefully when Android or OEM policy blocks them.
+- Widget placement uses Android's per-widget bind prompt; the protected `BIND_APPWIDGET` permission is not declared.
+
 ### v2.27.0
 
 - **Cloud backup privacy** - Android Auto Backup excludes launcher DataStore state from silent cloud backup
 - **Local transfer rule** - Android 12+ device transfer can keep the launcher DataStore state for on-device migration
 - **Manual export controls** - Search history, usage/recents, and hidden apps are excluded unless explicitly enabled
 - **Private restore preservation** - Omitted private sections no longer clear existing local search, usage, or hidden-app data
+- **Permission audit panel** - Advanced Settings explains each broad/runtime permission, current status, recovery action, and degraded behavior
 
 ### v2.26.0
 

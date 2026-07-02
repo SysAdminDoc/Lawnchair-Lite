@@ -7,6 +7,8 @@ All notable changes to Lawnchair-Lite will be documented in this file.
 - Added Auto Backup/Data Extraction rules so launcher DataStore state is not silently sent to cloud backup.
 - Added manual backup privacy controls for search history, app usage/recents, and hidden apps.
 - Preserved omitted private sections during restore instead of clearing them from partial backups.
+- Removed the system-only widget-bind permission declaration and documented the Android bind prompt fallback.
+- Added an Advanced Settings permission audit for package visibility, crash notifications, notification badges, contacts, calendar, location, and quick-action degradation.
 - Added backup export metadata and unit tests for privacy defaults.
 - Updated release version metadata to v2.27.0.
 

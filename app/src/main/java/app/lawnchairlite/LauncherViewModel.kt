@@ -26,6 +26,7 @@ import android.provider.Settings
 import android.util.Log
 import android.widget.Toast
 import androidx.compose.ui.geometry.Offset
+import androidx.core.app.NotificationManagerCompat
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import app.lawnchairlite.data.*
@@ -609,6 +610,22 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
 
     fun isNotificationAccessGranted(): Boolean {
         return NotificationListener.connected.value
+    }
+
+    fun areCrashNotificationsEnabled(): Boolean =
+        NotificationManagerCompat.from(ctx).areNotificationsEnabled() &&
+            (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+                ctx.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED)
+
+    fun openAppNotificationSettings() {
+        try {
+            ctx.startActivity(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+                putExtra(Settings.EXTRA_APP_PACKAGE, ctx.packageName)
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            })
+        } catch (e: Exception) {
+            Log.e(TAG, "openAppNotificationSettings failed", e)
+        }
     }
 
     // -- Auto-Place New Apps --

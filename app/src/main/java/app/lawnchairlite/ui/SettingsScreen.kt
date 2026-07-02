@@ -1,6 +1,8 @@
 package app.lawnchairlite.ui
 
+import android.Manifest
 import android.net.Uri
+import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
@@ -54,6 +56,11 @@ fun SettingsPanel(
     var includeBackupUsage by remember { mutableStateOf(false) }
     var includeBackupHiddenApps by remember { mutableStateOf(false) }
     var pendingBackupOptions by remember { mutableStateOf(BackupExportOptions()) }
+    var permissionRefresh by remember { mutableIntStateOf(0) }
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { permissionRefresh++ }
+    val contactPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { permissionRefresh++ }
+    val calendarPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { permissionRefresh++ }
+    val locationPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { permissionRefresh++ }
 
     val exportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri: Uri? ->
         uri ?: return@rememberLauncherForActivityResult
@@ -84,7 +91,7 @@ fun SettingsPanel(
     val dockKeywords = "dock icons style search bar pill floating transparent hide labels label opacity"
     val gesturesKeywords = "gesture double tap swipe down swipe up triple pinch dock lock screen notification flashlight edit mode recent app launch"
     val featuresKeywords = "clock smartspace at a glance weather calendar event auto place notification badges status bar home lock parallax haptic feedback"
-    val advancedKeywords = "kill background apps clear search history reset settings backup restore export import hidden apps about"
+    val advancedKeywords = "kill background apps clear search history reset settings backup restore export import hidden apps permissions package visibility notification contacts calendar location widget about"
     fun sectionMatches(keywords: String): Boolean = sq.isBlank() || keywords.contains(sq) || sq.split(" ").all { w -> keywords.contains(w) }
     val showTheme = sectionMatches(themeKeywords)
     val showIcons = sectionMatches(iconsKeywords)
@@ -521,6 +528,78 @@ fun SettingsPanel(
                         Spacer(Modifier.height(8.dp))
                         ActionBtn("Restore Layout", "Omitted private data is kept", colors) { importLauncher.launch(arrayOf("application/json", "*/*")) }
 
+                        Lbl("Permissions", colors)
+                        Text("Optional features keep working in degraded mode when access is denied.", color = colors.textSecondary, fontSize = 12.sp, modifier = Modifier.padding(bottom = 8.dp))
+                        key(permissionRefresh) {
+                            val notificationsOk = vm.areCrashNotificationsEnabled()
+                            val notificationAccessGranted = vm.isNotificationAccessGranted()
+                            val contactGranted = vm.hasContactPermission()
+                            val calendarGranted = vm.hasCalendarPermission()
+                            val locationGranted = vm.hasLocationPermission()
+                            PermissionStatusRow(
+                                title = "All Apps Visibility",
+                                status = "Declared",
+                                description = "Required for launcher app list, drawer search, hidden apps, categories, and gesture app binding.",
+                                c = colors,
+                            )
+                            PermissionStatusRow(
+                                title = "Widget Binding",
+                                status = "System prompt",
+                                description = "Uses Android's per-widget bind flow; no protected widget-bind permission is declared.",
+                                c = colors,
+                            )
+                            PermissionStatusRow(
+                                title = "Crash Notifications",
+                                status = if (notificationsOk) "Allowed" else "Blocked",
+                                description = "Used only to surface local crash-copy reports after an uncaught exception.",
+                                c = colors,
+                                actionLabel = if (notificationsOk) null else "Allow",
+                                onAction = {
+                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                    else vm.openAppNotificationSettings()
+                                },
+                            )
+                            PermissionStatusRow(
+                                title = "Notification Badges",
+                                status = if (notificationAccessGranted) "Granted" else "Needs access",
+                                description = "Reads active notification counts through Android notification-listener settings.",
+                                c = colors,
+                                actionLabel = if (notificationAccessGranted) null else "Open",
+                                onAction = { vm.openNotificationAccess() },
+                            )
+                            PermissionStatusRow(
+                                title = "Contacts Search",
+                                status = if (contactGranted) "Granted" else "Optional",
+                                description = "Only queried when drawer search is active; denied access hides contact results.",
+                                c = colors,
+                                actionLabel = if (contactGranted) null else "Grant",
+                                onAction = { contactPermissionLauncher.launch(Manifest.permission.READ_CONTACTS) },
+                            )
+                            PermissionStatusRow(
+                                title = "Calendar Smartspace",
+                                status = if (calendarGranted) "Granted" else "Optional",
+                                description = "Denied access keeps the calendar chip hidden and leaves the clock/weather usable.",
+                                c = colors,
+                                actionLabel = if (calendarGranted) null else "Grant",
+                                onAction = { calendarPermissionLauncher.launch(Manifest.permission.READ_CALENDAR) },
+                            )
+                            PermissionStatusRow(
+                                title = "Weather Location",
+                                status = if (locationGranted) "Granted" else "Optional",
+                                description = "Uses coarse last-known location for local weather; denied access hides weather.",
+                                c = colors,
+                                actionLabel = if (locationGranted) null else "Grant",
+                                onAction = { locationPermissionLauncher.launch(Manifest.permission.ACCESS_COARSE_LOCATION) },
+                            )
+                            PermissionStatusRow(
+                                title = "Quick Actions",
+                                status = "Best effort",
+                                description = "Status shade and background-process cleanup can be blocked by Android or OEM policy and fail without crashing.",
+                                c = colors,
+                            )
+                        }
+                        Spacer(Modifier.height(8.dp))
+
                         // Hidden apps
                         Lbl("Hidden Apps", colors)
                         val hiddenInfos = remember(hiddenApps, allAppsRaw) { allAppsRaw.filter { it.key in hiddenApps } }
@@ -812,6 +891,43 @@ private fun IconPackSection(
     Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(c.card).border(0.5.dp, c.border, RoundedCornerShape(12.dp)).clickable { onClick() }.padding(horizontal = 16.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
         Text(label, color = c.text, fontSize = 14.sp, fontWeight = FontWeight.Medium); Spacer(Modifier.weight(1f)); Text(sub, color = c.accent, fontSize = 12.sp)
     }
+}
+
+@Composable private fun PermissionStatusRow(
+    title: String,
+    status: String,
+    description: String,
+    c: LauncherColors,
+    actionLabel: String? = null,
+    onAction: (() -> Unit)? = null,
+) {
+    Row(
+        Modifier.fillMaxWidth().padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(title, color = c.text, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                Spacer(Modifier.width(8.dp))
+                Text(status, color = c.accent, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+            }
+            Text(description, color = c.textSecondary, fontSize = 11.sp, lineHeight = 15.sp)
+        }
+        if (actionLabel != null && onAction != null) {
+            Spacer(Modifier.width(10.dp))
+            Text(
+                actionLabel,
+                color = c.accent,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.clip(RoundedCornerShape(8.dp))
+                    .background(c.accent.copy(alpha = 0.12f))
+                    .clickable { onAction() }
+                    .padding(horizontal = 10.dp, vertical = 6.dp),
+            )
+        }
+    }
+    Divider(color = c.border.copy(alpha = 0.22f), thickness = 0.5.dp)
 }
 
 @Composable private fun GesturePicker(label: String, current: GestureAction, c: LauncherColors, vm: LauncherViewModel? = null, gestureSource: String = "", onChange: (GestureAction) -> Unit) {
