@@ -50,10 +50,23 @@ fun SettingsPanel(
     val allAppsRaw by vm.allApps.collectAsState()
     val availablePacks by vm.availablePacks.collectAsState()
     val iconPackLoading by vm.iconPackLoading.collectAsState()
+    var includeBackupSearchHistory by remember { mutableStateOf(false) }
+    var includeBackupUsage by remember { mutableStateOf(false) }
+    var includeBackupHiddenApps by remember { mutableStateOf(false) }
+    var pendingBackupOptions by remember { mutableStateOf(BackupExportOptions()) }
 
     val exportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri: Uri? ->
         uri ?: return@rememberLauncherForActivityResult
-        scope.launch { val json = vm.exportBackup(); runCatching { context.contentResolver.openOutputStream(uri)?.use { it.write(json.toByteArray()) } } }
+        scope.launch {
+            val json = vm.exportBackup(pendingBackupOptions)
+            runCatching {
+                context.contentResolver.openOutputStream(uri)?.use { it.write(json.toByteArray()) }
+            }.onSuccess {
+                android.widget.Toast.makeText(context, "Backup exported", android.widget.Toast.LENGTH_SHORT).show()
+            }.onFailure {
+                android.widget.Toast.makeText(context, "Export failed", android.widget.Toast.LENGTH_SHORT).show()
+            }
+        }
     }
     val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
         uri ?: return@rememberLauncherForActivityResult
@@ -491,9 +504,22 @@ fun SettingsPanel(
                         }
 
                         Lbl("Backup & Restore", colors)
-                        ActionBtn("Export Layout", "Save to file", colors) { exportLauncher.launch("lawnchair-lite-backup.json") }
+                        Text("Private data is excluded unless enabled below.", color = colors.textSecondary, fontSize = 12.sp, modifier = Modifier.padding(bottom = 6.dp))
+                        Tog("Include Search History", includeBackupSearchHistory, colors) { includeBackupSearchHistory = it }
+                        Tog("Include Usage & Recents", includeBackupUsage, colors) { includeBackupUsage = it }
+                        Tog("Include Hidden Apps", includeBackupHiddenApps, colors) { includeBackupHiddenApps = it }
+                        val privateSummary = if (includeBackupSearchHistory || includeBackupUsage || includeBackupHiddenApps) "With selected private data" else "Private data excluded"
                         Spacer(Modifier.height(8.dp))
-                        ActionBtn("Restore Layout", "Load from file", colors) { importLauncher.launch(arrayOf("application/json", "*/*")) }
+                        ActionBtn("Export Layout", privateSummary, colors) {
+                            pendingBackupOptions = BackupExportOptions(
+                                includeSearchHistory = includeBackupSearchHistory,
+                                includeAppUsage = includeBackupUsage,
+                                includeHiddenApps = includeBackupHiddenApps,
+                            )
+                            exportLauncher.launch("lawnchair-lite-backup.json")
+                        }
+                        Spacer(Modifier.height(8.dp))
+                        ActionBtn("Restore Layout", "Omitted private data is kept", colors) { importLauncher.launch(arrayOf("application/json", "*/*")) }
 
                         // Hidden apps
                         Lbl("Hidden Apps", colors)

@@ -1386,7 +1386,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         nn.forEachIndexed { i, c -> if (i < total) g[i] = c }; _homeGrid.value = g; prefs.saveHome(g)
     }
 
-    suspend fun exportBackup(): String = prefs.exportBackup()
+    suspend fun exportBackup(options: BackupExportOptions = BackupExportOptions()): String = prefs.exportBackup(options)
     suspend fun importBackup(json: String): Boolean {
         val ok = prefs.importBackup(json)
         if (ok) {

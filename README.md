@@ -1,10 +1,10 @@
 <p align="center">
-  <img alt="Version" src="https://img.shields.io/badge/version-2.26.0-58A6FF?style=for-the-badge">
+  <img alt="Version" src="https://img.shields.io/badge/version-2.27.0-58A6FF?style=for-the-badge">
   <img alt="License" src="https://img.shields.io/badge/license-MIT-4ade80?style=for-the-badge">
   <img alt="Platform" src="https://img.shields.io/badge/platform-Android-58A6FF?style=for-the-badge">
 </p>
 
-# Lawnchair Lite v2.26.0
+# Lawnchair Lite v2.27.0
 
 Minimal, fast Android launcher with professional-grade stability and smooth Compose-powered animations.
 
@@ -48,7 +48,7 @@ Built on crash patterns identified across Lawnchair v14-v15 beta releases:
 - Notification badges (count/dot/hidden), app shortcuts via LauncherApps API
 - 5 page transitions (Slide, Cube, Stack, Fade, Depth, Carousel)
 - Wallpaper dimming (0-80%) with parallax effect
-- Backup/restore layout as JSON with import error feedback
+- Backup/restore layout as JSON with privacy toggles and import error feedback
 - Uninstall confirmation dialog (all paths: D&D, home menu, drawer menu)
 - Reset all settings with confirmation dialog
 - Settings search filter across 8 collapsible sections
@@ -62,6 +62,13 @@ Built on crash patterns identified across Lawnchair v14-v15 beta releases:
 - **Memoized theme computation** - `remember`-cached, no recompute per recomposition
 - **Conditional auto-focus** - keyboard only opens when drawer opened via search bar, not swipe
 - **Pager scroll guard** - horizontal paging disabled during drawer transition
+
+### v2.27.0
+
+- **Cloud backup privacy** - Android Auto Backup excludes launcher DataStore state from silent cloud backup
+- **Local transfer rule** - Android 12+ device transfer can keep the launcher DataStore state for on-device migration
+- **Manual export controls** - Search history, usage/recents, and hidden apps are excluded unless explicitly enabled
+- **Private restore preservation** - Omitted private sections no longer clear existing local search, usage, or hidden-app data
 
 ### v2.26.0
 

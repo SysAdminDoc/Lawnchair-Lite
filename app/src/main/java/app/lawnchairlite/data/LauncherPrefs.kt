@@ -498,10 +498,18 @@ class LauncherPrefs(private val context: Context) {
             .onFailure { Log.e(TAG, "Failed to mark initialized", it) }
     }
 
-    suspend fun exportBackup(): String {
+    suspend fun exportBackup(options: BackupExportOptions = BackupExportOptions()): String {
         val p = runCatching { context.dataStore.data.first() }.getOrDefault(emptyPreferences())
         return JSONObject().apply {
             put("version", app.lawnchairlite.BuildConfig.VERSION_NAME)
+            put("schema", 1)
+            put("exported_at", System.currentTimeMillis())
+            put("backup_options", JSONObject().apply {
+                put("include_search_history", options.includeSearchHistory)
+                put("include_usage_and_recents", options.includeAppUsage)
+                put("include_hidden_apps", options.includeHiddenApps)
+            })
+            put("omitted_private_sections", JSONArray(options.omittedPrivateSections()))
             put("theme", p[THEME] ?: "MIDNIGHT"); put("icon_shape", p[ICON_SHAPE] ?: "SQUIRCLE"); put("icon_size", p[ICON_SIZE] ?: "MEDIUM")
             put("icon_pack", p[ICON_PACK] ?: "")
             put("grid_cols", p[GRID_COLS] ?: 4); put("grid_rows", p[GRID_ROWS] ?: 5); put("dock_count", p[DOCK_COUNT] ?: 5)
@@ -548,12 +556,15 @@ class LauncherPrefs(private val context: Context) {
             put("search_engine", p[SEARCH_ENGINE] ?: "GOOGLE")
             put("favorite_apps", p[FAVORITE_APPS] ?: "")
             put("swipe_up_action", p[SWIPE_UP_ACTION] ?: "APP_DRAWER")
-            put("search_history", p[SEARCH_HISTORY] ?: "")
-            put("suggestion_usage", p[SUGGESTION_USAGE] ?: "")
-            put("app_usage", p[APP_USAGE] ?: "")
+            if (options.includeSearchHistory) put("search_history", p[SEARCH_HISTORY] ?: "")
+            if (options.includeAppUsage) {
+                put("suggestion_usage", p[SUGGESTION_USAGE] ?: "")
+                put("app_usage", p[APP_USAGE] ?: "")
+            }
             put("widgets", p[WIDGETS] ?: "")
             put("home_grid", p[HOME_GRID] ?: ""); put("dock_grid", p[DOCK_GRID] ?: "")
-            put("hidden_apps", p[HIDDEN_APPS] ?: ""); put("custom_labels", p[CUSTOM_LABELS] ?: "")
+            if (options.includeHiddenApps) put("hidden_apps", p[HIDDEN_APPS] ?: "")
+            put("custom_labels", p[CUSTOM_LABELS] ?: "")
         }.toString(2)
     }
 
@@ -616,13 +627,13 @@ class LauncherPrefs(private val context: Context) {
             j.optString("label_weight").takeIf { it.isNotBlank() && runCatching { LabelWeight.valueOf(it) }.isSuccess }?.let { p[LABEL_WEIGHT] = it }
             j.optString("search_engine").takeIf { it.isNotBlank() && runCatching { SearchEngine.valueOf(it) }.isSuccess }?.let { p[SEARCH_ENGINE] = it }
             j.optString("favorite_apps").let { p[FAVORITE_APPS] = it.split("|").filter { key -> key.isNotBlank() }.take(100).joinToString("|") }
-            j.optString("search_history").let { p[SEARCH_HISTORY] = it }
-            j.optString("suggestion_usage").takeIf { it.isNotBlank() }?.let { p[SUGGESTION_USAGE] = it }
-            j.optString("app_usage").takeIf { it.isNotBlank() }?.let { p[APP_USAGE] = it }
+            if (j.has("search_history")) p[SEARCH_HISTORY] = j.optString("search_history")
+            if (j.has("suggestion_usage")) p[SUGGESTION_USAGE] = j.optString("suggestion_usage")
+            if (j.has("app_usage")) p[APP_USAGE] = j.optString("app_usage")
             j.optString("widgets").takeIf { it.isNotBlank() }?.let { p[WIDGETS] = it }
             j.optString("home_grid").takeIf { it.isNotBlank() }?.let { p[HOME_GRID] = it }
             j.optString("dock_grid").takeIf { it.isNotBlank() }?.let { p[DOCK_GRID] = it }
-            j.optString("hidden_apps").let { p[HIDDEN_APPS] = it }
+            if (j.has("hidden_apps")) p[HIDDEN_APPS] = j.optString("hidden_apps")
             j.optString("custom_labels").let { p[CUSTOM_LABELS] = it }
             p[INITIALIZED] = true
         }
