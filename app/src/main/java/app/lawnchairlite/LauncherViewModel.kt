@@ -10,6 +10,8 @@ import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProviderInfo
 import android.content.ContentUris
 import android.content.ComponentName
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -626,6 +628,42 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         } catch (e: Exception) {
             Log.e(TAG, "openAppNotificationSettings failed", e)
         }
+    }
+
+    fun diagnosticReports(): List<DiagnosticReportSummary> = DiagnosticsStore.listReports(ctx)
+
+    fun copyDiagnosticReport(fileName: String? = null) {
+        val text = if (fileName == null) DiagnosticsStore.buildSupportBundle(ctx) else DiagnosticsStore.readReport(ctx, fileName)
+        if (text.isNullOrBlank()) {
+            toast("No diagnostics available")
+            return
+        }
+        runCatching {
+            val clipboard = ctx.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+            clipboard.setPrimaryClip(ClipData.newPlainText("Lawnchair Lite Diagnostics", text))
+            toast("Diagnostics copied")
+        }.onFailure { Log.e(TAG, "copyDiagnosticReport failed", it) }
+    }
+
+    fun shareDiagnosticReport(fileName: String? = null) {
+        val text = if (fileName == null) DiagnosticsStore.buildSupportBundle(ctx) else DiagnosticsStore.readReport(ctx, fileName)
+        if (text.isNullOrBlank()) {
+            toast("No diagnostics available")
+            return
+        }
+        runCatching {
+            ctx.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply {
+                type = "text/plain"
+                putExtra(Intent.EXTRA_SUBJECT, "Lawnchair Lite diagnostics")
+                putExtra(Intent.EXTRA_TEXT, text)
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            }, "Share diagnostics").apply { flags = Intent.FLAG_ACTIVITY_NEW_TASK })
+        }.onFailure { Log.e(TAG, "shareDiagnosticReport failed", it) }
+    }
+
+    fun deleteDiagnosticReport(fileName: String) {
+        if (DiagnosticsStore.deleteReport(ctx, fileName)) toast("Diagnostic report deleted")
+        else toast("Delete failed")
     }
 
     // -- Auto-Place New Apps --

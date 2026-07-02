@@ -79,6 +79,7 @@ Built on crash patterns identified across Lawnchair v14-v15 beta releases:
 - **Private restore preservation** - Omitted private sections no longer clear existing local search, usage, or hidden-app data
 - **Permission audit panel** - Advanced Settings explains each broad/runtime permission, current status, recovery action, and degraded behavior
 - **Restore preview** - Backup import now validates schema compatibility and shows sections, skipped fields, and private-data handling before applying
+- **Local diagnostics** - Crashes are saved to private app storage with Settings copy/share/delete support even when notifications are unavailable
 
 ### v2.26.0
 

@@ -11,6 +11,7 @@ import android.content.Intent
 import android.os.Build
 import android.util.Log
 import androidx.core.app.NotificationCompat
+import app.lawnchairlite.data.DiagnosticsStore
 
 /**
  * Lawnchair Lite - Application
@@ -50,6 +51,7 @@ class LauncherApplication : Application() {
             try {
                 val report = buildCrashReport(thread, throwable)
                 Log.e(TAG, report)
+                DiagnosticsStore.saveCrashReport(this, report)
                 postCrashNotification(report)
             } catch (_: Exception) {
                 // If crash reporting itself fails, don't recurse

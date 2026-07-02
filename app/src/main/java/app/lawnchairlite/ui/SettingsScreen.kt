@@ -58,6 +58,7 @@ fun SettingsPanel(
     var pendingBackupOptions by remember { mutableStateOf(BackupExportOptions()) }
     var pendingRestoreJson by remember { mutableStateOf<String?>(null) }
     var restorePreview by remember { mutableStateOf<BackupImportPreview?>(null) }
+    var diagnosticReports by remember { mutableStateOf(vm.diagnosticReports()) }
     var permissionRefresh by remember { mutableIntStateOf(0) }
     val notificationPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { permissionRefresh++ }
     val contactPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { permissionRefresh++ }
@@ -108,7 +109,7 @@ fun SettingsPanel(
     val dockKeywords = "dock icons style search bar pill floating transparent hide labels label opacity"
     val gesturesKeywords = "gesture double tap swipe down swipe up triple pinch dock lock screen notification flashlight edit mode recent app launch"
     val featuresKeywords = "clock smartspace at a glance weather calendar event auto place notification badges status bar home lock parallax haptic feedback"
-    val advancedKeywords = "kill background apps clear search history reset settings backup restore export import hidden apps permissions package visibility notification contacts calendar location widget about"
+    val advancedKeywords = "kill background apps clear search history reset settings backup restore export import hidden apps diagnostics crash report support bundle permissions package visibility notification contacts calendar location widget about"
     fun sectionMatches(keywords: String): Boolean = sq.isBlank() || keywords.contains(sq) || sq.split(" ").all { w -> keywords.contains(w) }
     val showTheme = sectionMatches(themeKeywords)
     val showIcons = sectionMatches(iconsKeywords)
@@ -563,6 +564,29 @@ fun SettingsPanel(
                                     }
                                 } else null,
                             )
+                        }
+
+                        Lbl("Diagnostics", colors)
+                        ActionBtn("Copy Support Bundle", "${diagnosticReports.size} crash reports", colors) { vm.copyDiagnosticReport() }
+                        Spacer(Modifier.height(8.dp))
+                        ActionBtn("Share Support Bundle", "Build, device, crash history", colors) { vm.shareDiagnosticReport() }
+                        Spacer(Modifier.height(8.dp))
+                        if (diagnosticReports.isEmpty()) {
+                            Text("No saved crash reports", color = colors.textSecondary, fontSize = 12.sp, modifier = Modifier.padding(vertical = 4.dp))
+                        } else {
+                            diagnosticReports.forEach { report ->
+                                DiagnosticReportRow(
+                                    report = report,
+                                    colors = colors,
+                                    onCopy = { vm.copyDiagnosticReport(report.fileName) },
+                                    onShare = { vm.shareDiagnosticReport(report.fileName) },
+                                    onDelete = {
+                                        vm.deleteDiagnosticReport(report.fileName)
+                                        diagnosticReports = vm.diagnosticReports()
+                                    },
+                                )
+                                Spacer(Modifier.height(6.dp))
+                            }
                         }
 
                         Lbl("Permissions", colors)
@@ -1024,6 +1048,43 @@ private fun IconPackSection(
             }
         }
     }
+}
+
+@Composable private fun DiagnosticReportRow(
+    report: DiagnosticReportSummary,
+    colors: LauncherColors,
+    onCopy: () -> Unit,
+    onShare: () -> Unit,
+    onDelete: () -> Unit,
+) {
+    Column(
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(colors.card)
+            .border(0.5.dp, colors.border, RoundedCornerShape(12.dp))
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+    ) {
+        Text(report.title, color = colors.text, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+        Text("${report.bytes} bytes", color = colors.textSecondary, fontSize = 11.sp)
+        Spacer(Modifier.height(8.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            SmallDiagnosticAction("Copy", colors, onCopy)
+            SmallDiagnosticAction("Share", colors, onShare)
+            SmallDiagnosticAction("Delete", colors, onDelete, destructive = true)
+        }
+    }
+}
+
+@Composable private fun SmallDiagnosticAction(label: String, colors: LauncherColors, onClick: () -> Unit, destructive: Boolean = false) {
+    val tint = if (destructive) colors.error else colors.accent
+    Text(
+        label,
+        color = tint,
+        fontSize = 12.sp,
+        fontWeight = FontWeight.Bold,
+        modifier = Modifier.clip(RoundedCornerShape(8.dp))
+            .background(tint.copy(alpha = 0.12f))
+            .clickable { onClick() }
+            .padding(horizontal = 10.dp, vertical = 6.dp),
+    )
 }
 
 @Composable private fun GesturePicker(label: String, current: GestureAction, c: LauncherColors, vm: LauncherViewModel? = null, gestureSource: String = "", onChange: (GestureAction) -> Unit) {
