@@ -582,12 +582,12 @@ fun HomeScreen(vm: LauncherViewModel) {
                             app.lawnchairlite.data.SearchBarStyle.PILL -> SearchPill(
                                 onClick = { openedViaSearch = true; scope.launch { drawerProgress.animateTo(1f, spring(stiffness = Spring.StiffnessMedium)) } },
                                 modifier = Modifier.padding(horizontal = 18.dp, vertical = 5.dp),
-                                searchEngineLabel = settings.searchEngine.label,
+                                searchEngineLabel = settings.searchEngine.localizedLabel(),
                             )
                             app.lawnchairlite.data.SearchBarStyle.BAR -> SearchPill(
                                 onClick = { openedViaSearch = true; scope.launch { drawerProgress.animateTo(1f, spring(stiffness = Spring.StiffnessMedium)) } },
                                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 5.dp),
-                                searchEngineLabel = settings.searchEngine.label,
+                                searchEngineLabel = settings.searchEngine.localizedLabel(),
                             )
                             app.lawnchairlite.data.SearchBarStyle.MINIMAL -> Box(
                                 Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 5.dp)
@@ -738,7 +738,7 @@ fun HomeScreen(vm: LauncherViewModel) {
                 onSearchHistoryTap = { vm.setSearch(it) },
                 onSearchHistoryRemove = { vm.removeSearchHistoryItem(it) },
                 onSearchHistoryClear = { vm.clearSearchHistory() },
-                searchEngineLabel = settings.searchEngine.label,
+                searchEngineLabel = settings.searchEngine.localizedLabel(),
                 onVibrate = { vm.vibrate() },
                 onClearRecents = { vm.clearRecentApps() },
                 onProgressChange = { newP ->
