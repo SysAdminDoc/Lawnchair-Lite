@@ -44,7 +44,7 @@ Built on crash patterns identified across Lawnchair v14-v15 beta releases:
 - Inline calculator and unit converter in drawer search
 - Time-aware app suggestions (morning/afternoon/evening/night usage patterns)
 - Search history chips with fade gradient, recent apps row with clear button
-- Home screen widgets via AppWidgetHost with grid-cell sizing, bind permission recovery, and provider configuration
+- Home screen widgets via AppWidgetHost with provider previews, grid-cell sizing, bind recovery, configuration, and removal confirmation
 - Contact search with permission chip, web search fallback
 - Notification badges (count/dot/hidden), app shortcuts via LauncherApps API
 - 5 page transitions (Slide, Cube, Stack, Fade, Depth, Carousel)
@@ -82,6 +82,7 @@ Built on crash patterns identified across Lawnchair v14-v15 beta releases:
 - **Restore preview** - Backup import now validates schema compatibility and shows sections, skipped fields, and private-data handling before applying
 - **Local diagnostics** - Crashes are saved to private app storage with Settings copy/share/delete support even when notifications are unavailable
 - **Drawer groups** - Drawer folders can be created in Settings, populated manually or by package-prefix rule, filtered across All/Recent/Favorites/Work, and backed up with launcher JSON
+- **Widget picker previews** - The widget picker shows provider preview images when available, icon/placeholder fallbacks when unavailable, and confirms widget removal before deleting host IDs
 
 ### v2.26.0
 

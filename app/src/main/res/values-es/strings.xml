@@ -26,6 +26,16 @@
     <string name="widget_setup_canceled">Configuracion del widget cancelada</string>
     <string name="widget_added">Widget agregado</string>
     <string name="widget_removed">Widget eliminado</string>
+    <string name="add_widget">Agregar widget</string>
+    <string name="remove_widget">Quitar widget</string>
+    <string name="remove_widget_confirm">Quitar %1$s de la pantalla de inicio?</string>
+    <string name="search_widgets">Buscar widgets\u2026</string>
+    <string name="no_widgets_found">No se encontraron widgets</string>
+    <string name="no_widgets_found_desc">Borra la busqueda o instala una app con widgets.</string>
+    <string name="widget_preview_unavailable">Sin vista previa</string>
+    <string name="widget_preview_icon_fallback">La vista previa no esta disponible; se muestra el icono de la app.</string>
+    <string name="widget_cells_description">%1$d por %2$d celdas</string>
+    <string name="add_widget_content_description">Agregar widget %1$s de %2$s, %3$d por %4$d celdas</string>
     <string name="drawer_apps_count">%1$d apps</string>
     <string name="drawer_results_count">%1$d resultados</string>
     <string name="search_query_quoted">Buscar \"%1$s\"</string>

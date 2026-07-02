@@ -12,6 +12,28 @@ class WidgetPlacementServiceTest {
     }
 
     @Test
+    fun selectsPreviewImageBeforeFallbackVisuals() {
+        assertEquals(
+            WidgetPreviewVisual.PREVIEW_IMAGE,
+            WidgetPlacementService.previewVisual(hasPreviewImage = true, hasIcon = true),
+        )
+        assertEquals(
+            WidgetPreviewVisual.ICON_FALLBACK,
+            WidgetPlacementService.previewVisual(hasPreviewImage = false, hasIcon = true),
+        )
+        assertEquals(
+            WidgetPreviewVisual.PLACEHOLDER,
+            WidgetPlacementService.previewVisual(hasPreviewImage = false, hasIcon = false),
+        )
+    }
+
+    @Test
+    fun keepsWidgetUntilRemovalIsConfirmed() {
+        assertEquals(WidgetRemovalOutcome.KEEP, WidgetPlacementService.removalOutcome(confirmed = false))
+        assertEquals(WidgetRemovalOutcome.DELETE_HOST_ID, WidgetPlacementService.removalOutcome(confirmed = true))
+    }
+
+    @Test
     fun delegatesSpanPlanningThroughLauncherSettings() {
         val grid = listOf<GridCell?>(
             GridCell.App("one"),

@@ -98,6 +98,9 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     val widgetPickerOpen: StateFlow<Boolean> = _widgetPickerOpen.asStateFlow()
     private val _pendingWidgetPlacement = MutableStateFlow<PendingWidgetPlacement?>(null)
     val pendingWidgetPlacement: StateFlow<PendingWidgetPlacement?> = _pendingWidgetPlacement.asStateFlow()
+    data class WidgetRemoveConfirm(val appWidgetId: Int, val label: String)
+    private val _widgetRemoveConfirm = MutableStateFlow<WidgetRemoveConfirm?>(null)
+    val widgetRemoveConfirm: StateFlow<WidgetRemoveConfirm?> = _widgetRemoveConfirm.asStateFlow()
     private val _homeSpaceMenu = MutableStateFlow(false)
     val homeSpaceMenu: StateFlow<Boolean> = _homeSpaceMenu.asStateFlow()
     fun showHomeSpaceMenu() { _homeSpaceMenu.value = true; vibrate() }
@@ -418,8 +421,8 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     fun closeDrawer() { _drawerOpen.value = false; _search.value = ""; resetDrawerFilters() }
     fun openSettings() { _settingsOpen.value = true }
     fun closeSettings() { _settingsOpen.value = false }
-    fun closeAllOverlays() { _drawerOpen.value = false; _settingsOpen.value = false; _openFolder.value = null; _drawerMenuApp.value = null; _folderRename.value = null; _labelEdit.value = null; _homeMenu.value = null; _editMode.value = false; _widgetPickerOpen.value = false; _homeSpaceMenu.value = false; _search.value = ""; _shortcuts.value = emptyList(); resetDrawerFilters() }
-    fun hasOpenOverlay(): Boolean = _drawerOpen.value || _settingsOpen.value || _openFolder.value != null || _drawerMenuApp.value != null || _labelEdit.value != null || _homeMenu.value != null || _widgetPickerOpen.value || _editMode.value || _homeSpaceMenu.value
+    fun closeAllOverlays() { _drawerOpen.value = false; _settingsOpen.value = false; _openFolder.value = null; _drawerMenuApp.value = null; _folderRename.value = null; _labelEdit.value = null; _homeMenu.value = null; _editMode.value = false; _widgetPickerOpen.value = false; _widgetRemoveConfirm.value = null; _homeSpaceMenu.value = false; _search.value = ""; _shortcuts.value = emptyList(); resetDrawerFilters() }
+    fun hasOpenOverlay(): Boolean = _drawerOpen.value || _settingsOpen.value || _openFolder.value != null || _drawerMenuApp.value != null || _labelEdit.value != null || _homeMenu.value != null || _widgetPickerOpen.value || _widgetRemoveConfirm.value != null || _editMode.value || _homeSpaceMenu.value
 
     // -- Home/Dock Context Menu --
 
@@ -1587,6 +1590,27 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         _homeGrid.value = trimGrid(grid, pageSize()); prefs.saveHome(_homeGrid.value)
         toast(R.string.widget_removed)
     }}
+
+    fun requestRemoveWidget(appWidgetId: Int) {
+        val label = runCatching {
+            widgetManager.getAppWidgetInfo(appWidgetId)?.loadLabel(ctx.packageManager)
+        }.getOrNull().takeIf { !it.isNullOrBlank() } ?: ctx.getString(R.string.widgets)
+        _widgetRemoveConfirm.value = WidgetRemoveConfirm(appWidgetId, label)
+        _homeMenu.value = null
+        _shortcuts.value = emptyList()
+    }
+
+    fun dismissRemoveWidget() {
+        _widgetRemoveConfirm.value = null
+    }
+
+    fun confirmRemoveWidget() {
+        val confirm = _widgetRemoveConfirm.value ?: return
+        _widgetRemoveConfirm.value = null
+        if (WidgetPlacementService.removalOutcome(confirmed = true) == WidgetRemovalOutcome.DELETE_HOST_ID) {
+            removeWidget(confirm.appWidgetId)
+        }
+    }
 
     fun widgetForId(id: Int): WidgetInfo? = _widgets.value.find { it.appWidgetId == id }
 

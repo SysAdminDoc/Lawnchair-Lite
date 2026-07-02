@@ -65,6 +65,8 @@ import app.lawnchairlite.data.DragSource
 import app.lawnchairlite.data.GridCell
 import app.lawnchairlite.data.IconShape
 import app.lawnchairlite.data.SmartspaceState
+import app.lawnchairlite.data.WidgetPlacementService
+import app.lawnchairlite.data.WidgetPreviewVisual
 import java.text.SimpleDateFormat
 import java.util.*
 import android.app.AlarmManager
@@ -653,6 +655,11 @@ fun HomeContextMenu(
                 CtxItem(stringResource(R.string.rearrange_icons), c) { vm.enterEditMode() }
                 HorizontalDivider(color = c.border.copy(alpha = 0.3f), thickness = 0.5.dp)
                 CtxItem(stringResource(R.string.remove_from_source, sourceLabel), c, isRed = true) { vm.removeFromGrid(menuState.source, menuState.index) }
+            } else if (cell is GridCell.Widget) {
+                CtxItem(stringResource(R.string.remove_widget), c, isRed = true) {
+                    vm.requestRemoveWidget(cell.widgetId)
+                    onDismiss()
+                }
             }
         }
     }
@@ -958,6 +965,24 @@ fun UninstallConfirmDialog(appName: String, onConfirm: () -> Unit, onDismiss: ()
 // ── Widget Picker ─────────────────────────────────────────────────────
 
 @Composable
+fun WidgetRemoveConfirmDialog(widgetLabel: String, onConfirm: () -> Unit, onDismiss: () -> Unit) {
+    val c = LocalLauncherColors.current
+    Dialog(onDismissRequest = onDismiss) {
+        Column(Modifier.clip(RoundedCornerShape(20.dp)).background(c.surface).border(0.5.dp, c.border, RoundedCornerShape(20.dp)).padding(24.dp)) {
+            Text(stringResource(R.string.remove_widget), color = c.text, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+            Spacer(Modifier.height(10.dp))
+            Text(stringResource(R.string.remove_widget_confirm, widgetLabel), color = c.textSecondary, fontSize = 14.sp, lineHeight = 19.sp)
+            Spacer(Modifier.height(18.dp))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel), color = c.textSecondary) }
+                Spacer(Modifier.width(8.dp))
+                Button(onClick = onConfirm, colors = ButtonDefaults.buttonColors(containerColor = c.error), shape = RoundedCornerShape(12.dp)) { Text(stringResource(R.string.remove), color = Color.White) }
+            }
+        }
+    }
+}
+
+@Composable
 fun WidgetPickerDialog(
     widgets: List<AppWidgetProviderInfo>,
     onSelect: (AppWidgetProviderInfo) -> Unit,
@@ -990,7 +1015,11 @@ fun WidgetPickerDialog(
             Spacer(Modifier.height(8.dp))
             if (filtered.isEmpty()) {
                 Box(Modifier.fillMaxWidth().weight(1f), Alignment.Center) {
-                    Text(stringResource(R.string.no_widgets_found), color = c.textSecondary, fontSize = 13.sp)
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(stringResource(R.string.no_widgets_found), color = c.textSecondary, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                        Spacer(Modifier.height(4.dp))
+                        Text(stringResource(R.string.no_widgets_found_desc), color = c.textSecondary.copy(alpha = 0.75f), fontSize = 11.sp, textAlign = TextAlign.Center)
+                    }
                 }
             } else {
                 LazyColumn(Modifier.weight(1f)) {
@@ -1001,6 +1030,9 @@ fun WidgetPickerDialog(
                         val a11ySpanCols = ((minW + 72) / 73).coerceIn(1, 5)
                         val a11ySpanRows = ((minH + 72) / 73).coerceIn(1, 5)
                         val addWidgetDescription = stringResource(R.string.add_widget_content_description, label, appLabel, a11ySpanCols, a11ySpanRows)
+                        val icon = remember(info.provider) { try { info.loadIcon(context, resources.displayMetrics.densityDpi) } catch (_: Exception) { null } }
+                        val previewImage = remember(info.provider) { try { info.loadPreviewImage(context, resources.displayMetrics.densityDpi) } catch (_: Exception) { null } }
+                        val previewVisual = WidgetPlacementService.previewVisual(previewImage != null, icon != null)
                         Row(
                             Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
                                 .semantics { contentDescription = addWidgetDescription; role = Role.Button }
@@ -1008,17 +1040,43 @@ fun WidgetPickerDialog(
                                 .padding(horizontal = 10.dp, vertical = 10.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            val icon = try { info.loadIcon(context, resources.displayMetrics.densityDpi) } catch (_: Exception) { null }
-                            if (icon != null) {
-                                Image(rememberDrawablePainter(icon), label, Modifier.size(40.dp).clip(RoundedCornerShape(8.dp)))
-                                Spacer(Modifier.width(10.dp))
+                            Box(
+                                Modifier.width(92.dp).height(64.dp).clip(RoundedCornerShape(12.dp))
+                                    .background(c.card).border(0.5.dp, c.border.copy(alpha = 0.65f), RoundedCornerShape(12.dp)),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                when (previewVisual) {
+                                    WidgetPreviewVisual.PREVIEW_IMAGE -> previewImage?.let { preview ->
+                                        Image(
+                                            rememberDrawablePainter(preview),
+                                            label,
+                                            Modifier.fillMaxSize().padding(4.dp),
+                                        )
+                                    } ?: Icon(Icons.Default.Widgets, null, tint = c.accent.copy(alpha = 0.75f), modifier = Modifier.size(26.dp))
+                                    WidgetPreviewVisual.ICON_FALLBACK -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                        icon?.let { fallbackIcon ->
+                                            Image(rememberDrawablePainter(fallbackIcon), label, Modifier.size(32.dp).clip(RoundedCornerShape(8.dp)))
+                                        } ?: Icon(Icons.Default.Widgets, null, tint = c.accent.copy(alpha = 0.75f), modifier = Modifier.size(26.dp))
+                                        Spacer(Modifier.height(3.dp))
+                                        Text(stringResource(R.string.widget_preview_unavailable), color = c.textSecondary, fontSize = 8.sp, maxLines = 1)
+                                    }
+                                    WidgetPreviewVisual.PLACEHOLDER -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                        Icon(Icons.Default.Widgets, null, tint = c.accent.copy(alpha = 0.75f), modifier = Modifier.size(26.dp))
+                                        Spacer(Modifier.height(3.dp))
+                                        Text(stringResource(R.string.widget_preview_unavailable), color = c.textSecondary, fontSize = 8.sp, maxLines = 1)
+                                    }
+                                }
                             }
+                            Spacer(Modifier.width(10.dp))
                             Column(Modifier.weight(1f)) {
                                 Text(label, color = c.text, fontSize = 13.sp, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                 Text(appLabel, color = c.textSecondary, fontSize = 10.sp, maxLines = 1)
                                 val spanCols = ((minW + 72) / 73).coerceIn(1, 5)
                                 val spanRows = ((minH + 72) / 73).coerceIn(1, 5)
                                 Text(stringResource(R.string.widget_cells_description, spanCols, spanRows), color = c.textSecondary.copy(alpha = 0.6f), fontSize = 9.sp)
+                                if (previewVisual != WidgetPreviewVisual.PREVIEW_IMAGE) {
+                                    Text(stringResource(R.string.widget_preview_icon_fallback), color = c.textSecondary.copy(alpha = 0.55f), fontSize = 9.sp, maxLines = 1)
+                                }
                             }
                         }
                         HorizontalDivider(color = c.border.copy(alpha = 0.2f), thickness = 0.5.dp)

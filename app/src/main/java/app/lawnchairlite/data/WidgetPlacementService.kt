@@ -17,6 +17,17 @@ enum class WidgetSetupStep {
     CONFIGURE_PROVIDER,
 }
 
+enum class WidgetPreviewVisual {
+    PREVIEW_IMAGE,
+    ICON_FALLBACK,
+    PLACEHOLDER,
+}
+
+enum class WidgetRemovalOutcome {
+    KEEP,
+    DELETE_HOST_ID,
+}
+
 object WidgetPlacementService {
     fun findFirstEmptySpan(
         grid: List<GridCell?>,
@@ -36,6 +47,15 @@ object WidgetPlacementService {
 
     fun setupStep(hasConfigureActivity: Boolean): WidgetSetupStep =
         if (hasConfigureActivity) WidgetSetupStep.CONFIGURE_PROVIDER else WidgetSetupStep.ADD_DIRECTLY
+
+    fun previewVisual(hasPreviewImage: Boolean, hasIcon: Boolean): WidgetPreviewVisual = when {
+        hasPreviewImage -> WidgetPreviewVisual.PREVIEW_IMAGE
+        hasIcon -> WidgetPreviewVisual.ICON_FALLBACK
+        else -> WidgetPreviewVisual.PLACEHOLDER
+    }
+
+    fun removalOutcome(confirmed: Boolean): WidgetRemovalOutcome =
+        if (confirmed) WidgetRemovalOutcome.DELETE_HOST_ID else WidgetRemovalOutcome.KEEP
 
     fun createWidgetInfo(pending: PendingWidgetPlacement): WidgetInfo =
         WidgetInfo(

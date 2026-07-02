@@ -111,6 +111,7 @@ fun HomeScreen(vm: LauncherViewModel) {
     val selectedDrawerTab by vm.selectedDrawerTab.collectAsState()
     val selectedDrawerGroupId by vm.selectedDrawerGroupId.collectAsState()
     val widgetPickerOpen by vm.widgetPickerOpen.collectAsState()
+    val widgetRemoveConfirm by vm.widgetRemoveConfirm.collectAsState()
     val homeSpaceMenu by vm.homeSpaceMenu.collectAsState()
     val widgetInfos by vm.widgets.collectAsState()
     val suggestedApps by vm.suggestedApps.collectAsState()
@@ -561,7 +562,7 @@ fun HomeScreen(vm: LauncherViewModel) {
                                                 x = maxWidth * wi.col * cellW,
                                                 y = maxHeight * wi.row * cellH,
                                             )
-                                            .then(if (editMode) Modifier.clickable { vm.removeWidget(wi.appWidgetId) } else Modifier),
+                                            .then(if (editMode) Modifier.clickable { vm.requestRemoveWidget(wi.appWidgetId) } else Modifier),
                                     )
                                 }
                             }
@@ -775,6 +776,14 @@ fun HomeScreen(vm: LauncherViewModel) {
                     }
                 },
                 onDismiss = { vm.closeWidgetPicker() },
+            )
+        }
+
+        widgetRemoveConfirm?.let { confirm ->
+            WidgetRemoveConfirmDialog(
+                widgetLabel = confirm.label,
+                onConfirm = { vm.confirmRemoveWidget() },
+                onDismiss = { vm.dismissRemoveWidget() },
             )
         }
 

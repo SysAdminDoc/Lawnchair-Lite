@@ -268,11 +268,16 @@
     <string name="add_favorite">Add Favorite</string>
     <string name="hide_from_drawer">Hide from Drawer</string>
     <string name="add_widget">Add Widget</string>
+    <string name="remove_widget">Remove Widget</string>
+    <string name="remove_widget_confirm">Remove %1$s from the home screen?</string>
     <string name="add_page">Add Page</string>
     <string name="remove_page">Remove Page</string>
     <string name="wallpaper_action">Wallpaper</string>
     <string name="search_widgets">Search widgets\u2026</string>
     <string name="no_widgets_found">No widgets found</string>
+    <string name="no_widgets_found_desc">Clear the search or install an app that exposes widgets.</string>
+    <string name="widget_preview_unavailable">No preview</string>
+    <string name="widget_preview_icon_fallback">Provider preview unavailable; showing the app icon fallback.</string>
     <string name="widget_cells_description">%1$d by %2$d cells</string>
     <string name="add_widget_content_description">Add widget %1$s from %2$s, %3$d by %4$d cells</string>
     <string name="backup_exported">Backup exported</string>
