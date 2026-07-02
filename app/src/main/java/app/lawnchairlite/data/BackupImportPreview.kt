@@ -22,7 +22,7 @@ data class BackupImportPreview(
 
         private val knownFields = setOf(
             "version", "schema", "exported_at", "backup_options", "omitted_private_sections",
-            "theme", "icon_shape", "icon_size", "icon_pack", "themed_icons", "icon_shadow", "grayscale_icons",
+            "theme", "icon_shape", "icon_size", "icon_pack", "icon_overrides", "themed_icons", "icon_shadow", "grayscale_icons",
             "accent_override", "wallpaper_dim", "page_transition", "badge_style", "label_style", "label_size",
             "label_weight", "grid_cols", "grid_rows", "grid_padding_h", "grid_padding_v", "home_grid",
             "dock_grid", "dock_count", "dock_style", "dock_labels", "dock_label_opacity", "hide_dock",
@@ -98,7 +98,7 @@ data class BackupImportPreview(
         }
 
         private fun sectionGroups(fields: Map<String, Any?>): List<String> = buildList {
-            addIfPresent(fields, "Appearance", "theme", "icon_shape", "icon_size", "icon_pack", "themed_icons", "icon_shadow", "grayscale_icons", "accent_override", "wallpaper_dim", "page_transition", "badge_style", "label_style", "label_size", "label_weight")
+            addIfPresent(fields, "Appearance", "theme", "icon_shape", "icon_size", "icon_pack", "icon_overrides", "themed_icons", "icon_shadow", "grayscale_icons", "accent_override", "wallpaper_dim", "page_transition", "badge_style", "label_style", "label_size", "label_weight")
             addIfPresent(fields, "Layout & widgets", "grid_cols", "grid_rows", "grid_padding_h", "grid_padding_v", "home_grid", "dock_grid", "dock_count", "dock_style", "dock_labels", "dock_label_opacity", "hide_dock", "widgets")
             addIfPresent(fields, "Drawer & search", "drawer_sort", "drawer_columns", "drawer_opacity", "drawer_categories", "category_rules", "drawer_groups", "drawer_section_headers", "drawer_animation", "show_suggestions", "search_engine", "favorite_apps", "folder_columns")
             addIfPresent(fields, "Gestures", "double_tap", "swipe_down", "swipe_up_action", "triple_tap", "pinch_action", "dock_tap_action", "dock_swipe_apps")

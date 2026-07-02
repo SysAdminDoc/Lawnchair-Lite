@@ -166,6 +166,7 @@ class LauncherPrefs(private val context: Context) {
         val GESTURE_APP_SWIPE_UP = stringPreferencesKey("gesture_app_swipe_up")
         val CATEGORY_RULES = stringPreferencesKey("category_rules_v1")
         val DRAWER_GROUPS = stringPreferencesKey("drawer_groups_v1")
+        val ICON_OVERRIDES = stringPreferencesKey("icon_overrides_v1")
     }
 
     // Safe data flow: catches IOException (disk errors) and emits defaults
@@ -254,6 +255,9 @@ class LauncherPrefs(private val context: Context) {
             if (eq > 0 && eq < entry.length - 1) entry.substring(0, eq) to unescapeLabel(entry.substring(eq + 1)) else null
         }?.toMap() ?: emptyMap()
     }
+    val iconOverrides: Flow<Map<String, String>> = safeData.map { p ->
+        p[ICON_OVERRIDES]?.let { parseIconOverrides(it) } ?: emptyMap()
+    }
     val appUsage: Flow<Map<String, Long>> = safeData.map { p ->
         p[APP_USAGE]?.split("|")?.mapNotNull { entry ->
             val eq = entry.indexOf('=')
@@ -316,6 +320,7 @@ class LauncherPrefs(private val context: Context) {
                 p[SWIPE_UP_ACTION] = d.swipeUpAction.name
                 p[CATEGORY_RULES] = ""
                 p[DRAWER_GROUPS] = ""
+                p[ICON_OVERRIDES] = ""
                 p[FAVORITE_APPS] = ""
             }
         }.onFailure { Log.e(TAG, "resetToDefaults failed", it) }
@@ -347,6 +352,12 @@ class LauncherPrefs(private val context: Context) {
                 "$k=${escapeLabel(v)}"
             } }
         }.onFailure { Log.e(TAG, "Failed to save custom labels", it) }
+    }
+
+    suspend fun saveIconOverrides(map: Map<String, String>) {
+        runCatching {
+            context.dataStore.edit { it[ICON_OVERRIDES] = serializeIconOverrides(map) }
+        }.onFailure { Log.e(TAG, "Failed to save icon overrides", it) }
     }
 
     /** Escape label values for pipe-delimited storage. Uses same scheme as AppModel. */
@@ -544,6 +555,7 @@ class LauncherPrefs(private val context: Context) {
             put("drawer_categories", p[DRAWER_CATEGORIES] ?: false)
             put("category_rules", p[CATEGORY_RULES] ?: "")
             put("drawer_groups", p[DRAWER_GROUPS] ?: "")
+            put("icon_overrides", p[ICON_OVERRIDES] ?: "")
             put("dock_style", p[DOCK_STYLE] ?: "SOLID")
             put("dock_labels", p[DOCK_LABELS] ?: false)
             put("dock_label_opacity", p[DOCK_LABEL_OPACITY] ?: 82)
@@ -623,6 +635,7 @@ class LauncherPrefs(private val context: Context) {
             if (j.has("drawer_categories")) p[DRAWER_CATEGORIES] = j.getBoolean("drawer_categories")
             j.optString("category_rules").let { p[CATEGORY_RULES] = serializeCategoryRules(parseCategoryRules(it)) }
             j.optString("drawer_groups").let { p[DRAWER_GROUPS] = serializeDrawerGroups(parseDrawerGroups(it)) }
+            j.optString("icon_overrides").let { p[ICON_OVERRIDES] = serializeIconOverrides(parseIconOverrides(it)) }
             j.optString("dock_style").takeIf { it.isNotBlank() && runCatching { DockStyle.valueOf(it) }.isSuccess }?.let { p[DOCK_STYLE] = it }
             if (j.has("dock_labels")) p[DOCK_LABELS] = j.getBoolean("dock_labels")
             if (j.has("dock_label_opacity")) p[DOCK_LABEL_OPACITY] = j.getInt("dock_label_opacity").coerceIn(35, 100)
@@ -708,3 +721,17 @@ internal fun parseDrawerGroups(raw: String): List<DrawerGroup> = runCatching {
     }
     sanitizeDrawerGroups(groups)
 }.getOrDefault(emptyList())
+
+internal fun serializeIconOverrides(overrides: Map<String, String>): String = JSONObject().apply {
+    sanitizeIconOverrides(overrides).forEach { (target, source) ->
+        put(target, source)
+    }
+}.toString()
+
+internal fun parseIconOverrides(raw: String): Map<String, String> = runCatching {
+    if (raw.isBlank()) return@runCatching emptyMap()
+    val obj = JSONObject(raw)
+    sanitizeIconOverrides(
+        obj.keys().asSequence().associateWith { key -> obj.optString(key) },
+    )
+}.getOrDefault(emptyMap())

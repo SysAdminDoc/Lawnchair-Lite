@@ -179,6 +179,32 @@ fun TappableAppIcon(app: AppInfo, shape: IconShape, iconSizeDp: Dp = 50.dp, modi
 }
 
 @Composable
+fun ShortcutIconContent(shortcut: GridCell.Shortcut, icon: android.graphics.drawable.Drawable?, shape: IconShape, iconSizeDp: Dp = 50.dp, modifier: Modifier = Modifier, showLabel: Boolean = true, dimmed: Boolean = false, iconShadow: Boolean = false, labelSizeSp: Int = 11, labelAlpha: Float = 1f, grayscale: Boolean = false, labelWeight: FontWeight = FontWeight.Normal) {
+    val c = LocalLauncherColors.current
+    val isNone = shape == IconShape.NONE
+    Column(modifier.graphicsLayer(alpha = if (dimmed) 0.25f else 1f), horizontalAlignment = Alignment.CenterHorizontally) {
+        Box(Modifier.size(iconSizeDp).then(if (iconShadow && !isNone) Modifier.shadow(6.dp, iconClip(shape)) else Modifier)) {
+            Box(Modifier.fillMaxSize().then(if (isNone) Modifier else Modifier.clip(iconClip(shape)).background(c.card)), Alignment.Center) {
+                if (icon != null) {
+                    Image(
+                        rememberDrawablePainter(icon),
+                        shortcut.label,
+                        Modifier.fillMaxSize().then(if (isNone) Modifier else Modifier.padding((iconSizeDp.value * 0.1f).dp)),
+                        colorFilter = if (grayscale) GrayscaleColorFilter else null,
+                    )
+                } else {
+                    Icon(Icons.AutoMirrored.Filled.ArrowForward, null, tint = c.accent, modifier = Modifier.size(iconSizeDp * 0.48f))
+                }
+            }
+        }
+        if (showLabel) {
+            Spacer(Modifier.height(3.dp))
+            Text(shortcut.label, color = c.text.copy(alpha = labelAlpha.coerceIn(0f, 1f)), fontSize = labelSizeSp.sp, fontWeight = labelWeight, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, modifier = Modifier.widthIn(max = 76.dp), style = TextStyle(shadow = Shadow(color = Color.Black.copy(alpha = 0.5f), offset = Offset(0f, 1f), blurRadius = 3f)))
+        }
+    }
+}
+
+@Composable
 fun FolderIconContent(folder: GridCell.Folder, shape: IconShape, resolveApp: (String) -> AppInfo?, iconSizeDp: Dp = 50.dp, modifier: Modifier = Modifier, showLabel: Boolean = true, dimmed: Boolean = false, badgeCount: Int = 0, labelAlpha: Float = 1f) {
     val c = LocalLauncherColors.current
     Column(modifier.graphicsLayer(alpha = if (dimmed) 0.25f else 1f), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -221,11 +247,16 @@ fun FolderIconContent(folder: GridCell.Folder, shape: IconShape, resolveApp: (St
 }
 
 @Composable
-fun DragGhost(cell: GridCell?, app: AppInfo?, shape: IconShape, offset: Offset, resolveApp: (String) -> AppInfo?, sizeDp: Dp = 50.dp) {
+fun DragGhost(cell: GridCell?, app: AppInfo?, shape: IconShape, offset: Offset, resolveApp: (String) -> AppInfo?, resolveShortcutIcon: (GridCell.Shortcut) -> android.graphics.drawable.Drawable?, sizeDp: Dp = 50.dp) {
     if (cell == null) return; val c = LocalLauncherColors.current; val d = LocalDensity.current; val half = sizeDp / 2
     Box(Modifier.offset(x = with(d) { offset.x.toDp() - half }, y = with(d) { offset.y.toDp() - half }).size(sizeDp + 6.dp).shadow(12.dp, iconClip(shape)).clip(iconClip(shape)).background(c.card).graphicsLayer(alpha = 0.95f, scaleX = 1.2f, scaleY = 1.2f), Alignment.Center) {
         when (cell) {
             is GridCell.App -> if (app?.icon != null) Image(rememberDrawablePainter(app.icon), null, Modifier.fillMaxSize().padding(5.dp))
+            is GridCell.Shortcut -> {
+                val icon = resolveShortcutIcon(cell)
+                if (icon != null) Image(rememberDrawablePainter(icon), null, Modifier.fillMaxSize().padding(5.dp))
+                else Icon(Icons.AutoMirrored.Filled.ArrowForward, null, tint = c.accent, modifier = Modifier.size(24.dp))
+            }
             is GridCell.Widget -> Icon(Icons.Default.Widgets, null, tint = c.accent, modifier = Modifier.size(26.dp))
             is GridCell.Folder -> {
                 val p = cell.appKeys.take(4).mapNotNull { resolveApp(it) }
@@ -549,6 +580,14 @@ fun HomeContextMenu(
     val app = menuState.appInfo
     val sourceLabel = stringResource(if (menuState.source == DragSource.DOCK) R.string.dock_source else R.string.home_source)
     var showFolderCoverPicker by remember(cell) { mutableStateOf(false) }
+    var showIconPicker by remember(cell) { mutableStateOf(false) }
+    val iconOverrides by vm.iconOverrides.collectAsState()
+    val allAppsForIconPicker by vm.allApps.collectAsState()
+    val iconTargetKey = when (cell) {
+        is GridCell.App -> cell.appKey
+        is GridCell.Shortcut -> cell.key
+        else -> ""
+    }
 
     Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.5f)).pointerInput(Unit) { detectTapGestures { onDismiss() } }, Alignment.Center) {
         Column(
@@ -561,8 +600,9 @@ fun HomeContextMenu(
 
             when (cell) {
                 is GridCell.App -> if (app != null) {
+                    val displayApp = vm.resolveApp(cell.appKey) ?: app
                     Box(Modifier.size(54.dp).clip(iconClip(shape)).background(c.card), Alignment.Center) {
-                        if (app.icon != null) Image(rememberDrawablePainter(app.icon), null, Modifier.fillMaxSize().padding(5.dp))
+                        if (displayApp.icon != null) Image(rememberDrawablePainter(displayApp.icon), null, Modifier.fillMaxSize().padding(5.dp))
                     }
                     Spacer(Modifier.height(6.dp))
                     Text(vm.customLabels.collectAsState().value[cell.appKey] ?: app.label, color = c.text, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
@@ -583,6 +623,12 @@ fun HomeContextMenu(
                     Spacer(Modifier.height(6.dp))
                     Text(stringResource(R.string.widgets), color = c.text, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
                 }
+                is GridCell.Shortcut -> {
+                    ShortcutIconContent(cell, vm.resolveShortcutIcon(cell), shape, 54.dp, showLabel = false)
+                    Spacer(Modifier.height(6.dp))
+                    Text(cell.label, color = c.text, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(horizontal = 16.dp))
+                    Text(cell.packageName, color = c.textSecondary, fontSize = 10.sp, textAlign = TextAlign.Center, modifier = Modifier.padding(horizontal = 16.dp))
+                }
             }
 
             // App Shortcuts
@@ -590,7 +636,13 @@ fun HomeContextMenu(
                 Spacer(Modifier.height(8.dp))
                 HorizontalDivider(color = c.border.copy(alpha = 0.3f), thickness = 0.5.dp)
                 shortcuts.forEach { shortcut ->
-                    ShortcutItem(shortcut, c) { vm.launchShortcut(shortcut) }
+                    ShortcutItem(
+                        shortcut = shortcut,
+                        c = c,
+                        onClick = { vm.launchShortcut(shortcut) },
+                        onPinHome = { vm.pinShortcutToHome(shortcut, cell.appKey) },
+                        onPinDock = { vm.pinShortcutToDock(shortcut, cell.appKey) },
+                    )
                 }
             }
 
@@ -599,6 +651,17 @@ fun HomeContextMenu(
 
             if (cell is GridCell.App && app != null) {
                 CtxItem(stringResource(R.string.rename), c) { vm.startLabelEdit(cell.appKey) }
+                CtxItem(stringResource(R.string.set_icon), c) { showIconPicker = !showIconPicker }
+                if (iconOverrides.containsKey(cell.appKey)) CtxItem(stringResource(R.string.reset_icon), c) { vm.clearIconOverride(cell.appKey); onDismiss() }
+                if (showIconPicker) {
+                    IconOverridePicker(
+                        apps = allAppsForIconPicker,
+                        currentSourceKey = iconOverrides[cell.appKey],
+                        c = c,
+                        onSelect = { sourceKey -> vm.setIconOverride(cell.appKey, sourceKey); onDismiss() },
+                        onClear = { vm.clearIconOverride(cell.appKey); onDismiss() },
+                    )
+                }
                 CtxItem(stringResource(R.string.rearrange_icons), c) { vm.enterEditMode() }
                 if (menuState.source == DragSource.DOCK) {
                     val hasDockSwipe = vm.settings.collectAsState().value.dockSwipeApps.containsKey(menuState.index)
@@ -660,6 +723,21 @@ fun HomeContextMenu(
                     vm.requestRemoveWidget(cell.widgetId)
                     onDismiss()
                 }
+            } else if (cell is GridCell.Shortcut) {
+                CtxItem(stringResource(R.string.set_icon), c) { showIconPicker = !showIconPicker }
+                if (iconOverrides.containsKey(iconTargetKey)) CtxItem(stringResource(R.string.reset_icon), c) { vm.clearIconOverride(iconTargetKey); onDismiss() }
+                if (showIconPicker) {
+                    IconOverridePicker(
+                        apps = allAppsForIconPicker,
+                        currentSourceKey = iconOverrides[iconTargetKey],
+                        c = c,
+                        onSelect = { sourceKey -> vm.setIconOverride(iconTargetKey, sourceKey); onDismiss() },
+                        onClear = { vm.clearIconOverride(iconTargetKey); onDismiss() },
+                    )
+                }
+                CtxItem(stringResource(R.string.rearrange_icons), c) { vm.enterEditMode() }
+                HorizontalDivider(color = c.border.copy(alpha = 0.3f), thickness = 0.5.dp)
+                CtxItem(stringResource(R.string.remove_from_source, sourceLabel), c, isRed = true) { vm.removeFromGrid(menuState.source, menuState.index) }
             }
         }
     }
@@ -828,10 +906,14 @@ fun FolderOverlay(folder: GridCell.Folder, shape: IconShape, iconSizeDp: Dp, res
 @Composable
 fun DrawerContextMenu(app: AppInfo, shape: IconShape, vm: LauncherViewModel, shortcuts: List<AppShortcut>, isFavorite: Boolean, onShortcutClick: (AppShortcut) -> Unit, onPinHome: () -> Unit, onPinDock: () -> Unit, onToggleFavorite: () -> Unit, onHide: () -> Unit, onAppInfo: () -> Unit, onUninstall: () -> Unit, onDismiss: () -> Unit) {
     val c = LocalLauncherColors.current
+    var showIconPicker by remember(app.key) { mutableStateOf(false) }
+    val iconOverrides by vm.iconOverrides.collectAsState()
+    val allAppsForIconPicker by vm.allApps.collectAsState()
+    val displayApp = vm.resolveApp(app.key) ?: app
     Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.5f)).pointerInput(Unit) { detectTapGestures { onDismiss() } }, Alignment.Center) {
         Column(Modifier.widthIn(min = 240.dp, max = 280.dp).clip(RoundedCornerShape(20.dp)).background(c.surface).border(0.5.dp, c.border, RoundedCornerShape(20.dp)).pointerInput(Unit) { detectTapGestures { } }.padding(vertical = 12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Spacer(Modifier.height(8.dp))
-            Box(Modifier.size(54.dp).clip(iconClip(shape)).background(c.card), Alignment.Center) { if (app.icon != null) Image(rememberDrawablePainter(app.icon), null, Modifier.fillMaxSize().padding(5.dp)) }
+            Box(Modifier.size(54.dp).clip(iconClip(shape)).background(c.card), Alignment.Center) { if (displayApp.icon != null) Image(rememberDrawablePainter(displayApp.icon), null, Modifier.fillMaxSize().padding(5.dp)) }
             val verInfo = remember(app.packageName) { vm.getAppVersionInfo(app.packageName) }
             val launchCount = remember(app.key) { vm.getAppLaunchCount(app.key) }
             val sizeInfo = remember(app.packageName) { vm.getAppSizeInfo(app.packageName) }
@@ -840,10 +922,29 @@ fun DrawerContextMenu(app: AppInfo, shape: IconShape, vm: LauncherViewModel, sho
             Text("${app.packageName}${if (verInfo != null) " $verInfo" else ""}${if (sizeInfo != null) " · $sizeInfo" else ""}$launchInfo", color = c.textSecondary, fontSize = 10.sp, textAlign = TextAlign.Center, modifier = Modifier.padding(horizontal = 16.dp))
             if (shortcuts.isNotEmpty()) {
                 Spacer(Modifier.height(8.dp)); HorizontalDivider(color = c.border.copy(alpha = 0.3f), thickness = 0.5.dp)
-                shortcuts.forEach { shortcut -> ShortcutItem(shortcut, c) { onShortcutClick(shortcut) } }
+                shortcuts.forEach { shortcut ->
+                    ShortcutItem(
+                        shortcut = shortcut,
+                        c = c,
+                        onClick = { onShortcutClick(shortcut) },
+                        onPinHome = { vm.pinShortcutToHome(shortcut, app.key) },
+                        onPinDock = { vm.pinShortcutToDock(shortcut, app.key) },
+                    )
+                }
             }
             Spacer(Modifier.height(if (shortcuts.isEmpty()) 12.dp else 4.dp)); HorizontalDivider(color = c.border.copy(alpha = 0.3f), thickness = 0.5.dp)
             CtxItem(stringResource(R.string.add_to_home_screen), c, onClick = onPinHome); CtxItem(stringResource(R.string.add_to_dock), c, onClick = onPinDock)
+            CtxItem(stringResource(R.string.set_icon), c) { showIconPicker = !showIconPicker }
+            if (iconOverrides.containsKey(app.key)) CtxItem(stringResource(R.string.reset_icon), c) { vm.clearIconOverride(app.key); onDismiss() }
+            if (showIconPicker) {
+                IconOverridePicker(
+                    apps = allAppsForIconPicker,
+                    currentSourceKey = iconOverrides[app.key],
+                    c = c,
+                    onSelect = { sourceKey -> vm.setIconOverride(app.key, sourceKey); onDismiss() },
+                    onClear = { vm.clearIconOverride(app.key); onDismiss() },
+                )
+            }
             CtxItem(stringResource(if (isFavorite) R.string.remove_favorite else R.string.add_favorite), c, onClick = onToggleFavorite)
             CtxItem(stringResource(R.string.hide_from_drawer), c, onClick = onHide); CtxItem(stringResource(R.string.app_info), c, onClick = onAppInfo)
             if (!app.isSystemApp) { HorizontalDivider(color = c.border.copy(alpha = 0.3f), thickness = 0.5.dp); CtxItem(stringResource(R.string.uninstall), c, isRed = true, onClick = onUninstall) }
@@ -908,19 +1009,71 @@ private fun HomeSpaceMenuItem(label: String, icon: androidx.compose.ui.graphics.
         modifier = Modifier.fillMaxWidth().clickable { onClick() }.padding(horizontal = 24.dp, vertical = 13.dp))
 }
 
-@Composable private fun ShortcutItem(shortcut: AppShortcut, c: LauncherColors, onClick: () -> Unit) {
+@Composable
+private fun IconOverridePicker(
+    apps: List<AppInfo>,
+    currentSourceKey: String?,
+    c: LauncherColors,
+    onSelect: (String) -> Unit,
+    onClear: () -> Unit,
+) {
+    Column(Modifier.fillMaxWidth().heightIn(max = 220.dp).verticalScroll(rememberScrollState()).padding(horizontal = 8.dp, vertical = 4.dp)) {
+        Text(stringResource(R.string.choose_icon_source), color = c.accent, fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp))
+        if (currentSourceKey != null) {
+            Row(
+                Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).clickable { onClear() }.padding(horizontal = 12.dp, vertical = 7.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(Icons.Default.Restore, null, tint = c.textSecondary, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(9.dp))
+                Text(stringResource(R.string.reset_icon), color = c.textSecondary, fontSize = 12.sp)
+            }
+        }
+        apps.forEach { iconApp ->
+            Row(
+                Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).clickable { onSelect(iconApp.key) }.padding(horizontal = 12.dp, vertical = 7.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                if (iconApp.icon != null) Image(rememberDrawablePainter(iconApp.icon), iconApp.label, Modifier.size(24.dp).clip(RoundedCornerShape(6.dp)))
+                else Icon(Icons.Default.Apps, null, tint = c.accent, modifier = Modifier.size(20.dp))
+                Spacer(Modifier.width(9.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(iconApp.label, color = c.text, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(iconApp.packageName, color = c.textSecondary, fontSize = 9.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+            }
+        }
+    }
+}
+
+@Composable private fun ShortcutItem(shortcut: AppShortcut, c: LauncherColors, onClick: () -> Unit, onPinHome: (() -> Unit)? = null, onPinDock: (() -> Unit)? = null) {
     Row(
-        Modifier.fillMaxWidth().clickable { onClick() }.padding(horizontal = 20.dp, vertical = 10.dp),
+        Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        if (shortcut.icon != null) {
-            Image(rememberDrawablePainter(shortcut.icon), null, Modifier.size(22.dp).clip(RoundedCornerShape(6.dp)))
-            Spacer(Modifier.width(10.dp))
-        } else {
-            Icon(Icons.AutoMirrored.Filled.ArrowForward, null, tint = c.accent, modifier = Modifier.size(16.dp))
-            Spacer(Modifier.width(10.dp))
+        Row(
+            Modifier.weight(1f).clip(RoundedCornerShape(8.dp)).clickable { onClick() },
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            if (shortcut.icon != null) {
+                Image(rememberDrawablePainter(shortcut.icon), null, Modifier.size(22.dp).clip(RoundedCornerShape(6.dp)))
+                Spacer(Modifier.width(10.dp))
+            } else {
+                Icon(Icons.AutoMirrored.Filled.ArrowForward, null, tint = c.accent, modifier = Modifier.size(16.dp))
+                Spacer(Modifier.width(10.dp))
+            }
+            Text(shortcut.shortLabel.toString(), color = c.text, fontSize = 13.sp, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
         }
-        Text(shortcut.shortLabel.toString(), color = c.text, fontSize = 13.sp, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        if (onPinHome != null) {
+            IconButton(onClick = onPinHome, modifier = Modifier.size(32.dp)) {
+                Icon(Icons.Default.Home, stringResource(R.string.pin_shortcut_to_home), tint = c.textSecondary, modifier = Modifier.size(17.dp))
+            }
+        }
+        if (onPinDock != null) {
+            IconButton(onClick = onPinDock, modifier = Modifier.size(32.dp)) {
+                Icon(Icons.Default.Apps, stringResource(R.string.pin_shortcut_to_dock), tint = c.textSecondary, modifier = Modifier.size(17.dp))
+            }
+        }
     }
 }
 

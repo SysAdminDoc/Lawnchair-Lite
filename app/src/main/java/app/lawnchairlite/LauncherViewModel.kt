@@ -79,6 +79,8 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     val favoriteAppKeys: StateFlow<Set<String>> = _favoriteApps.asStateFlow()
     private val _customLabels = MutableStateFlow<Map<String, String>>(emptyMap())
     val customLabels: StateFlow<Map<String, String>> = _customLabels.asStateFlow()
+    private val _iconOverrides = MutableStateFlow<Map<String, String>>(emptyMap())
+    val iconOverrides: StateFlow<Map<String, String>> = _iconOverrides.asStateFlow()
 
     // App usage tracking (package/activity key -> last launch timestamp)
     private val _appUsage = MutableStateFlow<Map<String, Long>>(emptyMap())
@@ -133,8 +135,23 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         tryEvaluate(query) ?: tryConvertUnit(query)
     }.stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
-    val filteredApps: StateFlow<List<AppInfo>> = combine(_allApps, _search, _hiddenApps, settings, _appUsage) { apps, q, hidden, s, usage ->
-        val visible = apps.filter { it.key !in hidden }
+    val filteredApps: StateFlow<List<AppInfo>> = combine(_allApps, _search, _hiddenApps, settings, _appUsage, _iconOverrides) { args ->
+        @Suppress("UNCHECKED_CAST")
+        val apps = args[0] as List<AppInfo>
+        val q = args[1] as String
+        @Suppress("UNCHECKED_CAST")
+        val hidden = args[2] as Set<String>
+        val s = args[3] as LauncherSettings
+        @Suppress("UNCHECKED_CAST")
+        val usage = args[4] as Map<String, Long>
+        @Suppress("UNCHECKED_CAST")
+        val overrides = args[5] as Map<String, String>
+        val sourceMap = apps.associateBy { it.key }
+        fun AppInfo.withOverride(): AppInfo {
+            val sourceIcon = overrides[key]?.let { sourceMap[it]?.icon } ?: return this
+            return copy(icon = sourceIcon)
+        }
+        val visible = apps.filter { it.key !in hidden }.map { it.withOverride() }
         if (q.isBlank()) {
             when (s.drawerSort) {
                 DrawerSort.NAME -> visible.sortedBy { it.label.lowercase() }
@@ -299,6 +316,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch { prefs.hiddenApps.collect { _hiddenApps.value = it } }
         viewModelScope.launch { prefs.favoriteApps.collect { _favoriteApps.value = it } }
         viewModelScope.launch { prefs.customLabels.collect { _customLabels.value = it } }
+        viewModelScope.launch { prefs.iconOverrides.collect { _iconOverrides.value = it } }
         viewModelScope.launch { prefs.appUsage.collect { _appUsage.value = it } }
         viewModelScope.launch { prefs.widgets.collect { _widgets.value = it } }
         viewModelScope.launch { prefs.searchHistory.collect { _searchHistory.value = it } }
@@ -361,8 +379,36 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    fun resolveApp(key: String): AppInfo? = _appMap.value[key]
+    fun resolveApp(key: String): AppInfo? = _appMap.value[key]?.let { app ->
+        val sourceKey = _iconOverrides.value[app.key] ?: return@let app
+        val sourceIcon = _appMap.value[sourceKey]?.icon ?: return@let app
+        app.copy(icon = sourceIcon)
+    }
     fun getLabel(key: String): String? = _customLabels.value[key] ?: resolveApp(key)?.label
+
+    fun resolveShortcutIcon(cell: GridCell.Shortcut): android.graphics.drawable.Drawable? {
+        val overrideIcon = _iconOverrides.value[cell.key]?.let { sourceKey -> _appMap.value[sourceKey]?.icon }
+        return overrideIcon ?: resolveApp(cell.sourceAppKey)?.icon
+    }
+
+    fun setIconOverride(targetKey: String, sourceAppKey: String) { viewModelScope.launch {
+        val source = _appMap.value[sourceAppKey] ?: return@launch
+        val map = _iconOverrides.value.toMutableMap()
+        if (targetKey == source.key) map.remove(targetKey) else map[targetKey] = source.key
+        val cleaned = sanitizeIconOverrides(map)
+        _iconOverrides.value = cleaned
+        prefs.saveIconOverrides(cleaned)
+        toast(R.string.icon_override_applied)
+    }}
+
+    fun clearIconOverride(targetKey: String) { viewModelScope.launch {
+        val map = _iconOverrides.value.toMutableMap()
+        if (map.remove(targetKey) != null) {
+            _iconOverrides.value = map
+            prefs.saveIconOverrides(map)
+            toast(R.string.icon_override_reset)
+        }
+    }}
 
     fun launch(app: AppInfo) {
         if (!repo.isAppAvailable(app)) {
@@ -453,9 +499,68 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     // -- App Shortcuts --
 
     fun launchShortcut(shortcut: AppShortcut) {
-        shortcutRepo.launchShortcut(shortcut)
+        if (!shortcutRepo.launchShortcut(shortcut)) toast(R.string.shortcut_unavailable)
         _homeMenu.value = null; _shortcuts.value = emptyList()
     }
+
+    fun launchShortcutCell(cell: GridCell.Shortcut) {
+        if (!shortcutRepo.launchShortcut(cell.packageName, cell.shortcutId)) {
+            toast(R.string.shortcut_unavailable)
+            debouncedReload()
+        }
+    }
+
+    fun pinShortcutToHome(shortcut: AppShortcut, sourceAppKey: String) { viewModelScope.launch {
+        val cell = GridCell.Shortcut(
+            packageName = shortcut.packageName,
+            shortcutId = shortcut.id,
+            label = shortcut.shortLabel.toString().take(80),
+            sourceAppKey = sourceAppKey,
+        )
+        val ps = pageSize()
+        val grid = padGrid(_homeGrid.value, ps).toMutableList()
+        if (grid.any { it is GridCell.Shortcut && it.key == cell.key }) {
+            toast(R.string.shortcut_already_pinned)
+            _homeMenu.value = null; _drawerMenuApp.value = null; _shortcuts.value = emptyList()
+            return@launch
+        }
+        var i = grid.indexOfFirst { it == null }
+        if (i < 0) { grid.addAll(List(ps) { null }); i = grid.indexOfFirst { it == null } }
+        if (i >= 0) {
+            grid[i] = cell
+            _homeGrid.value = grid
+            prefs.saveHome(grid)
+            toast(R.string.shortcut_added_to_home)
+        }
+        _homeMenu.value = null; _drawerMenuApp.value = null; _shortcuts.value = emptyList()
+    }}
+
+    fun pinShortcutToDock(shortcut: AppShortcut, sourceAppKey: String) { viewModelScope.launch {
+        val cell = GridCell.Shortcut(
+            packageName = shortcut.packageName,
+            shortcutId = shortcut.id,
+            label = shortcut.shortLabel.toString().take(80),
+            sourceAppKey = sourceAppKey,
+        )
+        val dc = settings.value.dockCount
+        val dock = _dockGrid.value.toMutableList()
+        while (dock.size < dc) dock.add(null)
+        if (dock.any { it is GridCell.Shortcut && it.key == cell.key }) {
+            toast(R.string.shortcut_already_pinned)
+            _homeMenu.value = null; _drawerMenuApp.value = null; _shortcuts.value = emptyList()
+            return@launch
+        }
+        val i = dock.indexOfFirst { it == null }
+        if (i < 0) {
+            toast(R.string.dock_full)
+        } else {
+            dock[i] = cell
+            _dockGrid.value = dock
+            prefs.saveDock(dock)
+            toast(R.string.shortcut_added_to_dock)
+        }
+        _homeMenu.value = null; _drawerMenuApp.value = null; _shortcuts.value = emptyList()
+    }}
 
     fun loadShortcutsForDrawerMenu(app: AppInfo) {
         viewModelScope.launch { _shortcuts.value = shortcutRepo.getShortcuts(app.packageName) }
@@ -736,7 +841,9 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
 
     private suspend fun cleanupStaleKeys(apps: List<AppInfo>) {
         try {
-            val valid = apps.map { it.key }.toSet(); var c = false
+            val valid = apps.map { it.key }.toSet()
+            val validPackages = apps.map { it.packageName }.toSet()
+            var c = false
             val home = _homeGrid.value.toMutableList()
             for (i in home.indices) { val r = cleanCell(home[i], valid); if (r !== home[i]) { home[i] = r; c = true } }
             if (c) { _homeGrid.value = home; prefs.saveHome(home) }
@@ -758,12 +865,21 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
                     _selectedDrawerGroupId.value = null
                 }
             }
+            val overrides = sanitizeIconOverrides(_iconOverrides.value)
+                .filter { (target, source) ->
+                    source in valid && (target in valid || (target.startsWith("shortcut:") && target.removePrefix("shortcut:").substringBefore("/") in validPackages))
+                }
+            if (overrides.size != _iconOverrides.value.size) {
+                _iconOverrides.value = overrides
+                prefs.saveIconOverrides(overrides)
+            }
         } catch (e: Exception) {
             Log.e(TAG, "cleanupStaleKeys failed", e)
         }
     }
     private fun cleanCell(cell: GridCell?, valid: Set<String>): GridCell? = when (cell) {
         is GridCell.App -> if (cell.appKey in valid) cell else null
+        is GridCell.Shortcut -> if (cell.sourceAppKey in valid) cell else null
         is GridCell.Folder -> {
             val f = cell.appKeys.filter { it in valid }
             val coverAppKey = cell.coverAppKey.takeIf { it in valid }.orEmpty()
@@ -913,6 +1029,13 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
                     ex is GridCell.App && ex.appKey == item.appKey -> {}
                     ex is GridCell.App -> { if (same && drag.sourceIndex in tg.indices) tg[drag.sourceIndex] = null; tg[ti] = GridCell.Folder(suggestFolderName(ex.appKey, item.appKey), listOf(ex.appKey, item.appKey)); saveTrimmed(target, tg); if (!same) clearSourceCell(drag) }
                     ex is GridCell.Folder -> { if (item.appKey !in ex.appKeys) { if (same && drag.sourceIndex in tg.indices) tg[drag.sourceIndex] = null; tg[ti] = ex.copy(appKeys = ex.appKeys + item.appKey); saveTrimmed(target, tg); if (!same) clearSourceCell(drag) } }
+                }
+            }
+            is GridCell.Shortcut -> {
+                when {
+                    ex == null -> { if (same && drag.sourceIndex in tg.indices) tg[drag.sourceIndex] = null; tg[ti] = item; saveTrimmed(target, tg); if (!same) clearSourceCell(drag) }
+                    ex is GridCell.Shortcut && ex.key == item.key -> {}
+                    same && drag.sourceIndex in tg.indices -> { tg[ti] = item; tg[drag.sourceIndex] = ex; saveTrimmed(target, tg) }
                 }
             }
             is GridCell.Widget -> { /* Widgets cannot be dragged */ }

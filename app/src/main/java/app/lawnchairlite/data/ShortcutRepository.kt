@@ -20,7 +20,9 @@ data class AppShortcut(
     val icon: Drawable?,
     val packageName: String,
     val shortcutInfo: ShortcutInfo,
-)
+) {
+    val key: String get() = shortcutKey(packageName, id)
+}
 
 class ShortcutRepository(private val context: Context) {
 
@@ -45,7 +47,8 @@ class ShortcutRepository(private val context: Context) {
                 setPackage(packageName)
                 setQueryFlags(
                     LauncherApps.ShortcutQuery.FLAG_MATCH_DYNAMIC or
-                    LauncherApps.ShortcutQuery.FLAG_MATCH_MANIFEST
+                    LauncherApps.ShortcutQuery.FLAG_MATCH_MANIFEST or
+                    LauncherApps.ShortcutQuery.FLAG_MATCH_PINNED
                 )
             }
             val shortcuts = la.getShortcuts(query, Process.myUserHandle()) ?: emptyList()
@@ -66,12 +69,16 @@ class ShortcutRepository(private val context: Context) {
     }
 
     fun launchShortcut(shortcut: AppShortcut): Boolean {
+        return launchShortcut(shortcut.packageName, shortcut.id)
+    }
+
+    fun launchShortcut(packageName: String, shortcutId: String): Boolean {
         val la = launcherApps ?: return false
         return try {
-            la.startShortcut(shortcut.packageName, shortcut.id, null, null, Process.myUserHandle())
+            la.startShortcut(packageName, shortcutId, null, null, Process.myUserHandle())
             true
         } catch (e: Exception) {
-            Log.e(TAG, "launchShortcut failed: ${shortcut.id}", e)
+            Log.e(TAG, "launchShortcut failed: $packageName/$shortcutId", e)
             false
         }
     }

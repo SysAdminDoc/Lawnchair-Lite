@@ -190,6 +190,14 @@ data class SmartspaceState(
 
 sealed class GridCell {
     data class App(val appKey: String) : GridCell()
+    data class Shortcut(
+        val packageName: String,
+        val shortcutId: String,
+        val label: String,
+        val sourceAppKey: String,
+    ) : GridCell() {
+        val key: String get() = shortcutKey(packageName, shortcutId)
+    }
     data class Folder(
         val name: String,
         val appKeys: List<String>,
@@ -210,6 +218,27 @@ data class WidgetInfo(
 )
 
 enum class DragSource { HOME, DOCK, DRAWER }
+
+private const val SHORTCUT_KEY_PREFIX = "shortcut:"
+
+fun shortcutKey(packageName: String, shortcutId: String): String =
+    "$SHORTCUT_KEY_PREFIX${packageName.trim()}/${shortcutId.trim()}"
+
+fun isIconOverrideTargetKey(key: String): Boolean =
+    key.startsWith(SHORTCUT_KEY_PREFIX) || key.contains("/")
+
+fun sanitizeIconOverrides(overrides: Map<String, String>): Map<String, String> =
+    overrides.asSequence()
+        .map { (target, source) -> target.trim() to source.trim() }
+        .filter { (target, source) ->
+            target.isNotBlank() &&
+                source.contains("/") &&
+                !source.startsWith(SHORTCUT_KEY_PREFIX) &&
+                isIconOverrideTargetKey(target)
+        }
+        .distinctBy { it.first }
+        .take(200)
+        .toMap()
 
 data class DragState(
     val item: GridCell, val source: DragSource,
@@ -237,6 +266,7 @@ private fun unescapeField(s: String): String = s
 
 fun GridCell.serialize(): String = when (this) {
     is GridCell.App -> "A:${appKey}"
+    is GridCell.Shortcut -> "S:${escapeField(packageName)}:${escapeField(shortcutId)}:${escapeField(label)}:${escapeField(sourceAppKey)}"
     is GridCell.Folder -> if (coverEmoji.isBlank() && coverAppKey.isBlank()) {
         "F:${escapeField(name)}:${appKeys.joinToString(",")}"
     } else {
@@ -255,6 +285,18 @@ fun deserializeCell(s: String): GridCell? = try {
         s.startsWith("A:") -> {
             val key = s.removePrefix("A:")
             if (key.contains("/") && key.length > 3) GridCell.App(key) else null
+        }
+        s.startsWith("S:") -> {
+            val parts = s.removePrefix("S:").split(":", limit = 4)
+            if (parts.size == 4) {
+                val packageName = unescapeField(parts[0]).trim()
+                val shortcutId = unescapeField(parts[1]).trim()
+                val label = unescapeField(parts[2]).trim().take(80)
+                val sourceAppKey = unescapeField(parts[3]).trim()
+                if (packageName.isNotBlank() && shortcutId.isNotBlank() && sourceAppKey.contains("/")) {
+                    GridCell.Shortcut(packageName, shortcutId, label.ifBlank { shortcutId }, sourceAppKey)
+                } else null
+            } else null
         }
         s.startsWith("F:") -> {
             val parts = s.removePrefix("F:").split(":", limit = 2)

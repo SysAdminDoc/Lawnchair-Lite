@@ -47,6 +47,39 @@ class AppModelTest {
     }
 
     @Test
+    fun shortcutSerializationRoundTripsEscapedFields() {
+        val shortcut = GridCell.Shortcut(
+            packageName = "com.example.browser",
+            shortcutId = "open:site|docs",
+            label = "Docs: PWA",
+            sourceAppKey = "com.example.browser/com.example.browser.Main",
+        )
+
+        assertEquals(shortcut, deserializeCell(shortcut.serialize()))
+        assertEquals("shortcut:com.example.browser/open:site|docs", shortcut.key)
+    }
+
+    @Test
+    fun iconOverrideSanitizerKeepsAppAndShortcutTargetsOnly() {
+        val overrides = sanitizeIconOverrides(
+            mapOf(
+                "com.example.pwa/com.example.pwa.Main" to "com.example.browser/com.example.browser.Main",
+                "shortcut:com.example.browser/open" to "com.example.browser/com.example.browser.Main",
+                "bad-target" to "com.example.browser/com.example.browser.Main",
+                "com.example.mail/com.example.mail.Main" to "shortcut:com.example.browser/open",
+            ),
+        )
+
+        assertEquals(
+            mapOf(
+                "com.example.pwa/com.example.pwa.Main" to "com.example.browser/com.example.browser.Main",
+                "shortcut:com.example.browser/open" to "com.example.browser/com.example.browser.Main",
+            ),
+            overrides,
+        )
+    }
+
+    @Test
     fun folderCoverSerializationRoundTrips() {
         val folder = GridCell.Folder(
             name = "Work",

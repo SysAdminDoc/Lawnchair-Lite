@@ -73,6 +73,20 @@ class BackupImportPreviewTest {
     }
 
     @Test
+    fun iconOverridesAreRecognizedAsAppearanceBackupSection() {
+        val preview = BackupImportPreview.fromFields(
+            mapOf(
+                "schema" to 1,
+                "icon_overrides" to "{}",
+            ),
+        )
+
+        assertTrue(preview.canImport)
+        assertEquals(listOf("Appearance"), preview.sections)
+        assertEquals(emptyList<String>(), preview.unknownFields)
+    }
+
+    @Test
     fun invalidJsonIsRejected() {
         val preview = BackupImportPreview.fromJson("{")
 

@@ -508,12 +508,13 @@ fun HomeScreen(vm: LauncherViewModel) {
                                             val cellBadge = if (settings.showNotifBadges && settings.badgeStyle != app.lawnchairlite.data.BadgeStyle.HIDDEN && cell is GridCell.App) notifCounts[cell.appKey.substringBefore("/")] ?: 0 else 0
                                             val folderBadge = if (settings.showNotifBadges && settings.badgeStyle != app.lawnchairlite.data.BadgeStyle.HIDDEN && cell is GridCell.Folder) cell.appKeys.sumOf { notifCounts[it.substringBefore("/")] ?: 0 } else 0
                                             GridCellView(
-                                                cell, settings.iconShape, iconDp, { vm.resolveApp(it) }, customLabels,
+                                                cell, settings.iconShape, iconDp, { vm.resolveApp(it) }, { vm.resolveShortcutIcon(it) }, customLabels,
                                                 isDragSrc, homeLabels, editMode,
                                                 badgeCount = cellBadge, badgeDotOnly = settings.badgeStyle == app.lawnchairlite.data.BadgeStyle.DOT, iconShadow = settings.iconShadow, labelSizeSp = settings.labelSize.sp, folderBadgeCount = folderBadge, grayscale = settings.grayscaleIcons, labelWeight = resolvedLabelWeight,
                                                 onTap = { when (cell) {
                                                     is GridCell.App -> vm.resolveApp(cell.appKey)?.let { vm.launch(it) }
                                                     is GridCell.Folder -> vm.openFolderView(cell, DragSource.HOME, gi)
+                                                    is GridCell.Shortcut -> vm.launchShortcutCell(cell)
                                                     is GridCell.Widget -> {}
                                                     null -> {}
                                                 }},
@@ -649,12 +650,13 @@ fun HomeScreen(vm: LauncherViewModel) {
                                 val dockBadge = if (settings.showNotifBadges && settings.badgeStyle != app.lawnchairlite.data.BadgeStyle.HIDDEN && cell is GridCell.App) notifCounts[cell.appKey.substringBefore("/")] ?: 0 else 0
                                 val dockFolderBadge = if (settings.showNotifBadges && settings.badgeStyle != app.lawnchairlite.data.BadgeStyle.HIDDEN && cell is GridCell.Folder) cell.appKeys.sumOf { notifCounts[it.substringBefore("/")] ?: 0 } else 0
                                 GridCellView(
-                                    cell, settings.iconShape, iconDp, { vm.resolveApp(it) }, customLabels,
+                                    cell, settings.iconShape, iconDp, { vm.resolveApp(it) }, { vm.resolveShortcutIcon(it) }, customLabels,
                                     isDS, settings.dockLabels, editMode,
                                     badgeCount = dockBadge, badgeDotOnly = settings.badgeStyle == app.lawnchairlite.data.BadgeStyle.DOT, iconShadow = settings.iconShadow, labelSizeSp = settings.labelSize.sp, labelAlpha = settings.dockLabelOpacity / 100f, folderBadgeCount = dockFolderBadge, grayscale = settings.grayscaleIcons, labelWeight = resolvedLabelWeight,
                                     onTap = { when (cell) {
                                         is GridCell.App -> vm.resolveApp(cell.appKey)?.let { vm.launch(it) }
                                         is GridCell.Folder -> vm.openFolderView(cell, DragSource.DOCK, i)
+                                        is GridCell.Shortcut -> vm.launchShortcutCell(cell)
                                         is GridCell.Widget -> {}
                                         null -> {}
                                     }},
@@ -675,7 +677,7 @@ fun HomeScreen(vm: LauncherViewModel) {
                 Spacer(Modifier.navigationBarsPadding())
             }
 
-            if (isDragging) DragGhost(drag?.item, drag?.appInfo, settings.iconShape, dragOff, { vm.resolveApp(it) }, iconDp)
+            if (isDragging) DragGhost(drag?.item, drag?.appInfo, settings.iconShape, dragOff, { vm.resolveApp(it) }, { vm.resolveShortcutIcon(it) }, iconDp)
         }
 
         // Contact permission launcher
@@ -835,7 +837,7 @@ fun HomeScreen(vm: LauncherViewModel) {
 @Composable
 private fun GridCellView(
     cell: GridCell?, shape: IconShape, iconSizeDp: androidx.compose.ui.unit.Dp,
-    resolveApp: (String) -> AppInfo?, customLabels: Map<String, String>,
+    resolveApp: (String) -> AppInfo?, resolveShortcutIcon: (GridCell.Shortcut) -> android.graphics.drawable.Drawable?, customLabels: Map<String, String>,
     dimmed: Boolean, showLabel: Boolean, editMode: Boolean,
     badgeCount: Int = 0, badgeDotOnly: Boolean = false, iconShadow: Boolean = false, labelSizeSp: Int = 11, labelAlpha: Float = 1f, folderBadgeCount: Int = 0, grayscale: Boolean = false, labelWeight: FontWeight = FontWeight.Normal,
     onTap: () -> Unit, onLongPress: () -> Unit,
@@ -885,6 +887,7 @@ private fun GridCellView(
     ) {
         when (cell) {
             is GridCell.App -> resolveApp(cell.appKey)?.let { AppIconContent(it, shape, iconSizeDp, showLabel = showLabel, dimmed = dimmed, customLabel = customLabels[cell.appKey], badgeCount = badgeCount, badgeDotOnly = badgeDotOnly, iconShadow = iconShadow, labelSizeSp = labelSizeSp, labelAlpha = labelAlpha, grayscale = grayscale, labelWeight = labelWeight) }
+            is GridCell.Shortcut -> ShortcutIconContent(cell, resolveShortcutIcon(cell), shape, iconSizeDp, showLabel = showLabel, dimmed = dimmed, iconShadow = iconShadow, labelSizeSp = labelSizeSp, labelAlpha = labelAlpha, grayscale = grayscale, labelWeight = labelWeight)
             is GridCell.Folder -> FolderIconContent(cell, shape, resolveApp, iconSizeDp, showLabel = showLabel, dimmed = dimmed, badgeCount = folderBadgeCount, labelAlpha = labelAlpha)
             is GridCell.Widget -> { /* Rendered by overlay, skip */ }
         }

@@ -14,6 +14,11 @@
     <string name="copy">Copiar</string>
     <string name="share">Compartir</string>
     <string name="delete">Eliminar</string>
+    <string name="set_icon">Cambiar icono</string>
+    <string name="reset_icon">Restaurar icono</string>
+    <string name="choose_icon_source">Elegir origen del icono</string>
+    <string name="pin_shortcut_to_home">Fijar atajo al inicio</string>
+    <string name="pin_shortcut_to_dock">Fijar atajo al dock</string>
     <string name="no_apps_found">No se encontraron apps</string>
     <string name="no_recent_apps">No hay apps recientes</string>
     <string name="no_favorites_yet">Aun no hay favoritos</string>
@@ -26,6 +31,12 @@
     <string name="widget_setup_canceled">Configuracion del widget cancelada</string>
     <string name="widget_added">Widget agregado</string>
     <string name="widget_removed">Widget eliminado</string>
+    <string name="shortcut_added_to_home">Atajo agregado al inicio</string>
+    <string name="shortcut_added_to_dock">Atajo agregado al dock</string>
+    <string name="shortcut_already_pinned">El atajo ya esta fijado</string>
+    <string name="shortcut_unavailable">Atajo no disponible</string>
+    <string name="icon_override_applied">Icono actualizado</string>
+    <string name="icon_override_reset">Icono restaurado</string>
     <string name="add_widget">Agregar widget</string>
     <string name="remove_widget">Quitar widget</string>
     <string name="remove_widget_confirm">Quitar %1$s de la pantalla de inicio?</string>

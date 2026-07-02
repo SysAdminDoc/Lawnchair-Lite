@@ -251,6 +251,11 @@
     <string name="rearrange_icons">Rearrange Icons</string>
     <string name="clear_swipe_app">Clear Swipe App</string>
     <string name="set_swipe_up_app">Set Swipe-Up App</string>
+    <string name="set_icon">Set Icon</string>
+    <string name="reset_icon">Reset Icon</string>
+    <string name="choose_icon_source">Choose Icon Source</string>
+    <string name="pin_shortcut_to_home">Pin shortcut to home</string>
+    <string name="pin_shortcut_to_dock">Pin shortcut to dock</string>
     <string name="app_info">App Info</string>
     <string name="remove_from_source">Remove from %1$s</string>
     <string name="dock_source">Dock</string>
@@ -322,6 +327,12 @@
     <string name="already_in_dock">Already in dock</string>
     <string name="dock_full">Dock full</string>
     <string name="added_to_dock">Added to dock</string>
+    <string name="shortcut_added_to_home">Shortcut added to home</string>
+    <string name="shortcut_added_to_dock">Shortcut added to dock</string>
+    <string name="shortcut_already_pinned">Shortcut already pinned</string>
+    <string name="shortcut_unavailable">Shortcut unavailable</string>
+    <string name="icon_override_applied">Icon override applied</string>
+    <string name="icon_override_reset">Icon restored</string>
     <string name="recents_cleared">Recents cleared</string>
     <string name="home_screen_locked_toast">Home screen locked</string>
     <string name="home_screen_unlocked_toast">Home screen unlocked</string>
