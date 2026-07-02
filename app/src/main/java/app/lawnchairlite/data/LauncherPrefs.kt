@@ -572,7 +572,14 @@ class LauncherPrefs(private val context: Context) {
      * Import with validation: verifies JSON structure before applying.
      * Invalid fields are silently skipped rather than failing the whole import.
      */
+    fun previewBackup(jsonStr: String): BackupImportPreview = BackupImportPreview.fromJson(jsonStr)
+
     suspend fun importBackup(jsonStr: String): Boolean = runCatching {
+        val preview = previewBackup(jsonStr)
+        if (!preview.canImport) {
+            Log.w(TAG, "Backup import rejected: ${preview.error}")
+            return@runCatching false
+        }
         val j = JSONObject(jsonStr)
         context.dataStore.edit { p ->
             j.optString("theme").takeIf { it.isNotBlank() && runCatching { ThemeMode.valueOf(it) }.isSuccess }?.let { p[THEME] = it }

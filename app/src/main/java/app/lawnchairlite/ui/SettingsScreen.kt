@@ -56,6 +56,8 @@ fun SettingsPanel(
     var includeBackupUsage by remember { mutableStateOf(false) }
     var includeBackupHiddenApps by remember { mutableStateOf(false) }
     var pendingBackupOptions by remember { mutableStateOf(BackupExportOptions()) }
+    var pendingRestoreJson by remember { mutableStateOf<String?>(null) }
+    var restorePreview by remember { mutableStateOf<BackupImportPreview?>(null) }
     var permissionRefresh by remember { mutableIntStateOf(0) }
     val notificationPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { permissionRefresh++ }
     val contactPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { permissionRefresh++ }
@@ -77,7 +79,22 @@ fun SettingsPanel(
     }
     val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
         uri ?: return@rememberLauncherForActivityResult
-        scope.launch { val json = runCatching { context.contentResolver.openInputStream(uri)?.bufferedReader()?.readText() }.getOrNull(); if (json == null) { android.widget.Toast.makeText(context, "Import failed — invalid file", android.widget.Toast.LENGTH_SHORT).show(); return@launch }; vm.importBackup(json) }
+        scope.launch {
+            val json = runCatching { context.contentResolver.openInputStream(uri)?.bufferedReader()?.readText() }.getOrNull()
+            if (json == null) {
+                android.widget.Toast.makeText(context, "Import failed — invalid file", android.widget.Toast.LENGTH_SHORT).show()
+                return@launch
+            }
+            val preview = vm.previewBackup(json)
+            if (!preview.canImport) {
+                android.widget.Toast.makeText(context, preview.error ?: "Restore failed", android.widget.Toast.LENGTH_SHORT).show()
+                restorePreview = preview
+                pendingRestoreJson = null
+                return@launch
+            }
+            pendingRestoreJson = json
+            restorePreview = preview
+        }
     }
 
     // Settings search
@@ -527,6 +544,26 @@ fun SettingsPanel(
                         }
                         Spacer(Modifier.height(8.dp))
                         ActionBtn("Restore Layout", "Omitted private data is kept", colors) { importLauncher.launch(arrayOf("application/json", "*/*")) }
+                        val preview = restorePreview
+                        val restoreJson = pendingRestoreJson
+                        if (preview != null) {
+                            RestorePreviewDialog(
+                                preview = preview,
+                                colors = colors,
+                                onDismiss = { restorePreview = null; pendingRestoreJson = null },
+                                onConfirm = if (restoreJson != null && preview.canImport) {
+                                    {
+                                        scope.launch {
+                                            val ok = vm.importBackup(restoreJson)
+                                            if (ok) {
+                                                restorePreview = null
+                                                pendingRestoreJson = null
+                                            }
+                                        }
+                                    }
+                                } else null,
+                            )
+                        }
 
                         Lbl("Permissions", colors)
                         Text("Optional features keep working in degraded mode when access is denied.", color = colors.textSecondary, fontSize = 12.sp, modifier = Modifier.padding(bottom = 8.dp))
@@ -928,6 +965,65 @@ private fun IconPackSection(
         }
     }
     Divider(color = c.border.copy(alpha = 0.22f), thickness = 0.5.dp)
+}
+
+@Composable private fun RestorePreviewDialog(
+    preview: BackupImportPreview,
+    colors: LauncherColors,
+    onDismiss: () -> Unit,
+    onConfirm: (() -> Unit)?,
+) {
+    androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
+        Column(
+            Modifier.clip(RoundedCornerShape(20.dp)).background(colors.surface)
+                .border(0.5.dp, colors.border, RoundedCornerShape(20.dp))
+                .padding(24.dp),
+        ) {
+            Text("Review Restore", color = colors.text, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+            Spacer(Modifier.height(8.dp))
+            Text(
+                "Schema ${preview.schemaVersion}${preview.appVersion?.let { " · v$it" } ?: ""}",
+                color = colors.textSecondary,
+                fontSize = 12.sp,
+            )
+            Spacer(Modifier.height(12.dp))
+            Text("Sections", color = colors.accent, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+            Text(preview.sectionSummary, color = colors.text, fontSize = 13.sp, lineHeight = 18.sp, modifier = Modifier.padding(top = 4.dp))
+            if (preview.privateSections.isNotEmpty()) {
+                Spacer(Modifier.height(10.dp))
+                Text("Private data: ${preview.privateSections.joinToString(", ")}", color = colors.textSecondary, fontSize = 12.sp, lineHeight = 16.sp)
+            }
+            if (preview.omittedPrivateSections.isNotEmpty()) {
+                Spacer(Modifier.height(6.dp))
+                Text("Omitted private sections stay unchanged: ${preview.omittedPrivateSections.joinToString(", ")}", color = colors.textSecondary, fontSize = 12.sp, lineHeight = 16.sp)
+            }
+            if (preview.unknownFields.isNotEmpty()) {
+                Spacer(Modifier.height(10.dp))
+                Text("Unknown fields ignored: ${preview.unknownFields.take(5).joinToString(", ")}", color = colors.textSecondary, fontSize = 12.sp, lineHeight = 16.sp)
+            }
+            if (preview.skippedFields.isNotEmpty()) {
+                Spacer(Modifier.height(6.dp))
+                Text("Invalid values skipped: ${preview.skippedFields.take(5).joinToString(", ")}", color = colors.textSecondary, fontSize = 12.sp, lineHeight = 16.sp)
+            }
+            val message = preview.error ?: preview.warning
+            if (message != null) {
+                Spacer(Modifier.height(10.dp))
+                Text(message, color = if (preview.error != null) colors.error else colors.accent, fontSize = 12.sp, lineHeight = 16.sp)
+            }
+            Spacer(Modifier.height(18.dp))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                TextButton(onClick = onDismiss) { Text("Cancel", color = colors.textSecondary) }
+                if (onConfirm != null) {
+                    Spacer(Modifier.width(8.dp))
+                    Button(
+                        onClick = onConfirm,
+                        colors = ButtonDefaults.buttonColors(containerColor = colors.accent),
+                        shape = RoundedCornerShape(12.dp),
+                    ) { Text("Restore", color = Color.White) }
+                }
+            }
+        }
+    }
 }
 
 @Composable private fun GesturePicker(label: String, current: GestureAction, c: LauncherColors, vm: LauncherViewModel? = null, gestureSource: String = "", onChange: (GestureAction) -> Unit) {

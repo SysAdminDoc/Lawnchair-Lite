@@ -1404,6 +1404,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     suspend fun exportBackup(options: BackupExportOptions = BackupExportOptions()): String = prefs.exportBackup(options)
+    fun previewBackup(json: String): BackupImportPreview = prefs.previewBackup(json)
     suspend fun importBackup(json: String): Boolean {
         val ok = prefs.importBackup(json)
         if (ok) {

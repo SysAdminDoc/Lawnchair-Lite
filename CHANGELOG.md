@@ -9,6 +9,7 @@ All notable changes to Lawnchair-Lite will be documented in this file.
 - Preserved omitted private sections during restore instead of clearing them from partial backups.
 - Removed the system-only widget-bind permission declaration and documented the Android bind prompt fallback.
 - Added an Advanced Settings permission audit for package visibility, crash notifications, notification badges, contacts, calendar, location, and quick-action degradation.
+- Added a restore preview that validates backup schema compatibility and reports sections, skipped values, unknown fields, and private-data handling before import.
 - Added backup export metadata and unit tests for privacy defaults.
 - Updated release version metadata to v2.27.0.
 
