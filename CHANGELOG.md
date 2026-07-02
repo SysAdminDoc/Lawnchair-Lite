@@ -16,6 +16,7 @@ All notable changes to Lawnchair-Lite will be documented in this file.
 - Added accessibility semantics for custom Compose controls plus instrumentation coverage for search and home menu actions.
 - Added resource-backed UI strings, localized enum display labels, and a partial Spanish smoke resource file for translation workflow validation.
 - Split search scoring, Smartspace loading, widget placement decisions, and backup restore orchestration into focused services with unit coverage.
+- Improved app drawer search with diacritic folding, common transliteration, initials, aliases, and typo-tolerant matching.
 - Updated the Android build lane to Gradle 9.4.1, AGP 9.2.1 built-in Kotlin, Compose compiler 2.3.21, Compose BOM 2026.06.01, compile SDK 37, target SDK 36, and current stable AndroidX libraries while removing Accompanist DrawablePainter.
 - Added backup export metadata and unit tests for privacy defaults.
 - Updated release version metadata to v2.27.0.

@@ -5,7 +5,8 @@ param(
     [string]$Activity = ".MainActivity",
     [switch]$SkipInstall,
     [switch]$ListDevices,
-    [int]$StepDelayMs = 900
+    [int]$StepDelayMs = 900,
+    [string[]]$CompetingHomePackages = @("com.oneuihomeclone", "com.freevibe")
 )
 
 Set-StrictMode -Version Latest
@@ -305,6 +306,24 @@ function Start-Launcher {
     $false
 }
 
+function Disable-CompetingHomePackages {
+    if ($script:DeviceSerial -notlike "emulator-*") {
+        return
+    }
+
+    foreach ($competingPackage in $CompetingHomePackages) {
+        if ([string]::IsNullOrWhiteSpace($competingPackage) -or $competingPackage -eq $Package) {
+            continue
+        }
+        $installed = Invoke-AdbShell -Command "pm path $competingPackage" -TimeoutSec 10
+        if ($installed.ExitCode -ne 0 -or [string]::IsNullOrWhiteSpace($installed.StdOut)) {
+            continue
+        }
+        [void](Invoke-AdbShell -Command "pm disable-user --user 0 $competingPackage" -TimeoutSec 20)
+        [void](Invoke-AdbShell -Command "am force-stop $competingPackage" -TimeoutSec 15)
+    }
+}
+
 function Open-HomeMenu {
     param([object]$Size, [double]$YRatio = 0.66)
     $x = [int]($Size.Width / 2)
@@ -379,6 +398,8 @@ function Run-DrawerSearchSmoke {
     } else {
         Fail "drawer-search" "search UI did not show the smoke query"
     }
+    [void](Invoke-AdbShell -Command "input keyevent BACK" -TimeoutSec 15)
+    Start-Sleep -Milliseconds $StepDelayMs
 }
 
 function Run-SettingsSmoke {
@@ -526,10 +547,11 @@ try {
     $size = Get-ScreenSize
     Pass "screen" "$($size.Width)x$($size.Height)"
 
+    Disable-CompetingHomePackages
     Check-PlatformSignals
     Run-DrawerSearchSmoke -Size $size
-    Run-SettingsSmoke -Size $size
     Run-WidgetPickerSmoke -Size $size
+    Run-SettingsSmoke -Size $size
 } catch {
     Fail "harness" $_.Exception.Message
 }
