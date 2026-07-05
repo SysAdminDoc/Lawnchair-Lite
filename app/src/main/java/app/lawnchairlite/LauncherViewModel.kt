@@ -317,6 +317,11 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         loadApps()
         discoverIconPacks()
         startSmartspaceRefresh()
+        viewModelScope.launch {
+            NotificationListener.counts.collect { counts ->
+                _smartspace.value = _smartspace.value.withUnread(counts)
+            }
+        }
         viewModelScope.launch { prefs.homeGrid.collect { if (it.isNotEmpty()) _homeGrid.value = it } }
         viewModelScope.launch { prefs.dockGrid.collect { if (it.isNotEmpty()) _dockGrid.value = it } }
         viewModelScope.launch { prefs.shortcutShelf.collect { _shortcutShelf.value = it } }
@@ -1331,8 +1336,11 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     private suspend fun refreshSmartspaceInternal() {
-        _smartspace.value = smartspaceService.refresh()
+        _smartspace.value = smartspaceService.refresh().withUnread(NotificationListener.counts.value)
     }
+
+    private fun SmartspaceState.withUnread(counts: Map<String, Int>): SmartspaceState =
+        copy(unread = SmartspaceUnreadAggregator.summarize(counts, ctx.packageName))
 
     fun hasCalendarPermission(): Boolean = smartspaceService.hasCalendarPermission()
 

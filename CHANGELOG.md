@@ -11,6 +11,7 @@ All notable changes to Lawnchair-Lite will be documented in this file.
 - Added an Advanced Settings permission audit for package visibility, crash notifications, notification badges, contacts, calendar, location, and quick-action degradation.
 - Added a restore preview that validates backup schema compatibility and reports sections, skipped values, unknown fields, and private-data handling before import.
 - Added local diagnostics storage plus Settings copy/share/delete actions for crash reports and support bundles.
+- Added unread notification aggregation to the first-party At-a-Glance card alongside weather, calendar, and alarm signals.
 - Added a local adb smoke harness for launcher launch, drawer search, Settings, and widget-picker checks.
 - Hardened the adb smoke harness against Compose UI attribute-order changes and duplicate home-menu labels.
 - Added accessibility semantics for custom Compose controls plus instrumentation coverage for search and home menu actions.

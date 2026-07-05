@@ -480,6 +480,7 @@ fun HomeScreen(vm: LauncherViewModel) {
                     onDateClick = { vm.openCalendarApp() },
                     onTimeClick = { vm.openClockApp() },
                     onWeatherClick = { vm.openWeatherApp() },
+                    onUnreadClick = { vm.expandNotifications() },
                     onRequestCalendarPermission = { calendarPermissionLauncher.launch(android.Manifest.permission.READ_CALENDAR) },
                     onRequestLocationPermission = { locationPermissionLauncher.launch(android.Manifest.permission.ACCESS_COARSE_LOCATION) },
                     onCycleStyle = { vm.cycleClockStyle() },

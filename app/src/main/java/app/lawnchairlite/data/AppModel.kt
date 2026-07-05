@@ -194,9 +194,15 @@ data class SmartspaceEvent(
     val location: String = "",
 )
 
+data class SmartspaceUnread(
+    val totalCount: Int,
+    val sourceCount: Int,
+)
+
 data class SmartspaceState(
     val weather: SmartspaceWeather? = null,
     val nextEvent: SmartspaceEvent? = null,
+    val unread: SmartspaceUnread? = null,
     val locationPermissionNeeded: Boolean = false,
     val calendarPermissionNeeded: Boolean = false,
     val lastUpdatedMillis: Long = 0L,

@@ -37,7 +37,7 @@ Built on crash patterns identified across Lawnchair v14-v15 beta releases:
 - Material You dynamic color can pull the Android 12+ wallpaper palette into any theme
 - Custom font import applies a persisted local `.ttf` or `.otf` file across launcher text
 - Theme import/export shares the active theme, icon pack chain, custom font reference, icon shape, and accent as a `.lawnchair-theme` JSON file
-- First-party Smartspace with local weather, next calendar event, next alarm, and permission prompts
+- First-party Smartspace with local weather, next calendar event, next alarm, unread notifications, and permission prompts
 - Drawer category rules by app-name regex, package prefix, or install source with backup/restore support
 - Configurable grid (3-8 cols, 3-10 rows), dock (3-7 icons), icon sizes (S/M/L/XL)
 - Optional dock labels with opacity control
@@ -170,7 +170,7 @@ $env:ANDROID_HOME = "$HOME\AppData\Local\Android\Sdk"
 
 ### v2.21.0
 
-- **First-party Smartspace** - Weather, next calendar event, and next alarm now render in the home At-a-Glance area without Google Smartspace
+- **First-party Smartspace** - Weather, next calendar event, next alarm, and unread notification aggregation now render in the home At-a-Glance area without Google Smartspace
 - **Weather chip** - Uses last-known coarse location and a no-key Open-Meteo forecast request with short timeouts
 - **Calendar chip** - Reads the next 7-day calendar event through Android CalendarProvider when permission is granted
 - **Permission prompts** - Home Smartspace rows request location/calendar access directly and refresh after grants

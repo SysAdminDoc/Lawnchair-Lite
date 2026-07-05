@@ -344,6 +344,7 @@ fun AtAGlanceClock(
     onDateClick: () -> Unit = {},
     onTimeClick: () -> Unit = {},
     onWeatherClick: () -> Unit = {},
+    onUnreadClick: () -> Unit = {},
     onRequestCalendarPermission: () -> Unit = {},
     onRequestLocationPermission: () -> Unit = {},
     onCycleStyle: () -> Unit = {},
@@ -423,6 +424,17 @@ fun AtAGlanceClock(
     }
     val weatherPrompt = if (smartspace.locationPermissionNeeded) stringResource(R.string.enable_location_for_weather) else null
     val calendarPrompt = if (smartspace.calendarPermissionNeeded) stringResource(R.string.enable_calendar_for_events) else null
+    val unreadText = smartspace.unread?.let { unread ->
+        when {
+            unread.totalCount == 1 -> stringResource(R.string.smartspace_unread_single)
+            unread.sourceCount > 1 -> stringResource(
+                R.string.smartspace_unread_from_apps,
+                unread.totalCount,
+                unread.sourceCount,
+            )
+            else -> stringResource(R.string.smartspace_unread_count, unread.totalCount)
+        }
+    }
 
     when (clockStyle) {
         app.lawnchairlite.data.ClockStyle.LARGE -> Column(modifier.padding(horizontal = 24.dp, vertical = 12.dp)) {
@@ -452,6 +464,9 @@ fun AtAGlanceClock(
                     Text(nextAlarmStr, color = c.textSecondary.copy(alpha = 0.7f), fontSize = 11.sp, style = TextStyle(shadow = clockShadow))
                 }
             }
+            if (unreadText != null) {
+                SmartspaceLine(Icons.Default.Notifications, unreadText, onUnreadClick, clockShadow)
+            }
             Spacer(Modifier.height(2.dp))
             Box(Modifier.clickable { clockTapHandler() }) {
                 Row(verticalAlignment = Alignment.Bottom) {
@@ -476,7 +491,7 @@ fun AtAGlanceClock(
                     modifier = Modifier.size(12.dp))
                 Text("$batteryPct%", color = if (compactBatteryLow) c.error else c.textSecondary, fontSize = 12.sp, fontWeight = FontWeight.Medium, style = TextStyle(shadow = clockShadow))
             }
-            val compactSmartspace = weatherText ?: eventText ?: weatherPrompt ?: calendarPrompt
+            val compactSmartspace = weatherText ?: eventText ?: weatherPrompt ?: calendarPrompt ?: unreadText
             if (compactSmartspace != null) {
                 Text("  |  ", color = c.textSecondary.copy(alpha = 0.4f), fontSize = 13.sp, style = TextStyle(shadow = clockShadow))
                 Text(

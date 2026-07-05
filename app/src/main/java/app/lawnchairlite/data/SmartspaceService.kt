@@ -138,3 +138,18 @@ object SmartspaceWeatherLabels {
         else -> R.string.weather_generic
     }
 }
+
+object SmartspaceUnreadAggregator {
+    fun summarize(counts: Map<String, Int>, selfPackage: String): SmartspaceUnread? {
+        val readableCounts = counts
+            .filterKeys { it != selfPackage }
+            .values
+            .filter { it > 0 }
+        val total = readableCounts.sum()
+        return if (total > 0) {
+            SmartspaceUnread(totalCount = total, sourceCount = readableCounts.size)
+        } else {
+            null
+        }
+    }
+}
