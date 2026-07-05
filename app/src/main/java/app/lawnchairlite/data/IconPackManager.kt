@@ -6,21 +6,26 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.pm.ResolveInfo
 import android.content.res.Resources
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Rect
+import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
 import android.util.Log
-import android.util.LruCache
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import org.xmlpull.v1.XmlPullParser
 import org.xmlpull.v1.XmlPullParserFactory
+import kotlin.math.max
+import kotlin.math.roundToInt
 
 /**
  * Lawnchair Lite - Icon Pack Support
  *
  * Stability improvements:
- * - LruCache with size limit (prevents OOM on large icon packs)
+ * - Byte-bounded icon bitmap cache with explicit recycling (prevents OOM on large icon packs)
  * - All resource loading wrapped in try-catch (Resources.NotFoundException, etc.)
  * - Icon pack discovery tolerant of OEM PM quirks
  * - XML parsing failures don't crash, just return false
@@ -33,23 +38,36 @@ data class IconPackInfo(
     val icon: Drawable?,
 )
 
-class IconPackManager(private val context: Context) {
+class IconPackManager(
+    private val context: Context,
+    maxIconCacheBytes: Int = defaultIconCacheBytes(),
+) {
 
     companion object {
         private const val TAG = "IconPackManager"
-        private const val MAX_CACHE_SIZE = 500
+        private const val MIN_CACHE_BYTES = 4 * 1024 * 1024
+        private const val MAX_CACHE_BYTES = 24 * 1024 * 1024
+        private const val MAX_MISSING_KEYS = 2048
+        private const val MAX_ICON_BITMAP_DP = 64
+
+        private fun defaultIconCacheBytes(): Int {
+            val heapBudget = Runtime.getRuntime().maxMemory() / 16L
+            return heapBudget.coerceIn(MIN_CACHE_BYTES.toLong(), MAX_CACHE_BYTES.toLong()).toInt()
+        }
     }
 
     private val pm: PackageManager = context.packageManager
     private val mutex = Mutex()
+    private val maxIconBitmapPx = max(
+        48,
+        (context.resources.displayMetrics.density * MAX_ICON_BITMAP_DP).roundToInt(),
+    )
     @Volatile private var loadedPack: String? = null
     @Volatile private var filterMap: Map<String, String> = emptyMap()
     @Volatile private var packResources: Resources? = null
     @Volatile private var packPackageName: String? = null
-    private val iconCache = LruCache<String, Drawable?>(MAX_CACHE_SIZE)
-    // Track keys we've already attempted to resolve (including misses).
-    // Without this, LruCache can't distinguish "never looked up" from "looked up, got null".
-    private val attemptedKeys = HashSet<String>(MAX_CACHE_SIZE)
+    private val iconCache = BoundedIconBitmapCache<CachedBitmapIcon>(maxIconCacheBytes)
+    private val missingKeys = LinkedHashSet<String>(MAX_MISSING_KEYS)
 
     fun getInstalledPacks(): List<IconPackInfo> {
         val seen = mutableSetOf<String>()
@@ -89,8 +107,8 @@ class IconPackManager(private val context: Context) {
         if (packageName == loadedPack && filterMap.isNotEmpty()) return true
         return@withLock withContext(Dispatchers.IO) {
             try {
-                iconCache.evictAll()
-                attemptedKeys.clear()
+                iconCache.clear()
+                missingKeys.clear()
                 val res = pm.getResourcesForApplication(packageName)
                 val map = mutableMapOf<String, String>()
                 val parsed = tryParseXmlResource(packageName, res, map) || tryParseAssets(packageName, res, map)
@@ -110,7 +128,7 @@ class IconPackManager(private val context: Context) {
     }
 
     suspend fun clearPack() = mutex.withLock {
-        loadedPack = null; filterMap = emptyMap(); packResources = null; packPackageName = null; iconCache.evictAll(); attemptedKeys.clear()
+        loadedPack = null; filterMap = emptyMap(); packResources = null; packPackageName = null; iconCache.clear(); missingKeys.clear()
     }
 
     fun resolveIcon(component: ComponentName): Drawable? {
@@ -119,17 +137,19 @@ class IconPackManager(private val context: Context) {
         val pkg = packPackageName ?: return null
         val map = filterMap
         val key = "${component.packageName}/${component.className}"
-        // Fast path: already resolved (hit or miss)
-        if (key in attemptedKeys) return iconCache.get(key)
-        val drawableName = map[key] ?: run { attemptedKeys.add(key); return null }
+        iconCache.get(key)?.let { return it.toDrawable(context.resources) }
+        if (key in missingKeys) return null
+        val drawableName = map[key] ?: run { rememberMissingKey(key); return null }
         return try {
-            val icon = loadDrawable(res, pkg, drawableName)
-            iconCache.put(key, icon)
-            attemptedKeys.add(key)
-            icon
+            val bitmap = loadBitmap(res, pkg, drawableName) ?: run {
+                rememberMissingKey(key)
+                return null
+            }
+            val cached = CachedBitmapIcon(bitmap)
+            if (iconCache.put(key, cached)) cached.toDrawable(context.resources) else null
         } catch (e: Exception) {
             Log.w(TAG, "resolveIcon failed for $key", e)
-            attemptedKeys.add(key)
+            rememberMissingKey(key)
             null
         }
     }
@@ -202,12 +222,58 @@ class IconPackManager(private val context: Context) {
     }
 
     private fun loadDrawable(res: Resources, packageName: String, name: String): Drawable? {
+        val bitmap = loadBitmap(res, packageName, name) ?: return null
+        return BitmapDrawable(context.resources, bitmap)
+    }
+
+    private fun loadBitmap(res: Resources, packageName: String, name: String): Bitmap? {
         return try {
             val id = res.getIdentifier(name, "drawable", packageName)
-            if (id != 0) res.getDrawable(id, null) else null
+            if (id != 0) drawableToBitmap(res.getDrawable(id, null).mutate()) else null
         } catch (e: Exception) {
             Log.w(TAG, "Failed to load drawable: $name from $packageName", e)
             null
+        }
+    }
+
+    private fun drawableToBitmap(drawable: Drawable): Bitmap {
+        val intrinsicWidth = drawable.intrinsicWidth.takeIf { it > 0 } ?: maxIconBitmapPx
+        val intrinsicHeight = drawable.intrinsicHeight.takeIf { it > 0 } ?: maxIconBitmapPx
+        val largestSide = max(intrinsicWidth, intrinsicHeight).coerceAtLeast(1)
+        val scale = minOf(1f, maxIconBitmapPx.toFloat() / largestSide.toFloat())
+        val width = max(1, (intrinsicWidth * scale).roundToInt())
+        val height = max(1, (intrinsicHeight * scale).roundToInt())
+        val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+        val previousBounds = Rect(drawable.bounds)
+        drawable.setBounds(0, 0, width, height)
+        drawable.draw(canvas)
+        drawable.bounds = previousBounds
+        return bitmap
+    }
+
+    private fun rememberMissingKey(key: String) {
+        missingKeys.remove(key)
+        missingKeys.add(key)
+        while (missingKeys.size > MAX_MISSING_KEYS) {
+            val iterator = missingKeys.iterator()
+            if (!iterator.hasNext()) return
+            iterator.next()
+            iterator.remove()
+        }
+    }
+
+    private class CachedBitmapIcon(private val bitmap: Bitmap) : RecyclableIconEntry {
+        override val bytes: Int = bitmap.allocationByteCount
+
+        override fun recycle() {
+            if (!bitmap.isRecycled) bitmap.recycle()
+        }
+
+        fun toDrawable(res: Resources): Drawable? {
+            if (bitmap.isRecycled) return null
+            val copy = bitmap.copy(bitmap.config ?: Bitmap.Config.ARGB_8888, false)
+            return BitmapDrawable(res, copy)
         }
     }
 }
