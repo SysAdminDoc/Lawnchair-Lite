@@ -9,6 +9,8 @@ import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
@@ -106,6 +108,7 @@ fun HomeScreen(vm: LauncherViewModel) {
     val settingsOpen by vm.settingsOpen.collectAsState()
     val notifCounts by vm.notifCounts.collectAsState()
     val appShortcuts by vm.shortcuts.collectAsState()
+    val shortcutShelf by vm.shortcutShelf.collectAsState()
     val recentApps by vm.recentApps.collectAsState()
     val favoriteApps by vm.favoriteApps.collectAsState()
     val favoriteAppKeys by vm.favoriteAppKeys.collectAsState()
@@ -134,6 +137,11 @@ fun HomeScreen(vm: LauncherViewModel) {
     var uninstallZoneBounds by remember { mutableStateOf(Rect.Zero) }
     val pagerState = rememberPagerState(initialPage = 0, pageCount = { numPages })
     val currentPage by remember { derivedStateOf { pagerState.currentPage } }
+    var shortcutShelfOpen by remember { mutableStateOf(false) }
+
+    LaunchedEffect(shortcutShelf.isEmpty()) {
+        if (shortcutShelf.isEmpty()) shortcutShelfOpen = false
+    }
 
     // Haptic feedback on page limits
     var lastHapticPage by remember { mutableIntStateOf(-1) }
@@ -655,6 +663,16 @@ fun HomeScreen(vm: LauncherViewModel) {
                         )
                         Box(
                             Modifier.fillMaxWidth()
+                                .pointerInput(shortcutShelf.size, isDragging, editMode) {
+                                    if (shortcutShelf.isNotEmpty() && !isDragging && !editMode) {
+                                        var totalDragY = 0f
+                                        detectVerticalDragGestures(
+                                            onDragStart = { totalDragY = 0f },
+                                            onDragEnd = { if (totalDragY < -55f) shortcutShelfOpen = true },
+                                            onDragCancel = {},
+                                        ) { _, amount -> totalDragY += amount }
+                                    }
+                                }
                                 .clickable {
                                     if (settings.dockTapAction == GestureAction.APP_DRAWER) {
                                         scope.launch { drawerProgress.animateTo(1f, spring(stiffness = Spring.StiffnessMedium)) }
@@ -727,6 +745,58 @@ fun HomeScreen(vm: LauncherViewModel) {
                     }
                 }
                 Spacer(Modifier.navigationBarsPadding())
+            }
+
+            if (shortcutShelfOpen) {
+                Box(
+                    Modifier.fillMaxSize()
+                        .background(Color.Black.copy(alpha = 0.18f))
+                        .pointerInput(Unit) { detectTapGestures { shortcutShelfOpen = false } },
+                    contentAlignment = Alignment.BottomCenter,
+                ) {
+                    Row(
+                        Modifier.navigationBarsPadding()
+                            .padding(start = 20.dp, end = 20.dp, bottom = if (settings.hideDock) 28.dp else 112.dp)
+                            .clip(RoundedCornerShape(22.dp))
+                            .background(colors.surface.copy(alpha = 0.96f))
+                            .pointerInput(Unit) { detectTapGestures { } }
+                            .horizontalScroll(rememberScrollState())
+                            .padding(horizontal = 14.dp, vertical = 12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        shortcutShelf.forEach { cell ->
+                            Box(
+                                Modifier.width(72.dp)
+                                    .clip(RoundedCornerShape(14.dp))
+                                    .background(colors.card.copy(alpha = 0.72f))
+                                    .pointerInput(cell.key) {
+                                        detectTapGestures(
+                                            onTap = {
+                                                vm.launchShortcutCell(cell)
+                                                shortcutShelfOpen = false
+                                            },
+                                            onLongPress = { vm.removeShortcutFromShelf(cell) },
+                                        )
+                                    }
+                                    .padding(horizontal = 6.dp, vertical = 8.dp),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                ShortcutIconContent(
+                                    cell,
+                                    vm.resolveShortcutIcon(cell),
+                                    settings.iconShape,
+                                    42.dp,
+                                    showLabel = true,
+                                    iconShadow = settings.iconShadow,
+                                    labelSizeSp = 10,
+                                    grayscale = settings.grayscaleIcons,
+                                    labelWeight = resolvedLabelWeight,
+                                )
+                            }
+                        }
+                    }
+                }
             }
 
             if (isDragging) DragGhost(drag?.item, drag?.appInfo, settings.iconShape, dragOff, { vm.resolveApp(it) }, { vm.resolveShortcutIcon(it) }, iconDp)

@@ -220,6 +220,7 @@ data class WidgetInfo(
 enum class DragSource { HOME, DOCK, DRAWER }
 
 private const val SHORTCUT_KEY_PREFIX = "shortcut:"
+internal const val MAX_SHORTCUT_SHELF_ITEMS = 8
 
 fun shortcutKey(packageName: String, shortcutId: String): String =
     "$SHORTCUT_KEY_PREFIX${packageName.trim()}/${shortcutId.trim()}"
@@ -261,6 +262,14 @@ fun sanitizeAppGestureShortcuts(bindings: Map<String, String>): Map<String, Stri
         .distinctBy { it.first }
         .take(200)
         .toMap()
+
+fun sanitizeShortcutShelf(cells: List<GridCell?>): List<GridCell.Shortcut> =
+    cells.asSequence()
+        .filterIsInstance<GridCell.Shortcut>()
+        .filter { it.packageName.isNotBlank() && it.shortcutId.isNotBlank() && it.sourceAppKey.contains("/") }
+        .distinctBy { it.key }
+        .take(MAX_SHORTCUT_SHELF_ITEMS)
+        .toList()
 
 data class DragState(
     val item: GridCell, val source: DragSource,

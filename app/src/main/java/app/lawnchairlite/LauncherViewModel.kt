@@ -95,6 +95,8 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     // App shortcuts state
     private val _shortcuts = MutableStateFlow<List<AppShortcut>>(emptyList())
     val shortcuts: StateFlow<List<AppShortcut>> = _shortcuts.asStateFlow()
+    private val _shortcutShelf = MutableStateFlow<List<GridCell.Shortcut>>(emptyList())
+    val shortcutShelf: StateFlow<List<GridCell.Shortcut>> = _shortcutShelf.asStateFlow()
 
     // Widget state
     private val _widgets = MutableStateFlow<List<WidgetInfo>>(emptyList())
@@ -316,6 +318,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         startSmartspaceRefresh()
         viewModelScope.launch { prefs.homeGrid.collect { if (it.isNotEmpty()) _homeGrid.value = it } }
         viewModelScope.launch { prefs.dockGrid.collect { if (it.isNotEmpty()) _dockGrid.value = it } }
+        viewModelScope.launch { prefs.shortcutShelf.collect { _shortcutShelf.value = it } }
         viewModelScope.launch { prefs.hiddenApps.collect { _hiddenApps.value = it } }
         viewModelScope.launch { prefs.favoriteApps.collect { _favoriteApps.value = it } }
         viewModelScope.launch { prefs.customLabels.collect { _customLabels.value = it } }
@@ -513,13 +516,16 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    fun pinShortcutToHome(shortcut: AppShortcut, sourceAppKey: String) { viewModelScope.launch {
-        val cell = GridCell.Shortcut(
+    private fun appShortcutCell(shortcut: AppShortcut, sourceAppKey: String): GridCell.Shortcut =
+        GridCell.Shortcut(
             packageName = shortcut.packageName,
             shortcutId = shortcut.id,
             label = shortcut.shortLabel.toString().take(80),
             sourceAppKey = sourceAppKey,
         )
+
+    fun pinShortcutToHome(shortcut: AppShortcut, sourceAppKey: String) { viewModelScope.launch {
+        val cell = appShortcutCell(shortcut, sourceAppKey)
         val ps = pageSize()
         val grid = padGrid(_homeGrid.value, ps).toMutableList()
         if (grid.any { it is GridCell.Shortcut && it.key == cell.key }) {
@@ -539,12 +545,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     }}
 
     fun pinShortcutToDock(shortcut: AppShortcut, sourceAppKey: String) { viewModelScope.launch {
-        val cell = GridCell.Shortcut(
-            packageName = shortcut.packageName,
-            shortcutId = shortcut.id,
-            label = shortcut.shortLabel.toString().take(80),
-            sourceAppKey = sourceAppKey,
-        )
+        val cell = appShortcutCell(shortcut, sourceAppKey)
         val dc = settings.value.dockCount
         val dock = _dockGrid.value.toMutableList()
         while (dock.size < dc) dock.add(null)
@@ -563,6 +564,36 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
             toast(R.string.shortcut_added_to_dock)
         }
         _homeMenu.value = null; _drawerMenuApp.value = null; _shortcuts.value = emptyList()
+    }}
+
+    fun pinShortcutToShelf(shortcut: AppShortcut, sourceAppKey: String) { viewModelScope.launch {
+        val cell = appShortcutCell(shortcut, sourceAppKey)
+        val shelf = sanitizeShortcutShelf(_shortcutShelf.value).toMutableList()
+        if (shelf.any { it.key == cell.key }) {
+            toast(R.string.shortcut_already_pinned)
+            _homeMenu.value = null; _drawerMenuApp.value = null; _shortcuts.value = emptyList()
+            return@launch
+        }
+        if (shelf.size >= MAX_SHORTCUT_SHELF_ITEMS) {
+            toast(R.string.shortcut_shelf_full)
+            _homeMenu.value = null; _drawerMenuApp.value = null; _shortcuts.value = emptyList()
+            return@launch
+        }
+        shelf.add(cell)
+        val cleaned = sanitizeShortcutShelf(shelf)
+        _shortcutShelf.value = cleaned
+        prefs.saveShortcutShelf(cleaned)
+        toast(R.string.shortcut_added_to_shelf)
+        _homeMenu.value = null; _drawerMenuApp.value = null; _shortcuts.value = emptyList()
+    }}
+
+    fun removeShortcutFromShelf(cell: GridCell.Shortcut) { viewModelScope.launch {
+        val shelf = sanitizeShortcutShelf(_shortcutShelf.value).filterNot { it.key == cell.key }
+        if (shelf.size != _shortcutShelf.value.size) {
+            _shortcutShelf.value = shelf
+            prefs.saveShortcutShelf(shelf)
+            toast(R.string.shortcut_removed_from_shelf)
+        }
     }}
 
     fun bindAppSwipeShortcut(appKey: String, shortcut: AppShortcut) { viewModelScope.launch {
@@ -931,6 +962,14 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
                 }
             if (cleanedGestureShortcuts != gestureShortcuts) {
                 prefs.saveAppGestureShortcuts(cleanedGestureShortcuts)
+            }
+            val shelf = _shortcutShelf.value
+            val cleanedShelf = sanitizeShortcutShelf(shelf).filter { shortcut ->
+                shortcut.sourceAppKey in valid && shortcut.packageName in validPackages
+            }
+            if (cleanedShelf != shelf) {
+                _shortcutShelf.value = cleanedShelf
+                prefs.saveShortcutShelf(cleanedShelf)
             }
         } catch (e: Exception) {
             Log.e(TAG, "cleanupStaleKeys failed", e)

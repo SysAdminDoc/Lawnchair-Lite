@@ -644,6 +644,7 @@ fun HomeContextMenu(
                         onClick = { vm.launchShortcut(shortcut) },
                         onPinHome = { vm.pinShortcutToHome(shortcut, cell.appKey) },
                         onPinDock = { vm.pinShortcutToDock(shortcut, cell.appKey) },
+                        onPinShelf = { vm.pinShortcutToShelf(shortcut, cell.appKey) },
                         onBindGesture = { vm.bindAppSwipeShortcut(cell.appKey, shortcut) },
                     )
                 }
@@ -935,6 +936,7 @@ fun DrawerContextMenu(app: AppInfo, shape: IconShape, vm: LauncherViewModel, sho
                         onClick = { onShortcutClick(shortcut) },
                         onPinHome = { vm.pinShortcutToHome(shortcut, app.key) },
                         onPinDock = { vm.pinShortcutToDock(shortcut, app.key) },
+                        onPinShelf = { vm.pinShortcutToShelf(shortcut, app.key) },
                         onBindGesture = { vm.bindAppSwipeShortcut(app.key, shortcut) },
                     )
                 }
@@ -1054,7 +1056,7 @@ private fun IconOverridePicker(
     }
 }
 
-@Composable private fun ShortcutItem(shortcut: AppShortcut, c: LauncherColors, onClick: () -> Unit, onPinHome: (() -> Unit)? = null, onPinDock: (() -> Unit)? = null, onBindGesture: (() -> Unit)? = null) {
+@Composable private fun ShortcutItem(shortcut: AppShortcut, c: LauncherColors, onClick: () -> Unit, onPinHome: (() -> Unit)? = null, onPinDock: (() -> Unit)? = null, onPinShelf: (() -> Unit)? = null, onBindGesture: (() -> Unit)? = null) {
     Row(
         Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -1080,6 +1082,11 @@ private fun IconOverridePicker(
         if (onPinDock != null) {
             IconButton(onClick = onPinDock, modifier = Modifier.size(32.dp)) {
                 Icon(Icons.Default.Apps, stringResource(R.string.pin_shortcut_to_dock), tint = c.textSecondary, modifier = Modifier.size(17.dp))
+            }
+        }
+        if (onPinShelf != null) {
+            IconButton(onClick = onPinShelf, modifier = Modifier.size(32.dp)) {
+                Icon(Icons.Default.Bookmark, stringResource(R.string.pin_shortcut_to_shelf), tint = c.textSecondary, modifier = Modifier.size(17.dp))
             }
         }
         if (onBindGesture != null) {

@@ -171,6 +171,7 @@ class LauncherPrefs(private val context: Context) {
         val SWIPE_UP_ACTION = stringPreferencesKey("swipe_up_action")
         val GESTURE_APP_SWIPE_UP = stringPreferencesKey("gesture_app_swipe_up")
         val APP_GESTURE_SHORTCUTS = stringPreferencesKey("app_gesture_shortcuts_v1")
+        val SHORTCUT_SHELF = stringPreferencesKey("shortcut_shelf_v1")
         val CUSTOM_GESTURE_PATTERN = stringPreferencesKey("custom_gesture_pattern")
         val CUSTOM_GESTURE_ACTION = stringPreferencesKey("custom_gesture_action")
         val GESTURE_APP_CUSTOM = stringPreferencesKey("gesture_app_custom")
@@ -257,6 +258,9 @@ class LauncherPrefs(private val context: Context) {
 
     val homeGrid: Flow<List<GridCell?>> = safeData.map { p -> p[HOME_GRID]?.let { safeDeserializeGrid(it) } ?: emptyList() }
     val dockGrid: Flow<List<GridCell?>> = safeData.map { p -> p[DOCK_GRID]?.let { safeDeserializeGrid(it) } ?: emptyList() }
+    val shortcutShelf: Flow<List<GridCell.Shortcut>> = safeData.map { p ->
+        p[SHORTCUT_SHELF]?.let { sanitizeShortcutShelf(safeDeserializeGrid(it)) } ?: emptyList()
+    }
     val initialized: Flow<Boolean> = safeData.map { p -> p[INITIALIZED] ?: false }
     val hiddenApps: Flow<Set<String>> = safeData.map { p ->
         p[HIDDEN_APPS]?.split("|")?.filter { it.isNotBlank() }?.toSet() ?: emptySet()
@@ -335,6 +339,7 @@ class LauncherPrefs(private val context: Context) {
                 p[SEARCH_ENGINE] = d.searchEngine.name
                 p[SWIPE_UP_ACTION] = d.swipeUpAction.name
                 p.remove(APP_GESTURE_SHORTCUTS)
+                p.remove(SHORTCUT_SHELF)
                 p.remove(CUSTOM_GESTURE_PATTERN)
                 p[CUSTOM_GESTURE_ACTION] = d.customGestureAction.name
                 p[GESTURE_APP_CUSTOM] = ""
@@ -354,6 +359,15 @@ class LauncherPrefs(private val context: Context) {
     suspend fun saveDock(cells: List<GridCell?>) {
         runCatching { context.dataStore.edit { it[DOCK_GRID] = serializeGrid(cells) } }
             .onFailure { Log.e(TAG, "Failed to save dock grid", it) }
+    }
+
+    suspend fun saveShortcutShelf(cells: List<GridCell.Shortcut>) {
+        runCatching {
+            context.dataStore.edit { prefs ->
+                val sanitized = sanitizeShortcutShelf(cells)
+                if (sanitized.isEmpty()) prefs.remove(SHORTCUT_SHELF) else prefs[SHORTCUT_SHELF] = serializeGrid(sanitized)
+            }
+        }.onFailure { Log.e(TAG, "Failed to save shortcut shelf", it) }
     }
 
     suspend fun saveHidden(keys: Set<String>) {
@@ -619,6 +633,7 @@ class LauncherPrefs(private val context: Context) {
             put("favorite_apps", p[FAVORITE_APPS] ?: "")
             put("swipe_up_action", p[SWIPE_UP_ACTION] ?: "APP_DRAWER")
             put("app_gesture_shortcuts", p[APP_GESTURE_SHORTCUTS] ?: "")
+            put("shortcut_shelf", p[SHORTCUT_SHELF] ?: "")
             put("custom_gesture_pattern", p[CUSTOM_GESTURE_PATTERN] ?: "")
             put("custom_gesture_action", p[CUSTOM_GESTURE_ACTION] ?: "NONE")
             put("gesture_app_custom", p[GESTURE_APP_CUSTOM] ?: "")
@@ -706,6 +721,10 @@ class LauncherPrefs(private val context: Context) {
             if (j.has("app_gesture_shortcuts")) {
                 val serialized = serializeAppGestureShortcuts(parseAppGestureShortcuts(j.optString("app_gesture_shortcuts")))
                 if (serialized == "{}") p.remove(APP_GESTURE_SHORTCUTS) else p[APP_GESTURE_SHORTCUTS] = serialized
+            }
+            if (j.has("shortcut_shelf")) {
+                val shelf = sanitizeShortcutShelf(safeDeserializeGrid(j.optString("shortcut_shelf")))
+                if (shelf.isEmpty()) p.remove(SHORTCUT_SHELF) else p[SHORTCUT_SHELF] = serializeGrid(shelf)
             }
             if (j.has("custom_gesture_pattern")) {
                 val pattern = sanitizeCustomGesturePattern(j.optString("custom_gesture_pattern"))

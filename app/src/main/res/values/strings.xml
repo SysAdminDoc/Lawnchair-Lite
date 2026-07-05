@@ -261,6 +261,7 @@
     <string name="choose_icon_source">Choose Icon Source</string>
     <string name="pin_shortcut_to_home">Pin shortcut to home</string>
     <string name="pin_shortcut_to_dock">Pin shortcut to dock</string>
+    <string name="pin_shortcut_to_shelf">Pin shortcut to shelf</string>
     <string name="bind_shortcut_to_swipe_up">Use shortcut on app swipe-up</string>
     <string name="clear_app_swipe_shortcut">Clear App Swipe Shortcut</string>
     <string name="custom_draw_gesture">Custom Draw Gesture</string>
@@ -346,7 +347,10 @@
     <string name="added_to_dock">Added to dock</string>
     <string name="shortcut_added_to_home">Shortcut added to home</string>
     <string name="shortcut_added_to_dock">Shortcut added to dock</string>
+    <string name="shortcut_added_to_shelf">Shortcut added to shelf</string>
     <string name="shortcut_already_pinned">Shortcut already pinned</string>
+    <string name="shortcut_shelf_full">Shortcut shelf full</string>
+    <string name="shortcut_removed_from_shelf">Shortcut removed from shelf</string>
     <string name="shortcut_unavailable">Shortcut unavailable</string>
     <string name="app_swipe_shortcut_bound">App swipe shortcut set</string>
     <string name="app_swipe_shortcut_cleared">App swipe shortcut cleared</string>

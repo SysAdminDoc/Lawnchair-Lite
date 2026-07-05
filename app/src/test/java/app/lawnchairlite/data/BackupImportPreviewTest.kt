@@ -115,6 +115,20 @@ class BackupImportPreviewTest {
     }
 
     @Test
+    fun shortcutShelfIsRecognizedAsLayoutBackupSection() {
+        val preview = BackupImportPreview.fromFields(
+            mapOf(
+                "schema" to 1,
+                "shortcut_shelf" to "S:com.example.mail:compose:Compose:com.example.mail/.Main",
+            ),
+        )
+
+        assertTrue(preview.canImport)
+        assertEquals(listOf("Layout & widgets"), preview.sections)
+        assertEquals(emptyList<String>(), preview.unknownFields)
+    }
+
+    @Test
     fun customGestureRecorderFieldsAreRecognizedAsGestureBackupSection() {
         val preview = BackupImportPreview.fromFields(
             mapOf(

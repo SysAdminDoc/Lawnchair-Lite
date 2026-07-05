@@ -22,6 +22,7 @@
     <string name="choose_icon_source">Elegir origen del icono</string>
     <string name="pin_shortcut_to_home">Fijar atajo al inicio</string>
     <string name="pin_shortcut_to_dock">Fijar atajo al dock</string>
+    <string name="pin_shortcut_to_shelf">Fijar atajo al estante</string>
     <string name="bind_shortcut_to_swipe_up">Usar atajo al deslizar app arriba</string>
     <string name="clear_app_swipe_shortcut">Borrar atajo de deslizamiento</string>
     <string name="custom_draw_gesture">Gesto dibujado</string>
@@ -48,7 +49,10 @@
     <string name="widget_removed">Widget eliminado</string>
     <string name="shortcut_added_to_home">Atajo agregado al inicio</string>
     <string name="shortcut_added_to_dock">Atajo agregado al dock</string>
+    <string name="shortcut_added_to_shelf">Atajo agregado al estante</string>
     <string name="shortcut_already_pinned">El atajo ya esta fijado</string>
+    <string name="shortcut_shelf_full">Estante de atajos lleno</string>
+    <string name="shortcut_removed_from_shelf">Atajo quitado del estante</string>
     <string name="shortcut_unavailable">Atajo no disponible</string>
     <string name="app_swipe_shortcut_bound">Atajo de deslizamiento guardado</string>
     <string name="app_swipe_shortcut_cleared">Atajo de deslizamiento borrado</string>
