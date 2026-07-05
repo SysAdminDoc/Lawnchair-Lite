@@ -174,11 +174,31 @@ enum class HapticLevel(val label: String, val ms: Long) {
 enum class LabelSize(val label: String, val sp: Int) {
     SMALL("Small", 9), MEDIUM("Medium", 11), LARGE("Large", 13);
 }
-enum class SearchEngine(val label: String, val urlTemplate: String) {
-    GOOGLE("Google", "https://www.google.com/search?q=%s"),
-    DUCKDUCKGO("DuckDuckGo", "https://duckduckgo.com/?q=%s"),
-    BING("Bing", "https://www.bing.com/search?q=%s"),
-    BRAVE("Brave", "https://search.brave.com/search?q=%s"),
+enum class SearchEngine(
+    val label: String,
+    val urlTemplate: String,
+    val suggestionUrlTemplate: String? = null,
+) {
+    GOOGLE(
+        "Google",
+        "https://www.google.com/search?q=%s",
+        "https://suggestqueries.google.com/complete/search?client=firefox&q=%s",
+    ),
+    DUCKDUCKGO(
+        "DuckDuckGo",
+        "https://duckduckgo.com/?q=%s",
+        "https://duckduckgo.com/ac/?q=%s&type=list",
+    ),
+    BING(
+        "Bing",
+        "https://www.bing.com/search?q=%s",
+        "https://api.bing.com/osjson.aspx?query=%s",
+    ),
+    BRAVE(
+        "Brave",
+        "https://search.brave.com/search?q=%s",
+        "https://search.brave.com/api/suggest?q=%s",
+    ),
     STARTPAGE("Startpage", "https://www.startpage.com/do/dsearch?query=%s");
 }
 

@@ -66,6 +66,7 @@
     <string name="clear_recent_apps">Clear recent apps</string>
     <string name="enable_contact_search">Enable contact search</string>
     <string name="contacts_header">CONTACTS</string>
+    <string name="web_suggestions_header">WEB SUGGESTIONS</string>
     <string name="recent_header">RECENT</string>
     <string name="category_content_description">%1$s category, %2$d apps</string>
     <string name="drawer_results_count">%1$d results</string>

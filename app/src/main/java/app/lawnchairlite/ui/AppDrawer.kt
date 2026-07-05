@@ -16,6 +16,7 @@ import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.SearchOff
 import androidx.compose.material3.Icon
 import androidx.compose.material3.PrimaryScrollableTabRow
@@ -38,6 +39,7 @@ import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
@@ -98,9 +100,11 @@ fun AppDrawer(
     onSearchWeb: (String) -> Unit,
     calculatorResult: String? = null,
     searchHistory: List<String> = emptyList(),
+    webSuggestions: List<String> = emptyList(),
     onSearchHistoryTap: (String) -> Unit = {},
     onSearchHistoryRemove: (String) -> Unit = {},
     onSearchHistoryClear: () -> Unit = {},
+    onWebSuggestionTap: (String) -> Unit = {},
     searchEngineLabel: String = "Google",
     onVibrate: () -> Unit = {},
     onClearRecents: () -> Unit = {},
@@ -415,6 +419,14 @@ fun AppDrawer(
                 }
             }
 
+            if (webSuggestions.isNotEmpty() && searchQuery.isNotBlank()) {
+                WebSuggestionRows(
+                    searchEngineLabel = searchEngineLabel,
+                    suggestions = webSuggestions,
+                    onSuggestionTap = onWebSuggestionTap,
+                )
+            }
+
             if (displayApps.isEmpty()) {
                 Box(Modifier.fillMaxWidth().weight(1f), Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -584,6 +596,53 @@ fun AppDrawer(
             }
             Spacer(Modifier.navigationBarsPadding())
         }
+    }
+}
+
+@Composable
+private fun WebSuggestionRows(
+    searchEngineLabel: String,
+    suggestions: List<String>,
+    onSuggestionTap: (String) -> Unit,
+) {
+    val colors = LocalLauncherColors.current
+    Column(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp)) {
+        Text(
+            stringResource(R.string.web_suggestions_header),
+            color = colors.accent,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = 1.sp,
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+        )
+        suggestions.forEach { suggestion ->
+            val suggestionDescription = stringResource(R.string.search_engine_for_query, searchEngineLabel, suggestion)
+            Row(
+                Modifier.fillMaxWidth()
+                    .padding(vertical = 2.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(colors.card.copy(alpha = 0.78f))
+                    .semantics { contentDescription = suggestionDescription; role = Role.Button }
+                    .clickable(role = Role.Button) { onSuggestionTap(suggestion) }
+                    .padding(horizontal = 12.dp, vertical = 9.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(Icons.Default.Search, null, tint = colors.accent.copy(alpha = 0.72f), modifier = Modifier.size(16.dp))
+                Spacer(Modifier.width(10.dp))
+                Text(
+                    suggestion,
+                    color = colors.text,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f),
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(searchEngineLabel.take(1), color = colors.textSecondary, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+            }
+        }
+        Box(Modifier.fillMaxWidth().height(0.5.dp).padding(horizontal = 20.dp).background(colors.border.copy(alpha = 0.3f)))
     }
 }
 

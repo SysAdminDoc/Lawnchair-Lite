@@ -18,6 +18,7 @@ All notable changes to Lawnchair-Lite will be documented in this file.
 - Added resource-backed UI strings, localized enum display labels, and a partial Spanish smoke resource file for translation workflow validation.
 - Split search scoring, Smartspace loading, widget placement decisions, and backup restore orchestration into focused services with unit coverage.
 - Improved app drawer search with diacritic folding, common transliteration, initials, aliases, and typo-tolerant matching.
+- Added cached web search suggestions for engines with JSON suggestion APIs, surfaced inline in drawer search.
 - Added drawer groups/folders that filter All/Recent/Favorites/Work tabs by selected apps or package-prefix rules and persist through launcher backups.
 - Added widget picker preview imagery with icon/placeholder fallbacks, unavailable-preview copy, and confirmation before widget host IDs are removed.
 - Added widget stacks so edit-mode widgets can add compatible widgets into the same grid slot, swipe between stack pages, and remove the active stack item without clearing the rest.

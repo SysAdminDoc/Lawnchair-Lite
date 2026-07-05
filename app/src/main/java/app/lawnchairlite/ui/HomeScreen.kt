@@ -125,6 +125,7 @@ fun HomeScreen(vm: LauncherViewModel) {
     val widgetInfos by vm.widgets.collectAsState()
     val suggestedApps by vm.suggestedApps.collectAsState()
     val smartspace by vm.smartspace.collectAsState()
+    val webSuggestions by vm.webSuggestions.collectAsState()
     val colors = LocalLauncherColors.current
     val isDragging = drag != null
     val iconDp = settings.iconSize.dp.dp
@@ -953,9 +954,11 @@ fun HomeScreen(vm: LauncherViewModel) {
                 onSearchWeb = { vm.searchWeb(it) },
                 calculatorResult = vm.calculatorResult.collectAsState().value,
                 searchHistory = vm.searchHistory.collectAsState().value,
+                webSuggestions = webSuggestions,
                 onSearchHistoryTap = { vm.setSearch(it) },
                 onSearchHistoryRemove = { vm.removeSearchHistoryItem(it) },
                 onSearchHistoryClear = { vm.clearSearchHistory() },
+                onWebSuggestionTap = { vm.searchWebSuggestion(it) },
                 searchEngineLabel = settings.searchEngine.localizedLabel(),
                 onVibrate = { vm.vibrate() },
                 onClearRecents = { vm.clearRecentApps() },

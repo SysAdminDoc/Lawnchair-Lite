@@ -57,6 +57,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     val widgetHost = AppWidgetHost(app, WIDGET_HOST_ID)
     val widgetManager: AppWidgetManager = AppWidgetManager.getInstance(app)
     private val smartspaceService = SmartspaceService(ctx)
+    private val webSuggestionService = WebSuggestionService()
     private val backupService = LauncherBackupService(LauncherPrefsBackupGateway(prefs))
     private val backupImportPreparer = BackupImportPreparer(ctx)
 
@@ -122,6 +123,8 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     // Search history
     private val _searchHistory = MutableStateFlow<List<String>>(emptyList())
     val searchHistory: StateFlow<List<String>> = _searchHistory.asStateFlow()
+    private val _webSuggestions = MutableStateFlow<List<String>>(emptyList())
+    val webSuggestions: StateFlow<List<String>> = _webSuggestions.asStateFlow()
 
     // First-party Smartspace state
     private val _smartspace = MutableStateFlow(SmartspaceState())
@@ -310,6 +313,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
 
     private var reloadJob: Job? = null
     private var smartspaceRefreshJob: Job? = null
+    private var webSuggestionJob: Job? = null
     private var flashlightOn = false
     private var torchCallback: CameraManager.TorchCallback? = null
 
@@ -473,13 +477,20 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     fun uninstall(app: AppInfo) = repo.uninstallApp(app)
     fun setSearch(q: String) {
         _search.value = q
-        if (q.length >= 2) searchContacts(q) else _contactResults.value = emptyList()
+        if (q.length >= 2) {
+            searchContacts(q)
+            loadWebSuggestions(q)
+        } else {
+            _contactResults.value = emptyList()
+            webSuggestionJob?.cancel()
+            _webSuggestions.value = emptyList()
+        }
     }
     fun openDrawer() { _drawerOpen.value = true }
-    fun closeDrawer() { _drawerOpen.value = false; _search.value = ""; resetDrawerFilters() }
+    fun closeDrawer() { _drawerOpen.value = false; _search.value = ""; _webSuggestions.value = emptyList(); webSuggestionJob?.cancel(); resetDrawerFilters() }
     fun openSettings() { _settingsOpen.value = true }
     fun closeSettings() { _settingsOpen.value = false }
-    fun closeAllOverlays() { _drawerOpen.value = false; _settingsOpen.value = false; _openFolder.value = null; _drawerMenuApp.value = null; _folderRename.value = null; _labelEdit.value = null; _homeMenu.value = null; _editMode.value = false; _widgetPickerOpen.value = false; _widgetRemoveConfirm.value = null; _homeSpaceMenu.value = false; _search.value = ""; _shortcuts.value = emptyList(); resetDrawerFilters() }
+    fun closeAllOverlays() { _drawerOpen.value = false; _settingsOpen.value = false; _openFolder.value = null; _drawerMenuApp.value = null; _folderRename.value = null; _labelEdit.value = null; _homeMenu.value = null; _editMode.value = false; _widgetPickerOpen.value = false; _widgetRemoveConfirm.value = null; _homeSpaceMenu.value = false; _search.value = ""; _webSuggestions.value = emptyList(); webSuggestionJob?.cancel(); _shortcuts.value = emptyList(); resetDrawerFilters() }
     fun hasOpenOverlay(): Boolean = _drawerOpen.value || _settingsOpen.value || _openFolder.value != null || _drawerMenuApp.value != null || _labelEdit.value != null || _homeMenu.value != null || _widgetPickerOpen.value || _widgetRemoveConfirm.value != null || _editMode.value || _homeSpaceMenu.value
 
     // -- Home/Dock Context Menu --
@@ -1610,7 +1621,10 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     fun setGrayscaleIcons(v: Boolean) = pref(LauncherPrefs.GRAYSCALE_ICONS, v)
     fun setPageIndicatorStyle(s: PageIndicatorStyle) = pref(LauncherPrefs.PAGE_INDICATOR_STYLE, s.name)
     fun setLabelWeight(w: LabelWeight) = pref(LauncherPrefs.LABEL_WEIGHT, w.name)
-    fun setSearchEngine(e: SearchEngine) = pref(LauncherPrefs.SEARCH_ENGINE, e.name)
+    fun setSearchEngine(e: SearchEngine) {
+        pref(LauncherPrefs.SEARCH_ENGINE, e.name)
+        if (_search.value.length >= 2) loadWebSuggestions(_search.value, e)
+    }
     fun setGestureApp(gestureSource: String, appKey: String) {
         val key = when (gestureSource) {
             "double_tap" -> LauncherPrefs.GESTURE_APP_DOUBLE_TAP
@@ -1737,6 +1751,35 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
             })
         } catch (e: Exception) {
             Log.e(TAG, "searchWeb failed", e)
+        }
+    }
+
+    fun searchWebSuggestion(query: String) {
+        val normalized = SearchSuggestionParser.normalizeQuery(query)
+        if (normalized.isBlank()) return
+        _search.value = normalized
+        _webSuggestions.value = emptyList()
+        webSuggestionJob?.cancel()
+        searchWeb(normalized)
+    }
+
+    private fun loadWebSuggestions(query: String, engine: SearchEngine = settings.value.searchEngine) {
+        webSuggestionJob?.cancel()
+        val normalized = SearchSuggestionParser.normalizeQuery(query)
+        if (normalized.length < 2 || engine.suggestionUrlTemplate == null) {
+            _webSuggestions.value = emptyList()
+            return
+        }
+        webSuggestionJob = viewModelScope.launch {
+            delay(180)
+            if (SearchSuggestionParser.normalizeQuery(_search.value) != normalized) return@launch
+            val suggestions = webSuggestionService.suggestions(engine, normalized)
+            if (
+                SearchSuggestionParser.normalizeQuery(_search.value) == normalized &&
+                settings.value.searchEngine == engine
+            ) {
+                _webSuggestions.value = suggestions
+            }
         }
     }
 

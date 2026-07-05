@@ -50,7 +50,7 @@ Built on crash patterns identified across Lawnchair v14-v15 beta releases:
 - Time-aware app suggestions (morning/afternoon/evening/night usage patterns)
 - Search history chips with fade gradient, recent apps row with clear button
 - Home screen widgets via AppWidgetHost with provider previews, grid-cell sizing, bind recovery, configuration, stack paging, and removal confirmation
-- Contact search with permission chip, web search fallback
+- Contact search with permission chip, cached web suggestions, and web search fallback
 - Notification badges (count/dot/hidden), app shortcuts via LauncherApps API, shortcut/PWA icon overrides, per-app swipe-up shortcut bindings, and a swipe-open global shortcut shelf
 - 5 page transitions (Slide, Cube, Stack, Fade, Depth, Carousel)
 - Wallpaper dimming (0-80%) with parallax effect and per-page overrides
@@ -129,6 +129,7 @@ $env:ANDROID_HOME = "$HOME\AppData\Local\Android\Sdk"
 - **Drawer lazy grid pre-warm** - The hidden drawer now pre-measures the first offscreen rows before the first open so the initial scroll is already composed
 - **Material You dynamic color** - Android 12+ devices can opt into wallpaper-derived accents for any selected theme, while custom hex accents still take precedence
 - **Theme import/export** - Settings can export or import `.lawnchair-theme` JSON files containing theme mode, dynamic color, accent, icon pack chain, custom font reference, and icon appearance options
+- **Search suggestions 2.0** - Drawer search fetches cached web suggestions from the selected engine when that engine exposes a JSON suggestion API
 - **Nova backup migration** - Restore accepts Nova Launcher ZIP backups, converts compatible apps/folders/dock items, and previews unsupported items before import
 - **Drawer background blur** - Android 12+ RenderEffect blur runs behind the app drawer with safe fallback on older Android versions
 - **Per-page wallpaper dim** - Home pages can override the default wallpaper dim and interpolate between page-specific values while swiping
@@ -330,6 +331,7 @@ AppRepository          - Hardened PM calls, package existence checks, themed ico
 IconPackManager        - Byte-bounded bitmap LRU, multi-pack fallback chain, defensive XML parsing, preview icons
 ShortcutRepository     - LauncherApps shortcut queries + launching
 NotificationListener   - NotificationListenerService for badge counts
+WebSuggestionService   - Engine suggestion APIs with bounded in-memory caching
 AppCategorizer         - Word-boundary tokenized categorization with user rules
 AppModel               - Safe deserialization, data types, enums
 UI (Compose)           - HomeScreen, AppDrawer, Components, Settings, Theme
