@@ -67,6 +67,7 @@ Built on crash patterns identified across Lawnchair v14-v15 beta releases:
 - **Pager scroll guard** - horizontal paging disabled during drawer transition
 - **Drawer background blur** - Android 12+ devices blur the home layer behind the drawer while older OS versions keep the existing fade/scale path
 - **Baseline profile** - startup, home, drawer/search, settings, shortcut, widget, and backup classes ship pre-profiled for faster first-run compilation
+- **R8 full mode** - release builds explicitly use full optimization while retaining metadata required by preference/model serialization paths
 
 ## Permissions
 
@@ -113,6 +114,7 @@ $env:ANDROID_HOME = "$HOME\AppData\Local\Android\Sdk"
 - **Global shortcuts shelf** - Long-press shortcut rows can pin arbitrary app shortcuts to a swipe-open shelf above the dock, with backup persistence and long-press removal
 - **Assistant replacement** - Bottom-corner swipe-up can launch a selected assistant app or the system assistant, with backup persistence
 - **Baseline profile** - Release builds ship `baseline-prof.txt` plus ProfileInstaller so startup and primary launcher journeys are precompiled after install
+- **R8 full mode** - Release shrinking now pins full-mode optimization and keeps required Kotlin/Java metadata attributes for retained launcher models
 - **Nova backup migration** - Restore accepts Nova Launcher ZIP backups, converts compatible apps/folders/dock items, and previews unsupported items before import
 - **Drawer background blur** - Android 12+ RenderEffect blur runs behind the app drawer with safe fallback on older Android versions
 - **Per-page wallpaper dim** - Home pages can override the default wallpaper dim and interpolate between page-specific values while swiping

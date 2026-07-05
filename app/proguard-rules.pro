@@ -1,4 +1,7 @@
-# Lawnchair Lite v2.15.4 - ProGuard Rules
+# Lawnchair Lite - ProGuard Rules
+
+# R8 full mode: keep reflection/metadata attributes for retained model and manifest classes.
+-keepattributes Signature,InnerClasses,EnclosingMethod,*Annotation*
 
 # Keep DataStore (uses reflection for preferences)
 -keep class androidx.datastore.** { *; }
