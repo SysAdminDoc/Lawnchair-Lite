@@ -105,6 +105,7 @@ $env:ANDROID_HOME = "$HOME\AppData\Local\Android\Sdk"
 - **Drawer groups** - Drawer folders can be created in Settings, populated manually or by package-prefix rule, filtered across All/Recent/Favorites/Work, and backed up with launcher JSON
 - **Widget picker previews** - The widget picker shows provider preview images when available, icon/placeholder fallbacks when unavailable, and confirms widget removal before deleting host IDs
 - **Shortcut icon overrides** - App shortcuts and pinned web/PWA-style entries can use manual source-app icon overrides, persist through backup/restore, and fall back safely when shortcut icon resources are missing
+- **Per-app swipe shortcuts** - App long-press shortcut rows can bind a shortcut to that app icon's swipe-up gesture, with backup persistence
 - **Nova backup migration** - Restore accepts Nova Launcher ZIP backups, converts compatible apps/folders/dock items, and previews unsupported items before import
 - **Drawer background blur** - Android 12+ RenderEffect blur runs behind the app drawer with safe fallback on older Android versions
 - **Per-page wallpaper dim** - Home pages can override the default wallpaper dim and interpolate between page-specific values while swiping
