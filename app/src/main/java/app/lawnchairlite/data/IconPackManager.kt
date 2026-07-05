@@ -38,6 +38,12 @@ data class IconPackInfo(
     val icon: Drawable?,
 )
 
+private data class LoadedIconPack(
+    val packageName: String,
+    val resources: Resources,
+    val filterMap: Map<String, String>,
+)
+
 class IconPackManager(
     private val context: Context,
     maxIconCacheBytes: Int = defaultIconCacheBytes(),
@@ -63,9 +69,7 @@ class IconPackManager(
         (context.resources.displayMetrics.density * MAX_ICON_BITMAP_DP).roundToInt(),
     )
     @Volatile private var loadedPack: String? = null
-    @Volatile private var filterMap: Map<String, String> = emptyMap()
-    @Volatile private var packResources: Resources? = null
-    @Volatile private var packPackageName: String? = null
+    @Volatile private var loadedPacks: List<LoadedIconPack> = emptyList()
     private val iconCache = BoundedIconBitmapCache<CachedBitmapIcon>(maxIconCacheBytes)
     private val missingKeys = LinkedHashSet<String>(MAX_MISSING_KEYS)
 
@@ -103,55 +107,66 @@ class IconPackManager(
         return packs.sortedBy { it.label.lowercase() }
     }
 
-    suspend fun loadPack(packageName: String): Boolean = mutex.withLock {
-        if (packageName == loadedPack && filterMap.isNotEmpty()) return true
+    suspend fun loadPack(packageName: String): Boolean = loadPacks(listOf(packageName))
+
+    suspend fun loadPacks(packageNames: List<String>): Boolean = mutex.withLock {
+        val requested = sanitizeIconPackChain(packageNames)
+        if (requested.isEmpty()) {
+            clearLoadedPacks()
+            return true
+        }
+        if (requested.joinToString("|") == loadedPack && loadedPacks.isNotEmpty()) return true
         return@withLock withContext(Dispatchers.IO) {
             try {
-                iconCache.clear()
-                missingKeys.clear()
-                val res = pm.getResourcesForApplication(packageName)
-                val map = mutableMapOf<String, String>()
-                val parsed = tryParseXmlResource(packageName, res, map) || tryParseAssets(packageName, res, map)
-                if (parsed && map.isNotEmpty()) {
-                    filterMap = map; packResources = res; packPackageName = packageName; loadedPack = packageName
-                    Log.d(TAG, "Loaded icon pack: $packageName (${map.size} mappings)")
-                    true
-                } else {
-                    Log.w(TAG, "Icon pack had no valid mappings: $packageName")
-                    false
+                val packs = requested.mapNotNull { packageName ->
+                    val res = pm.getResourcesForApplication(packageName)
+                    val map = mutableMapOf<String, String>()
+                    val parsed = tryParseXmlResource(packageName, res, map) || tryParseAssets(packageName, res, map)
+                    if (parsed && map.isNotEmpty()) {
+                        Log.d(TAG, "Loaded icon pack: $packageName (${map.size} mappings)")
+                        LoadedIconPack(packageName, res, map)
+                    } else {
+                        Log.w(TAG, "Icon pack had no valid mappings: $packageName")
+                        null
+                    }
                 }
+                if (packs.isNotEmpty()) {
+                    iconCache.clear()
+                    missingKeys.clear()
+                    loadedPacks = packs
+                    loadedPack = requested.joinToString("|")
+                }
+                packs.isNotEmpty()
             } catch (e: Exception) {
-                Log.e(TAG, "Failed to load icon pack: $packageName", e)
+                Log.e(TAG, "Failed to load icon pack chain: ${requested.joinToString()}", e)
                 false
             }
         }
     }
 
     suspend fun clearPack() = mutex.withLock {
-        loadedPack = null; filterMap = emptyMap(); packResources = null; packPackageName = null; iconCache.clear(); missingKeys.clear()
+        clearLoadedPacks()
     }
 
     fun resolveIcon(component: ComponentName): Drawable? {
         // Capture volatile references to prevent races with loadPack/clearPack
-        val res = packResources ?: return null
-        val pkg = packPackageName ?: return null
-        val map = filterMap
+        val packs = loadedPacks
+        if (packs.isEmpty()) return null
         val key = "${component.packageName}/${component.className}"
         iconCache.get(key)?.let { return it.toDrawable(context.resources) }
         if (key in missingKeys) return null
-        val drawableName = map[key] ?: run { rememberMissingKey(key); return null }
-        return try {
-            val bitmap = loadBitmap(res, pkg, drawableName) ?: run {
-                rememberMissingKey(key)
-                return null
+        for (pack in packs) {
+            val drawableName = pack.filterMap[key] ?: continue
+            try {
+                val bitmap = loadBitmap(pack.resources, pack.packageName, drawableName) ?: continue
+                val cached = CachedBitmapIcon(bitmap)
+                return if (iconCache.put(key, cached)) cached.toDrawable(context.resources) else null
+            } catch (e: Exception) {
+                Log.w(TAG, "resolveIcon failed for $key from ${pack.packageName}", e)
             }
-            val cached = CachedBitmapIcon(bitmap)
-            if (iconCache.put(key, cached)) cached.toDrawable(context.resources) else null
-        } catch (e: Exception) {
-            Log.w(TAG, "resolveIcon failed for $key", e)
-            rememberMissingKey(key)
-            null
         }
+        rememberMissingKey(key)
+        return null
     }
 
     fun resolveIcon(appKey: String): Drawable? {
@@ -159,8 +174,8 @@ class IconPackManager(
         return resolveIcon(ComponentName(parts[0], parts[1]))
     }
 
-    fun mappedCount(): Int = filterMap.size
-    fun isLoaded(): Boolean = loadedPack != null && filterMap.isNotEmpty()
+    fun mappedCount(): Int = loadedPacks.sumOf { it.filterMap.size }
+    fun isLoaded(): Boolean = loadedPacks.isNotEmpty()
 
     /** Load a few sample icons from an icon pack for preview (without fully loading it). */
     fun previewIcons(packageName: String, count: Int = 4): List<Drawable?> {
@@ -261,6 +276,13 @@ class IconPackManager(
             iterator.next()
             iterator.remove()
         }
+    }
+
+    private fun clearLoadedPacks() {
+        loadedPack = null
+        loadedPacks = emptyList()
+        iconCache.clear()
+        missingKeys.clear()
     }
 
     private class CachedBitmapIcon(private val bitmap: Bitmap) : RecyclableIconEntry {

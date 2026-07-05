@@ -38,6 +38,7 @@ data class LauncherSettings(
     val iconShape: IconShape = IconShape.NONE,
     val iconSize: IconSize = IconSize.MEDIUM,
     val iconPack: String = "",
+    val iconPacks: List<String> = emptyList(),
     val gridColumns: Int = 4,
     val gridRows: Int = 5,
     val dockCount: Int = 5,
@@ -109,6 +110,7 @@ class LauncherPrefs(private val context: Context) {
         val ICON_SHAPE = stringPreferencesKey("icon_shape")
         val ICON_SIZE = stringPreferencesKey("icon_size")
         val ICON_PACK = stringPreferencesKey("icon_pack")
+        val ICON_PACKS = stringPreferencesKey("icon_packs_v1")
         val GRID_COLS = intPreferencesKey("grid_cols")
         val GRID_ROWS = intPreferencesKey("grid_rows")
         val DOCK_COUNT = intPreferencesKey("dock_count")
@@ -193,11 +195,16 @@ class LauncherPrefs(private val context: Context) {
     }
 
     val settings: Flow<LauncherSettings> = safeData.map { p ->
+        val iconPacks = sanitizeIconPackChain(
+            p[ICON_PACKS]?.let { parseIconPackChain(it) }?.takeIf { it.isNotEmpty() }
+                ?: listOf(p[ICON_PACK].orEmpty()),
+        )
         LauncherSettings(
             themeMode = p[THEME]?.let { runCatching { ThemeMode.valueOf(it) }.getOrNull() } ?: ThemeMode.MIDNIGHT,
             iconShape = p[ICON_SHAPE]?.let { runCatching { IconShape.valueOf(it) }.getOrNull() } ?: IconShape.SQUIRCLE,
             iconSize = p[ICON_SIZE]?.let { runCatching { IconSize.valueOf(it) }.getOrNull() } ?: IconSize.MEDIUM,
-            iconPack = p[ICON_PACK] ?: "",
+            iconPack = iconPacks.firstOrNull().orEmpty(),
+            iconPacks = iconPacks,
             gridColumns = (p[GRID_COLS] ?: 4).coerceIn(3, 8),
             gridRows = (p[GRID_ROWS] ?: 5).coerceIn(3, 10),
             dockCount = (p[DOCK_COUNT] ?: 5).coerceIn(3, 7),
@@ -321,7 +328,7 @@ class LauncherPrefs(private val context: Context) {
         runCatching {
             context.dataStore.edit { p ->
                 p[THEME] = d.themeMode.name; p[ICON_SHAPE] = d.iconShape.name; p[ICON_SIZE] = d.iconSize.name
-                p[ICON_PACK] = ""; p[GRID_COLS] = d.gridColumns; p[GRID_ROWS] = d.gridRows; p[DOCK_COUNT] = d.dockCount
+                p[ICON_PACK] = ""; p[ICON_PACKS] = ""; p[GRID_COLS] = d.gridColumns; p[GRID_ROWS] = d.gridRows; p[DOCK_COUNT] = d.dockCount
                 p[SHOW_CLOCK] = d.showClock; p[SHOW_DOCK_SEARCH] = d.showDockSearch; p[AUTO_PLACE_NEW] = d.autoPlaceNew
                 p[WALLPAPER_DIM] = d.wallpaperDim; p[SHOW_NOTIF_BADGES] = d.showNotifBadges
                 p.remove(PAGE_WALLPAPER_DIMS)
@@ -580,6 +587,7 @@ class LauncherPrefs(private val context: Context) {
 
     suspend fun exportBackup(options: BackupExportOptions = BackupExportOptions()): String {
         val p = runCatching { context.dataStore.data.first() }.getOrDefault(emptyPreferences())
+        val iconPacks = p[ICON_PACKS]?.takeIf { it.isNotBlank() } ?: p[ICON_PACK].orEmpty()
         return JSONObject().apply {
             put("version", app.lawnchairlite.BuildConfig.VERSION_NAME)
             put("schema", 1)
@@ -592,6 +600,7 @@ class LauncherPrefs(private val context: Context) {
             put("omitted_private_sections", JSONArray(options.omittedPrivateSections()))
             put("theme", p[THEME] ?: "MIDNIGHT"); put("icon_shape", p[ICON_SHAPE] ?: "SQUIRCLE"); put("icon_size", p[ICON_SIZE] ?: "MEDIUM")
             put("icon_pack", p[ICON_PACK] ?: "")
+            put("icon_packs", iconPacks)
             put("grid_cols", p[GRID_COLS] ?: 4); put("grid_rows", p[GRID_ROWS] ?: 5); put("dock_count", p[DOCK_COUNT] ?: 5)
             put("show_clock", p[SHOW_CLOCK] ?: true); put("show_dock_search", p[SHOW_DOCK_SEARCH] ?: true)
             put("double_tap", p[DOUBLE_TAP_ACTION] ?: "LOCK_SCREEN"); put("swipe_down", p[SWIPE_DOWN_ACTION] ?: "NOTIFICATION_SHADE")
@@ -666,6 +675,8 @@ class LauncherPrefs(private val context: Context) {
                 dynamicColor = p[DYNAMIC_COLOR] ?: false,
                 accentOverride = p[ACCENT_OVERRIDE] ?: "",
                 iconPack = p[ICON_PACK] ?: "",
+                iconPacks = p[ICON_PACKS]?.takeIf { it.isNotBlank() }?.let { parseIconPackChain(it) }
+                    ?: parseIconPackChain(p[ICON_PACK].orEmpty()),
                 themedIcons = p[THEMED_ICONS] ?: false,
                 iconShape = p[ICON_SHAPE]?.let { runCatching { IconShape.valueOf(it) }.getOrNull() } ?: IconShape.NONE,
                 iconShadow = p[ICON_SHADOW] ?: false,
@@ -681,7 +692,8 @@ class LauncherPrefs(private val context: Context) {
             p[THEME] = snapshot.themeMode.name
             p[DYNAMIC_COLOR] = snapshot.dynamicColor
             p[ACCENT_OVERRIDE] = snapshot.accentOverride
-            p[ICON_PACK] = snapshot.iconPack
+            p[ICON_PACK] = snapshot.iconPacks.firstOrNull().orEmpty()
+            p[ICON_PACKS] = serializeIconPackChain(snapshot.iconPacks)
             p[THEMED_ICONS] = snapshot.themedIcons
             p[ICON_SHAPE] = snapshot.iconShape.name
             p[ICON_SHADOW] = snapshot.iconShadow
@@ -710,7 +722,15 @@ class LauncherPrefs(private val context: Context) {
             j.optString("theme").takeIf { it.isNotBlank() && runCatching { ThemeMode.valueOf(it) }.isSuccess }?.let { p[THEME] = it }
             j.optString("icon_shape").takeIf { it.isNotBlank() && runCatching { IconShape.valueOf(it) }.isSuccess }?.let { p[ICON_SHAPE] = it }
             j.optString("icon_size").takeIf { it.isNotBlank() && runCatching { IconSize.valueOf(it) }.isSuccess }?.let { p[ICON_SIZE] = it }
-            if (j.has("icon_pack")) p[ICON_PACK] = j.optString("icon_pack")
+            if (j.has("icon_packs")) {
+                val chain = parseIconPackChain(j.optString("icon_packs"))
+                p[ICON_PACKS] = serializeIconPackChain(chain)
+                p[ICON_PACK] = chain.firstOrNull().orEmpty()
+            } else if (j.has("icon_pack")) {
+                val chain = parseIconPackChain(j.optString("icon_pack"))
+                p[ICON_PACKS] = serializeIconPackChain(chain)
+                p[ICON_PACK] = chain.firstOrNull().orEmpty()
+            }
             if (j.has("grid_cols")) p[GRID_COLS] = j.getInt("grid_cols").coerceIn(3, 8)
             if (j.has("grid_rows")) p[GRID_ROWS] = j.getInt("grid_rows").coerceIn(3, 10)
             if (j.has("dock_count")) p[DOCK_COUNT] = j.getInt("dock_count").coerceIn(3, 7)

@@ -13,6 +13,7 @@ class ThemeTransferTest {
             dynamicColor = true,
             accentOverride = "#80CBC4",
             iconPack = "com.example.icons",
+            iconPacks = listOf("com.example.icons", "com.example.fallback"),
             themedIcons = true,
             iconShape = IconShape.HEXAGON,
             iconShadow = true,
@@ -22,6 +23,23 @@ class ThemeTransferTest {
         val parsed = ThemeTransfer.parse(ThemeTransfer.export(snapshot, appVersion = "2.27.0"))
 
         assertEquals(snapshot, parsed)
+    }
+
+    @Test
+    fun legacySingleIconPackBecomesPrimaryChainEntry() {
+        val parsed = ThemeTransfer.parse(
+            """
+            {
+              "type": "lawnchair-lite-theme",
+              "schema": 1,
+              "theme": "MIDNIGHT",
+              "icon_pack": "com.example.legacy"
+            }
+            """.trimIndent(),
+        )
+
+        assertEquals("com.example.legacy", parsed?.iconPack)
+        assertEquals(listOf("com.example.legacy"), parsed?.iconPacks)
     }
 
     @Test

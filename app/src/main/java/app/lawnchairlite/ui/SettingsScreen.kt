@@ -1118,12 +1118,18 @@ private fun IconPackSection(
     c: LauncherColors, vm: LauncherViewModel,
 ) {
     var expanded by remember { mutableStateOf(false) }
-    val activePack = settings.iconPack
-    val activeLabel = if (activePack.isBlank()) stringResource(R.string.system_default) else packs.find { it.packageName == activePack }?.label ?: activePack.substringAfterLast(".")
+    val activeChain = sanitizeIconPackChain(settings.iconPacks.ifEmpty { listOf(settings.iconPack) })
+    val primaryPack = activeChain.firstOrNull().orEmpty()
+    val primaryLabel = packs.find { it.packageName == primaryPack }?.label ?: primaryPack.substringAfterLast(".")
+    val activeLabel = when {
+        primaryPack.isBlank() -> stringResource(R.string.system_default)
+        activeChain.size == 1 -> primaryLabel
+        else -> "$primaryLabel - ${stringResource(R.string.icon_pack_mixer_count, activeChain.size)}"
+    }
 
     Row(
         Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(c.card)
-            .border(0.5.dp, if (activePack.isNotBlank()) c.accent.copy(alpha = 0.4f) else c.border, RoundedCornerShape(12.dp))
+            .border(0.5.dp, if (activeChain.isNotEmpty()) c.accent.copy(alpha = 0.4f) else c.border, RoundedCornerShape(12.dp))
             .clickable {
                 if (packs.isEmpty()) vm.refreshIconPacks()
                 expanded = !expanded
@@ -1136,9 +1142,9 @@ private fun IconPackSection(
         }
         Column(Modifier.weight(1f)) {
             Text(stringResource(R.string.active_pack), color = c.text, fontSize = 14.sp, fontWeight = FontWeight.Medium)
-            Text(activeLabel, color = if (activePack.isNotBlank()) c.accent else c.textSecondary, fontSize = 12.sp)
+            Text(activeLabel, color = if (activeChain.isNotEmpty()) c.accent else c.textSecondary, fontSize = 12.sp)
         }
-        if (activePack.isNotBlank()) {
+        if (activeChain.isNotEmpty()) {
             Text(stringResource(R.string.reset), color = c.error, fontSize = 12.sp, fontWeight = FontWeight.Medium,
                 modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(c.error.copy(alpha = 0.1f))
                     .clickable { vm.clearIconPack(); expanded = false }.padding(horizontal = 10.dp, vertical = 4.dp))
@@ -1170,15 +1176,18 @@ private fun IconPackSection(
                 }
             } else {
                 packs.forEach { pack ->
-                    val isActive = pack.packageName == activePack
+                    val isPrimary = pack.packageName == primaryPack
+                    val inMixer = pack.packageName in activeChain
                     // Preview icons (loaded async to avoid blocking compose thread)
                     var previewIcons by remember { mutableStateOf<List<android.graphics.drawable.Drawable?>>(emptyList()) }
                     LaunchedEffect(pack.packageName) { vm.getIconPackPreviewAsync(pack.packageName) { previewIcons = it } }
                     Row(
                         Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
-                            .background(if (isActive) c.accent.copy(alpha = 0.1f) else c.card)
-                            .border(0.5.dp, if (isActive) c.accent.copy(alpha = 0.4f) else c.border, RoundedCornerShape(10.dp))
-                            .clickable { vm.setIconPack(pack.packageName); expanded = false }
+                            .background(if (inMixer) c.accent.copy(alpha = 0.1f) else c.card)
+                            .border(0.5.dp, if (inMixer) c.accent.copy(alpha = 0.4f) else c.border, RoundedCornerShape(10.dp))
+                            .clickable {
+                                vm.setIconPackChain(listOf(pack.packageName) + activeChain.filterNot { it == pack.packageName })
+                            }
                             .padding(horizontal = 12.dp, vertical = 10.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
@@ -1189,8 +1198,16 @@ private fun IconPackSection(
                             Spacer(Modifier.width(12.dp))
                         }
                         Column(Modifier.weight(1f)) {
-                            Text(pack.label, color = if (isActive) c.accent else c.text, fontSize = 13.sp, fontWeight = if (isActive) FontWeight.Bold else FontWeight.Medium)
+                            Text(pack.label, color = if (inMixer) c.accent else c.text, fontSize = 13.sp, fontWeight = if (isPrimary) FontWeight.Bold else FontWeight.Medium)
                             Text(pack.packageName, color = c.textSecondary, fontSize = 10.sp, maxLines = 1)
+                            if (inMixer) {
+                                Text(
+                                    stringResource(if (isPrimary) R.string.primary_pack else R.string.fallback_pack),
+                                    color = c.textSecondary,
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Medium,
+                                )
+                            }
                             // Icon preview row
                             if (previewIcons.isNotEmpty()) {
                                 Spacer(Modifier.height(4.dp))
@@ -1203,8 +1220,29 @@ private fun IconPackSection(
                                 }
                             }
                         }
-                        if (isActive) {
-                            Box(Modifier.size(8.dp).clip(CircleShape).background(c.accent))
+                        Column(horizontalAlignment = Alignment.End) {
+                            if (isPrimary) {
+                                Box(Modifier.size(8.dp).clip(CircleShape).background(c.accent))
+                            } else if (inMixer) {
+                                Text(stringResource(R.string.make_primary), color = c.accent, fontSize = 11.sp, fontWeight = FontWeight.Medium,
+                                    modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(c.accent.copy(alpha = 0.12f))
+                                        .clickable {
+                                            vm.setIconPackChain(listOf(pack.packageName) + activeChain.filterNot { it == pack.packageName })
+                                        }.padding(horizontal = 8.dp, vertical = 4.dp))
+                            } else {
+                                val canAdd = activeChain.size < 6
+                                Text(stringResource(R.string.add), color = if (canAdd) c.accent else c.textSecondary, fontSize = 11.sp, fontWeight = FontWeight.Medium,
+                                    modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(if (canAdd) c.accent.copy(alpha = 0.12f) else c.border.copy(alpha = 0.18f))
+                                        .then(if (canAdd) Modifier.clickable { vm.setIconPackChain(activeChain + pack.packageName) } else Modifier)
+                                        .padding(horizontal = 8.dp, vertical = 4.dp))
+                            }
+                            if (inMixer) {
+                                Spacer(Modifier.height(6.dp))
+                                Text(stringResource(R.string.remove), color = c.error, fontSize = 11.sp, fontWeight = FontWeight.Medium,
+                                    modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(c.error.copy(alpha = 0.1f))
+                                        .clickable { vm.setIconPackChain(activeChain.filterNot { it == pack.packageName }) }
+                                        .padding(horizontal = 8.dp, vertical = 4.dp))
+                            }
                         }
                     }
                     Spacer(Modifier.height(6.dp))

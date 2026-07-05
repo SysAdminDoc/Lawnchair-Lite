@@ -87,6 +87,20 @@ class BackupImportPreviewTest {
     }
 
     @Test
+    fun iconPackChainIsRecognizedAsAppearanceBackupSection() {
+        val preview = BackupImportPreview.fromFields(
+            mapOf(
+                "schema" to 1,
+                "icon_packs" to "com.example.primary|com.example.fallback",
+            ),
+        )
+
+        assertTrue(preview.canImport)
+        assertEquals(listOf("Appearance"), preview.sections)
+        assertEquals(emptyList<String>(), preview.unknownFields)
+    }
+
+    @Test
     fun pageWallpaperDimsAreRecognizedAsAppearanceBackupSection() {
         val preview = BackupImportPreview.fromFields(
             mapOf(

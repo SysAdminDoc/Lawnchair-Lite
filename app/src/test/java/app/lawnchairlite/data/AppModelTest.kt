@@ -80,6 +80,37 @@ class AppModelTest {
     }
 
     @Test
+    fun iconPackChainSanitizerPreservesPriorityAndBounds() {
+        val packs = sanitizeIconPackChain(
+            listOf(
+                " com.primary.icons ",
+                "",
+                "badpack",
+                "com.fallback.one",
+                "com.primary.icons",
+                "com.fallback.two",
+                "com.fallback.three",
+                "com.fallback.four",
+                "com.fallback.five",
+                "com.fallback.six",
+            ),
+        )
+
+        assertEquals(
+            listOf(
+                "com.primary.icons",
+                "com.fallback.one",
+                "com.fallback.two",
+                "com.fallback.three",
+                "com.fallback.four",
+                "com.fallback.five",
+            ),
+            packs,
+        )
+        assertEquals(packs, parseIconPackChain(serializeIconPackChain(packs)))
+    }
+
+    @Test
     fun folderCoverSerializationRoundTrips() {
         val folder = GridCell.Folder(
             name = "Work",

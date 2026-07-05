@@ -105,6 +105,10 @@
     <string name="icon_shadow">Icon Shadow</string>
     <string name="grayscale_icons">Grayscale Icons</string>
     <string name="active_pack">Active Pack</string>
+    <string name="icon_pack_mixer_count">Icon mixer: %1$d packs</string>
+    <string name="primary_pack">Primary</string>
+    <string name="fallback_pack">Fallback</string>
+    <string name="make_primary">Make Primary</string>
     <string name="system_default">System Default</string>
     <string name="no_icon_packs_found">No icon packs found</string>
     <string name="install_icon_packs_from_play_store">Install icon packs from Play Store</string>
@@ -329,6 +333,7 @@
     <string name="home_screen_locked">Home screen is locked</string>
     <string name="system_icons_restored">System icons restored</string>
     <string name="icon_pack_applied">Icon pack applied (%1$d icons)</string>
+    <string name="icon_pack_mixer_applied">Icon mixer applied (%1$d packs, %2$d icons)</string>
     <string name="failed_to_load_icon_pack">Failed to load icon pack</string>
     <string name="icon_pack_error">Icon pack error</string>
     <string name="no_app_configured_for_gesture">No app configured for this gesture</string>

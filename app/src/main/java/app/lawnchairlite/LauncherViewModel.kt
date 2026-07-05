@@ -333,8 +333,8 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         }
         viewModelScope.launch { _allApps.filter { it.isNotEmpty() }.drop(1).collect { cleanupStaleKeys(it) } }
         viewModelScope.launch {
-            settings.filter { it.iconPack.isNotBlank() }.take(1).collect { s ->
-                applyIconPack(s.iconPack)
+            settings.filter { it.iconPacks.isNotEmpty() }.take(1).collect { s ->
+                applyIconPacks(s.iconPacks)
             }
         }
         // Sync flashlight state when user toggles via quick settings
@@ -636,10 +636,19 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         _availablePacks.value = try { iconPackManager.getInstalledPacks() } catch (e: Exception) { Log.e(TAG, "Icon pack discovery failed", e); emptyList() }
     }}
 
-    fun setIconPack(packageName: String) { viewModelScope.launch { pref(LauncherPrefs.ICON_PACK, packageName); applyIconPack(packageName) } }
+    fun setIconPack(packageName: String) { setIconPackChain(listOf(packageName)) }
+
+    fun setIconPackChain(packageNames: List<String>) { viewModelScope.launch {
+        val chain = sanitizeIconPackChain(packageNames)
+        prefs.set(LauncherPrefs.ICON_PACK, chain.firstOrNull().orEmpty())
+        prefs.set(LauncherPrefs.ICON_PACKS, serializeIconPackChain(chain))
+        applyIconPacks(chain)
+    }}
 
     fun clearIconPack() { viewModelScope.launch {
-        pref(LauncherPrefs.ICON_PACK, ""); iconPackManager.clearPack(); loadAppsInternal(); toast(R.string.system_icons_restored)
+        prefs.set(LauncherPrefs.ICON_PACK, "")
+        prefs.set(LauncherPrefs.ICON_PACKS, "")
+        iconPackManager.clearPack(); loadAppsInternal(); toast(R.string.system_icons_restored)
     }}
 
     fun refreshIconPacks() { discoverIconPacks() }
@@ -651,17 +660,30 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     private suspend fun applyIconPack(packageName: String) {
-        if (packageName.isBlank()) { iconPackManager.clearPack(); loadAppsInternal(); return }
+        applyIconPacks(listOf(packageName))
+    }
+
+    private suspend fun applyIconPacks(packageNames: List<String>) {
+        val chain = sanitizeIconPackChain(packageNames)
+        if (chain.isEmpty()) { iconPackManager.clearPack(); loadAppsInternal(); return }
         _iconPackLoading.value = true
         try {
-            val ok = iconPackManager.loadPack(packageName)
-            if (ok) { loadAppsInternal(); toast(R.string.icon_pack_applied, iconPackManager.mappedCount()) }
+            val ok = iconPackManager.loadPacks(chain)
+            if (ok) {
+                loadAppsInternal()
+                if (chain.size == 1) {
+                    toast(R.string.icon_pack_applied, iconPackManager.mappedCount())
+                } else {
+                    toast(R.string.icon_pack_mixer_applied, chain.size, iconPackManager.mappedCount())
+                }
+            }
             else toast(R.string.failed_to_load_icon_pack)
         } catch (e: Exception) {
             Log.e(TAG, "Icon pack apply failed", e)
             toast(R.string.icon_pack_error)
+        } finally {
+            _iconPackLoading.value = false
         }
-        _iconPackLoading.value = false
     }
 
     // -- Gestures --
@@ -1713,11 +1735,14 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         val imported = prefs.importTheme(json)
         if (imported) {
             val restored = runCatching { prefs.settings.first() }.getOrNull()
-            if (restored?.iconPack.isNullOrBlank()) {
+            val iconChain = restored?.iconPacks.orEmpty().ifEmpty {
+                restored?.iconPack?.takeIf { it.isNotBlank() }?.let { listOf(it) } ?: emptyList()
+            }
+            if (iconChain.isEmpty()) {
                 iconPackManager.clearPack()
                 loadAppsInternal()
             } else {
-                applyIconPack(restored.iconPack)
+                applyIconPacks(iconChain)
             }
             toast(R.string.theme_imported)
         } else {
@@ -1734,7 +1759,10 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
             toast(R.string.layout_restored)
             try {
                 val restored = result.restoredSettings ?: prefs.settings.first()
-                if (restored.iconPack.isNotBlank()) applyIconPack(restored.iconPack) else loadAppsInternal()
+                val iconChain = restored.iconPacks.ifEmpty {
+                    restored.iconPack.takeIf { it.isNotBlank() }?.let { listOf(it) } ?: emptyList()
+                }
+                if (iconChain.isNotEmpty()) applyIconPacks(iconChain) else loadAppsInternal()
             } catch (e: Exception) {
                 Log.e(TAG, "Post-restore reload failed", e)
                 loadAppsInternal()

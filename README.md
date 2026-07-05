@@ -17,7 +17,7 @@ Built on crash patterns identified across Lawnchair v14-v15 beta releases:
 - **Defensive PackageManager calls** - all PM/LauncherApps interactions wrapped for `DeadSystemException`, `SecurityException`, `NameNotFoundException`
 - **Package existence validation** before operations - prevents the race condition where customizing an app being uninstalled causes a crash (Lawnchair 15 Beta 2 fix)
 - **Debounced package events** (300ms) - bulk install/uninstall doesn't trigger N consecutive reloads
-- **LruCache for icon packs** (500 entry limit) - prevents OOM on large icon packs
+- **Byte-bounded icon-pack bitmap cache** with recycled evictions - prevents OOM on large icon packs
 - **Safe grid deserialization** - malformed workspace data returns empty cells, never crashes
 - **Atomic DataStore writes** - process death during save never corrupts settings
 - **Reflection-based API calls** for status bar expansion - OEM ROMs that block it fail gracefully
@@ -30,7 +30,7 @@ Built on crash patterns identified across Lawnchair v14-v15 beta releases:
 - Material 3 drawer tabs for All, Recent, Favorites, and Work profile apps
 - Drawer groups/folders that filter any drawer tab by selected apps or package-prefix rules
 - Folder creation via drag-and-drop with 3x3 preview, app-icon covers, and emoji covers
-- Icon pack support (ADW/Nova format) with 4-icon preview per pack
+- Icon pack support (ADW/Nova format) with 4-icon preview per pack and ordered multi-pack fallback mixing
 - Custom icon labels, hide apps from drawer with batch unhide
 - 6 theme modes (Midnight, Glass, OLED, Mocha, Aurora, Neon) with per-theme error colors
 - Custom accent color with 12 presets + hex input + theme-default reset chip
@@ -71,6 +71,7 @@ Built on crash patterns identified across Lawnchair v14-v15 beta releases:
 - **Baseline profile** - startup, home, drawer/search, settings, shortcut, widget, and backup classes ship pre-profiled for faster first-run compilation
 - **R8 full mode** - release builds explicitly use full optimization while retaining metadata required by preference/model serialization paths
 - **Bounded icon bitmap cache** - icon-pack drawables are rendered into a byte-capped LRU cache with explicit bitmap recycling
+- **Icon pack mixer** - Settings can combine multiple installed icon packs in priority order, using later packs as fallbacks for missing appfilter entries
 - **Drawer grid pre-warm** - the app drawer pre-measures the first offscreen rows while hidden to avoid first-scroll jank
 
 ## Permissions
@@ -120,6 +121,7 @@ $env:ANDROID_HOME = "$HOME\AppData\Local\Android\Sdk"
 - **Baseline profile** - Release builds ship `baseline-prof.txt` plus ProfileInstaller so startup and primary launcher journeys are precompiled after install
 - **R8 full mode** - Release shrinking now pins full-mode optimization and keeps required Kotlin/Java metadata attributes for retained launcher models
 - **Icon bitmap cache tuning** - Icon-pack resources now use a bounded bitmap LRU that recycles evicted cache entries and avoids permanently caching misses
+- **Icon pack mixer** - Settings can combine multiple installed icon packs with an ordered fallback chain that persists through backups and theme exports
 - **Drawer lazy grid pre-warm** - The hidden drawer now pre-measures the first offscreen rows before the first open so the initial scroll is already composed
 - **Material You dynamic color** - Android 12+ devices can opt into wallpaper-derived accents for any selected theme, while custom hex accents still take precedence
 - **Theme import/export** - Settings can export or import `.lawnchair-theme` JSON files containing theme mode, dynamic color, accent, icon pack, and icon appearance options
@@ -321,7 +323,7 @@ MainActivity           - Lifecycle, debounced package receiver, widget host
 LauncherViewModel      - State management, debounced operations, package validation
 LauncherPrefs          - DataStore with corruption handler, atomic writes
 AppRepository          - Hardened PM calls, package existence checks, themed icons
-IconPackManager        - Byte-bounded bitmap LRU, defensive XML parsing, preview icons
+IconPackManager        - Byte-bounded bitmap LRU, multi-pack fallback chain, defensive XML parsing, preview icons
 ShortcutRepository     - LauncherApps shortcut queries + launching
 NotificationListener   - NotificationListenerService for badge counts
 AppCategorizer         - Word-boundary tokenized categorization with user rules

@@ -148,6 +148,20 @@ fun sanitizeDrawerGroups(groups: List<DrawerGroup>): List<DrawerGroup> {
     }.take(24)
 }
 
+fun sanitizeIconPackChain(packs: List<String>): List<String> =
+    packs.asSequence()
+        .map { it.trim() }
+        .filter { it.isNotBlank() && it.length <= 240 && it.any { ch -> ch == '.' } }
+        .distinct()
+        .take(6)
+        .toList()
+
+fun serializeIconPackChain(packs: List<String>): String =
+    sanitizeIconPackChain(packs).joinToString("|")
+
+fun parseIconPackChain(raw: String): List<String> =
+    sanitizeIconPackChain(raw.split("|"))
+
 enum class DockStyle(val label: String) {
     SOLID("Solid"), PILL("Pill"), FLOATING("Floating"), TRANSPARENT("Transparent");
 }

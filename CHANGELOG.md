@@ -31,6 +31,7 @@ All notable changes to Lawnchair-Lite will be documented in this file.
 - Added a startup-focused Baseline Profile with ProfileInstaller for faster first-run launcher paths.
 - Enabled explicit R8 full-mode release optimization with metadata keep rules for retained launcher models.
 - Replaced the icon-pack drawable cache with a byte-bounded bitmap LRU that recycles evicted entries and keeps misses bounded.
+- Added an icon pack mixer that applies multiple installed icon packs in priority order with fallback persistence through backups and theme files.
 - Added hidden-state app drawer grid pre-warming to compose the first offscreen rows before the initial scroll.
 - Added an Android 12+ Material You dynamic color toggle that applies wallpaper-derived accents per selected theme.
 - Added `.lawnchair-theme` import/export for theme mode, dynamic color, accent, icon pack, and icon appearance options.
