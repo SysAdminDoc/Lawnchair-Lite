@@ -1,5 +1,8 @@
 package app.lawnchairlite.ui
 
+import android.graphics.RenderEffect
+import android.graphics.Shader
+import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
@@ -29,6 +32,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.asComposeRenderEffect
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.util.VelocityTracker
@@ -280,6 +284,14 @@ fun HomeScreen(vm: LauncherViewModel) {
     // and scales down slightly. We use continuous interpolation instead.
     val homeAlpha = (1f - dpVal * 2f).coerceIn(0f, 1f) // Fades out by 50% progress
     val homeScale = 1f - (dpVal * 0.05f).coerceIn(0f, 0.05f) // Subtle shrink
+    val homeBlurEffect = remember(dpVal, density) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && dpVal > 0.01f) {
+            val radiusPx = with(density) { (dpVal.coerceIn(0f, 1f) * 18f).dp.toPx() }
+            RenderEffect.createBlurEffect(radiusPx, radiusPx, Shader.TileMode.CLAMP).asComposeRenderEffect()
+        } else {
+            null
+        }
+    }
 
     Box(Modifier.fillMaxSize()) {
         // Wallpaper dim overlay
@@ -299,7 +311,12 @@ fun HomeScreen(vm: LauncherViewModel) {
         // ═════════════════════════════════════════════════════════════
         Box(
             Modifier.fillMaxSize()
-                .graphicsLayer(alpha = homeAlpha, scaleX = homeScale, scaleY = homeScale)
+                .graphicsLayer {
+                    alpha = homeAlpha
+                    scaleX = homeScale
+                    scaleY = homeScale
+                    renderEffect = homeBlurEffect
+                }
                 // ── Swipe-up to open drawer (AllAppsSwipeController port) ──
                 // KEY: drawerVisible is NOT a key here. If it were, the gesture
                 // coroutine would be cancelled the instant progress crosses 0.01

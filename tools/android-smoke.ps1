@@ -389,6 +389,21 @@ function Run-DrawerSearchSmoke {
     } else {
         Tap-Bounds -Bounds $bounds
     }
+
+    $readyBounds = $bounds
+    for ($attempt = 0; $attempt -lt 6; $attempt++) {
+        Start-Sleep -Milliseconds 450
+        $xml = Get-UiXml
+        $candidate = Find-BoundsByText -Xml $xml -Needles @("Search apps", "Search")
+        if ($candidate) {
+            $readyBounds = $candidate
+            break
+        }
+    }
+    if ($readyBounds) {
+        Tap-Bounds -Bounds $readyBounds
+    }
+
     [void](Invoke-AdbShell -Command "input text cal" -TimeoutSec 15)
     Start-Sleep -Milliseconds $StepDelayMs
 

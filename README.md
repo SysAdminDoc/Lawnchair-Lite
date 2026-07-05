@@ -63,6 +63,7 @@ Built on crash patterns identified across Lawnchair v14-v15 beta releases:
 - **Memoized theme computation** - `remember`-cached, no recompute per recomposition
 - **Conditional auto-focus** - keyboard only opens when drawer opened via search bar, not swipe
 - **Pager scroll guard** - horizontal paging disabled during drawer transition
+- **Drawer background blur** - Android 12+ devices blur the home layer behind the drawer while older OS versions keep the existing fade/scale path
 
 ## Permissions
 
@@ -105,6 +106,7 @@ $env:ANDROID_HOME = "$HOME\AppData\Local\Android\Sdk"
 - **Widget picker previews** - The widget picker shows provider preview images when available, icon/placeholder fallbacks when unavailable, and confirms widget removal before deleting host IDs
 - **Shortcut icon overrides** - App shortcuts and pinned web/PWA-style entries can use manual source-app icon overrides, persist through backup/restore, and fall back safely when shortcut icon resources are missing
 - **Nova backup migration** - Restore accepts Nova Launcher ZIP backups, converts compatible apps/folders/dock items, and previews unsupported items before import
+- **Drawer background blur** - Android 12+ RenderEffect blur runs behind the app drawer with safe fallback on older Android versions
 
 ### v2.26.0
 
