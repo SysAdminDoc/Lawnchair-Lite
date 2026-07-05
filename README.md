@@ -315,7 +315,7 @@ MainActivity           - Lifecycle, debounced package receiver, widget host
 LauncherViewModel      - State management, debounced operations, package validation
 LauncherPrefs          - DataStore with corruption handler, atomic writes
 AppRepository          - Hardened PM calls, package existence checks, themed icons
-IconPackManager        - LruCache, defensive XML parsing, preview icons
+IconPackManager        - Byte-bounded bitmap LRU, defensive XML parsing, preview icons
 ShortcutRepository     - LauncherApps shortcut queries + launching
 NotificationListener   - NotificationListenerService for badge counts
 AppCategorizer         - Word-boundary tokenized categorization with user rules
