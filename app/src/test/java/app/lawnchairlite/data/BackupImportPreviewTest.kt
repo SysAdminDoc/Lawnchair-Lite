@@ -145,6 +145,20 @@ class BackupImportPreviewTest {
     }
 
     @Test
+    fun assistantAppIsRecognizedAsGestureBackupSection() {
+        val preview = BackupImportPreview.fromFields(
+            mapOf(
+                "schema" to 1,
+                "assistant_app" to "com.example.assistant/.Main",
+            ),
+        )
+
+        assertTrue(preview.canImport)
+        assertEquals(listOf("Gestures"), preview.sections)
+        assertEquals(emptyList<String>(), preview.unknownFields)
+    }
+
+    @Test
     fun migrationMetadataIsRecognizedWithoutUnknownFields() {
         val preview = BackupImportPreview.fromFields(
             mapOf(

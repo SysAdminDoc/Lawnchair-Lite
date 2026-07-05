@@ -35,6 +35,9 @@
     <string name="save_gesture">Guardar gesto</string>
     <string name="gesture_recording_ready">Gesto listo</string>
     <string name="gesture_too_short">Dibuja una forma mas larga con un giro</string>
+    <string name="assistant_replacement">Asistente alternativo</string>
+    <string name="assistant_replacement_desc">Desliza hacia arriba desde una esquina inferior para abrir este asistente.</string>
+    <string name="system_assistant">Asistente del sistema</string>
     <string name="no_apps_found">No se encontraron apps</string>
     <string name="no_recent_apps">No hay apps recientes</string>
     <string name="no_favorites_yet">Aun no hay favoritos</string>
@@ -58,6 +61,7 @@
     <string name="app_swipe_shortcut_cleared">Atajo de deslizamiento borrado</string>
     <string name="custom_gesture_saved">Gesto guardado</string>
     <string name="custom_gesture_cleared">Gesto borrado</string>
+    <string name="assistant_unavailable">Asistente no disponible</string>
     <string name="icon_override_applied">Icono actualizado</string>
     <string name="icon_override_reset">Icono restaurado</string>
     <string name="add_widget">Agregar widget</string>

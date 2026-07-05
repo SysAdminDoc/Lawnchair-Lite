@@ -714,6 +714,34 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         return true
     }
 
+    fun launchAssistantReplacement() {
+        try {
+            val assistantApp = settings.value.assistantApp
+            if (assistantApp.isNotBlank()) {
+                val app = resolveApp(assistantApp)
+                if (app != null) {
+                    launch(app)
+                } else {
+                    toast(R.string.app_no_longer_installed)
+                    debouncedReload()
+                }
+                return
+            }
+
+            val intent = Intent(Intent.ACTION_ASSIST).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            }
+            if (intent.resolveActivity(ctx.packageManager) != null) {
+                ctx.startActivity(intent)
+            } else {
+                toast(R.string.assistant_unavailable)
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "launchAssistantReplacement failed", e)
+            toast(R.string.assistant_unavailable)
+        }
+    }
+
     fun toggleFlashlight() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return
         try {
@@ -970,6 +998,9 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
             if (cleanedShelf != shelf) {
                 _shortcutShelf.value = cleanedShelf
                 prefs.saveShortcutShelf(cleanedShelf)
+            }
+            if (settings.value.assistantApp.isNotBlank() && settings.value.assistantApp !in valid) {
+                prefs.set(LauncherPrefs.ASSISTANT_APP, "")
             }
         } catch (e: Exception) {
             Log.e(TAG, "cleanupStaleKeys failed", e)
@@ -1513,6 +1544,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     fun setDockTapAction(a: GestureAction) = pref(LauncherPrefs.DOCK_TAP_ACTION, a.name)
     fun setSwipeUpAction(a: GestureAction) = pref(LauncherPrefs.SWIPE_UP_ACTION, a.name)
     fun setCustomGestureAction(a: GestureAction) = pref(LauncherPrefs.CUSTOM_GESTURE_ACTION, a.name)
+    fun setAssistantApp(appKey: String) = pref(LauncherPrefs.ASSISTANT_APP, appKey)
     fun saveCustomGesturePattern(pattern: String) {
         val cleaned = sanitizeCustomGesturePattern(pattern)
         if (cleaned.isBlank()) return

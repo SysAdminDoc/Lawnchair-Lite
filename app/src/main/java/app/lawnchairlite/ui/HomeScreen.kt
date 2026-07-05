@@ -159,7 +159,11 @@ fun HomeScreen(vm: LauncherViewModel) {
     // DRAWER TRANSITION STATE (Launcher3 port)
     // ═══════════════════════════════════════════════════════════════════
     val density = LocalDensity.current
-    val screenHeightPx = with(density) { LocalConfiguration.current.screenHeightDp.dp.toPx() }
+    val configuration = LocalConfiguration.current
+    val screenHeightPx = with(density) { configuration.screenHeightDp.dp.toPx() }
+    val screenWidthPx = with(density) { configuration.screenWidthDp.dp.toPx() }
+    val assistantCornerWidthPx = with(density) { 112.dp.toPx() }
+    val assistantCornerBottomPx = with(density) { 190.dp.toPx() }
     // Fling threshold: 200 dp/s. Launcher3 uses ~1dp (any movement counts).
     // 200dp/s is the minimum that filters out accidental touches while still
     // making the drawer feel responsive to intentional swipes.
@@ -342,13 +346,21 @@ fun HomeScreen(vm: LauncherViewModel) {
                 .pointerInput(isDragging, settingsOpen) {
                     if (!isDragging && !settingsOpen) {
                         var totalDrag = 0f
+                        var startedInAssistantCorner = false
                         val velocityTracker = VelocityTracker()
                         detectVerticalDragGestures(
-                            onDragStart = {
+                            onDragStart = { offset ->
                                 totalDrag = 0f
+                                startedInAssistantCorner =
+                                    offset.y >= screenHeightPx - assistantCornerBottomPx &&
+                                        (offset.x <= assistantCornerWidthPx || offset.x >= screenWidthPx - assistantCornerWidthPx)
                                 velocityTracker.resetTracking()
                             },
                             onDragEnd = {
+                                if (startedInAssistantCorner && totalDrag < -70f) {
+                                    vm.launchAssistantReplacement()
+                                    return@detectVerticalDragGestures
+                                }
                                 val velocity = velocityTracker.calculateVelocity()
                                 // velocity.y: positive = downward, negative = upward
                                 // settleDrawer: positive = open (upward), negative = close
@@ -368,6 +380,8 @@ fun HomeScreen(vm: LauncherViewModel) {
                             if (currentDrawerFullyOpen) return@detectVerticalDragGestures
                             totalDrag += amount
                             velocityTracker.addPosition(change.uptimeMillis, change.position)
+
+                            if (startedInAssistantCorner) return@detectVerticalDragGestures
 
                             if (amount < 0f || drawerProgress.value > 0f) {
                                 if (settings.swipeUpAction == GestureAction.APP_DRAWER || drawerProgress.value > 0f) {

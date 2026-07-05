@@ -159,6 +159,9 @@
     <string name="pinch_in">Pinch In</string>
     <string name="swipe_up">Swipe Up</string>
     <string name="dock_handle_tap">Dock Handle Tap</string>
+    <string name="assistant_replacement">Assistant Replacement</string>
+    <string name="assistant_replacement_desc">Swipe up from either bottom corner to launch this assistant.</string>
+    <string name="system_assistant">System assistant</string>
     <string name="enable_lock_screen">Enable Lock Screen</string>
     <string name="requires_device_admin">Requires Device Admin</string>
     <string name="device_admin_enabled">Device Admin: Enabled</string>
@@ -321,6 +324,7 @@
     <string name="failed_to_load_icon_pack">Failed to load icon pack</string>
     <string name="icon_pack_error">Icon pack error</string>
     <string name="no_app_configured_for_gesture">No app configured for this gesture</string>
+    <string name="assistant_unavailable">Assistant unavailable</string>
     <string name="flashlight_on">Flashlight on</string>
     <string name="flashlight_off">Flashlight off</string>
     <string name="enable_device_admin_to_lock">Enable Device Admin in Settings to lock screen</string>

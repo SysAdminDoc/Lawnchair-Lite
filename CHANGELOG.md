@@ -27,6 +27,7 @@ All notable changes to Lawnchair-Lite will be documented in this file.
 - Added per-app swipe-up shortcut bindings from app long-press menus with backup persistence.
 - Added a custom draw gesture recorder for freeform home-screen gesture actions with backup persistence.
 - Added a global shortcut shelf for arbitrary app shortcuts, opened from the dock handle and persisted through backups.
+- Added assistant replacement from bottom-corner swipe-up, with selectable app or system assistant fallback.
 - Updated the Android build lane to Gradle 9.4.1, AGP 9.2.1 built-in Kotlin, Compose compiler 2.3.21, Compose BOM 2026.06.01, compile SDK 37, target SDK 36, and current stable AndroidX libraries while removing Accompanist DrawablePainter.
 - Added backup export metadata and unit tests for privacy defaults.
 - Updated release version metadata to v2.27.0.

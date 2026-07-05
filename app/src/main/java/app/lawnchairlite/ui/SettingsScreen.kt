@@ -125,7 +125,7 @@ fun SettingsPanel(
     val gridKeywords = "grid columns rows padding page transition indicator badge folder cube stack fade depth carousel slide dots line"
     val drawerKeywords = "drawer sort columns opacity categories category rules groups folders regex package prefix install source section headers animation suggestions search engine"
     val dockKeywords = "dock icons style search bar pill floating transparent hide labels label opacity"
-    val gesturesKeywords = "gesture double tap swipe down swipe up triple pinch dock lock screen notification flashlight edit mode recent app launch custom draw recorder"
+    val gesturesKeywords = "gesture double tap swipe down swipe up triple pinch dock lock screen notification flashlight edit mode recent app launch custom draw recorder assistant replacement corner voice default"
     val featuresKeywords = "clock smartspace at a glance weather calendar event auto place notification badges status bar home lock parallax haptic feedback"
     val advancedKeywords = "kill background apps clear search history reset settings backup restore export import hidden apps diagnostics crash report support bundle permissions package visibility notification contacts calendar location widget about"
     fun sectionMatches(keywords: String): Boolean = sq.isBlank() || keywords.contains(sq) || sq.split(" ").all { w -> keywords.contains(w) }
@@ -497,6 +497,7 @@ fun SettingsPanel(
                         GesturePicker(stringResource(R.string.pinch_in), settings.pinchAction, colors, vm = vm, gestureSource = "pinch") { vm.setPinchAction(it) }
                         GesturePicker(stringResource(R.string.swipe_up), settings.swipeUpAction, colors, vm = vm, gestureSource = "swipe_up") { vm.setSwipeUpAction(it) }
                         GesturePicker(stringResource(R.string.dock_handle_tap), settings.dockTapAction, colors, vm = vm, gestureSource = "dock_tap") { vm.setDockTapAction(it) }
+                        AssistantReplacementPicker(settings.assistantApp, allAppsRaw, colors, vm)
                         GesturePicker(stringResource(R.string.custom_draw_gesture), settings.customGestureAction, colors, vm = vm, gestureSource = "custom_gesture") { vm.setCustomGestureAction(it) }
                         ActionBtn(
                             stringResource(R.string.record_custom_gesture),
@@ -1437,6 +1438,81 @@ private fun IconPackSection(
             .clickable { onClick() }
             .padding(horizontal = 10.dp, vertical = 6.dp),
     )
+}
+
+@Composable private fun AssistantReplacementPicker(currentAppKey: String, apps: List<AppInfo>, c: LauncherColors, vm: LauncherViewModel) {
+    var expanded by remember { mutableStateOf(false) }
+    val sortedApps = remember(apps) { apps.sortedBy { it.label.lowercase() } }
+    val currentApp = currentAppKey.takeIf { it.isNotBlank() }?.let { vm.resolveApp(it) }
+    val currentLabel = currentApp?.label ?: stringResource(R.string.system_assistant)
+
+    Column(Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
+        Row(
+            Modifier.fillMaxWidth()
+                .clip(RoundedCornerShape(10.dp))
+                .background(c.card)
+                .border(0.5.dp, c.border, RoundedCornerShape(10.dp))
+                .clickable { expanded = !expanded }
+                .padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(stringResource(R.string.assistant_replacement), color = c.text, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+            Spacer(Modifier.weight(1f))
+            currentApp?.icon?.let { icon ->
+                Image(rememberDrawablePainter(icon), null, Modifier.size(18.dp).clip(RoundedCornerShape(4.dp)))
+                Spacer(Modifier.width(6.dp))
+            }
+            Text(currentLabel, color = c.accent, fontSize = 13.sp)
+        }
+        Text(
+            stringResource(R.string.assistant_replacement_desc),
+            color = c.textSecondary,
+            fontSize = 11.sp,
+            modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp),
+        )
+        AnimatedVisibility(expanded) {
+            Column(Modifier.padding(start = 16.dp, top = 4.dp).heightIn(max = 220.dp).verticalScroll(rememberScrollState())) {
+                Row(
+                    Modifier.fillMaxWidth()
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(if (currentAppKey.isBlank()) c.accent.copy(alpha = 0.1f) else Color.Transparent)
+                        .clickable { vm.setAssistantApp(""); expanded = false }
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        stringResource(R.string.system_assistant),
+                        color = if (currentAppKey.isBlank()) c.accent else c.text,
+                        fontSize = 12.sp,
+                        fontWeight = if (currentAppKey.isBlank()) FontWeight.Bold else FontWeight.Normal,
+                    )
+                }
+                sortedApps.forEach { app ->
+                    val selected = app.key == currentAppKey
+                    Row(
+                        Modifier.fillMaxWidth()
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(if (selected) c.accent.copy(alpha = 0.1f) else Color.Transparent)
+                            .clickable { vm.setAssistantApp(app.key); expanded = false }
+                            .padding(horizontal = 12.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        if (app.icon != null) {
+                            Image(rememberDrawablePainter(app.icon), null, Modifier.size(24.dp).clip(RoundedCornerShape(6.dp)))
+                            Spacer(Modifier.width(8.dp))
+                        }
+                        Text(
+                            app.label,
+                            color = if (selected) c.accent else c.text,
+                            fontSize = 12.sp,
+                            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                            maxLines = 1,
+                        )
+                    }
+                }
+            }
+        }
+    }
 }
 
 @Composable private fun GesturePicker(label: String, current: GestureAction, c: LauncherColors, vm: LauncherViewModel? = null, gestureSource: String = "", onChange: (GestureAction) -> Unit) {

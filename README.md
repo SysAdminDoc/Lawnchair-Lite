@@ -41,6 +41,7 @@ Built on crash patterns identified across Lawnchair v14-v15 beta releases:
 - 9 gesture actions: double-tap, triple-tap, swipe-down, swipe-up, pinch, dock-tap, dock-swipe, custom draw
 - Gesture app binding: assign any gesture to launch a specific app (with icon preview in settings)
 - Custom draw gesture recorder: trace a saved shape on the home screen to run a bound action
+- Assistant replacement: swipe up from either bottom corner to launch a selected assistant app or the system assistant
 - Smart fuzzy search with relevance scoring (exact > starts > word > contains > pkg > subsequence)
 - Inline calculator and unit converter in drawer search
 - Time-aware app suggestions (morning/afternoon/evening/night usage patterns)
@@ -109,6 +110,7 @@ $env:ANDROID_HOME = "$HOME\AppData\Local\Android\Sdk"
 - **Per-app swipe shortcuts** - App long-press shortcut rows can bind a shortcut to that app icon's swipe-up gesture, with backup persistence
 - **Custom draw gesture** - Settings can record a freeform home-screen shape and bind it to any existing gesture action, with backup persistence
 - **Global shortcuts shelf** - Long-press shortcut rows can pin arbitrary app shortcuts to a swipe-open shelf above the dock, with backup persistence and long-press removal
+- **Assistant replacement** - Bottom-corner swipe-up can launch a selected assistant app or the system assistant, with backup persistence
 - **Nova backup migration** - Restore accepts Nova Launcher ZIP backups, converts compatible apps/folders/dock items, and previews unsupported items before import
 - **Drawer background blur** - Android 12+ RenderEffect blur runs behind the app drawer with safe fallback on older Android versions
 - **Per-page wallpaper dim** - Home pages can override the default wallpaper dim and interpolate between page-specific values while swiping

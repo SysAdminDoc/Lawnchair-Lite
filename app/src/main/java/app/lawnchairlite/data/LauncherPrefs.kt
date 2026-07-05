@@ -95,6 +95,7 @@ data class LauncherSettings(
     val customGesturePattern: String = "",
     val customGestureAction: GestureAction = GestureAction.NONE,
     val gestureAppCustom: String = "",
+    val assistantApp: String = "",
     val categoryRules: List<AppCategoryRule> = emptyList(),
     val drawerGroups: List<DrawerGroup> = emptyList(),
 )
@@ -175,6 +176,7 @@ class LauncherPrefs(private val context: Context) {
         val CUSTOM_GESTURE_PATTERN = stringPreferencesKey("custom_gesture_pattern")
         val CUSTOM_GESTURE_ACTION = stringPreferencesKey("custom_gesture_action")
         val GESTURE_APP_CUSTOM = stringPreferencesKey("gesture_app_custom")
+        val ASSISTANT_APP = stringPreferencesKey("assistant_app")
         val CATEGORY_RULES = stringPreferencesKey("category_rules_v1")
         val DRAWER_GROUPS = stringPreferencesKey("drawer_groups_v1")
         val ICON_OVERRIDES = stringPreferencesKey("icon_overrides_v1")
@@ -251,6 +253,7 @@ class LauncherPrefs(private val context: Context) {
             customGesturePattern = p[CUSTOM_GESTURE_PATTERN]?.let { sanitizeCustomGesturePattern(it) } ?: "",
             customGestureAction = p[CUSTOM_GESTURE_ACTION]?.let { runCatching { GestureAction.valueOf(it) }.getOrNull() } ?: GestureAction.NONE,
             gestureAppCustom = p[GESTURE_APP_CUSTOM] ?: "",
+            assistantApp = p[ASSISTANT_APP] ?: "",
             categoryRules = p[CATEGORY_RULES]?.let { parseCategoryRules(it) } ?: emptyList(),
             drawerGroups = p[DRAWER_GROUPS]?.let { parseDrawerGroups(it) } ?: emptyList(),
         )
@@ -343,6 +346,7 @@ class LauncherPrefs(private val context: Context) {
                 p.remove(CUSTOM_GESTURE_PATTERN)
                 p[CUSTOM_GESTURE_ACTION] = d.customGestureAction.name
                 p[GESTURE_APP_CUSTOM] = ""
+                p[ASSISTANT_APP] = ""
                 p[CATEGORY_RULES] = ""
                 p[DRAWER_GROUPS] = ""
                 p[ICON_OVERRIDES] = ""
@@ -637,6 +641,7 @@ class LauncherPrefs(private val context: Context) {
             put("custom_gesture_pattern", p[CUSTOM_GESTURE_PATTERN] ?: "")
             put("custom_gesture_action", p[CUSTOM_GESTURE_ACTION] ?: "NONE")
             put("gesture_app_custom", p[GESTURE_APP_CUSTOM] ?: "")
+            put("assistant_app", p[ASSISTANT_APP] ?: "")
             if (options.includeSearchHistory) put("search_history", p[SEARCH_HISTORY] ?: "")
             if (options.includeAppUsage) {
                 put("suggestion_usage", p[SUGGESTION_USAGE] ?: "")
@@ -732,6 +737,7 @@ class LauncherPrefs(private val context: Context) {
             }
             j.optString("custom_gesture_action").takeIf { it.isNotBlank() && runCatching { GestureAction.valueOf(it) }.isSuccess }?.let { p[CUSTOM_GESTURE_ACTION] = it }
             if (j.has("gesture_app_custom")) p[GESTURE_APP_CUSTOM] = j.optString("gesture_app_custom").takeIf { it.contains("/") } ?: ""
+            if (j.has("assistant_app")) p[ASSISTANT_APP] = j.optString("assistant_app").takeIf { it.contains("/") } ?: ""
             if (j.has("search_history")) p[SEARCH_HISTORY] = j.optString("search_history")
             if (j.has("suggestion_usage")) p[SUGGESTION_USAGE] = j.optString("suggestion_usage")
             if (j.has("app_usage")) p[APP_USAGE] = j.optString("app_usage")
