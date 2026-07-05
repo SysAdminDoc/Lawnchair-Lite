@@ -46,7 +46,7 @@ Built on crash patterns identified across Lawnchair v14-v15 beta releases:
 - Search history chips with fade gradient, recent apps row with clear button
 - Home screen widgets via AppWidgetHost with provider previews, grid-cell sizing, bind recovery, configuration, and removal confirmation
 - Contact search with permission chip, web search fallback
-- Notification badges (count/dot/hidden), app shortcuts via LauncherApps API, shortcut/PWA icon overrides
+- Notification badges (count/dot/hidden), app shortcuts via LauncherApps API, shortcut/PWA icon overrides, and per-app swipe-up shortcut bindings
 - 5 page transitions (Slide, Cube, Stack, Fade, Depth, Carousel)
 - Wallpaper dimming (0-80%) with parallax effect and per-page overrides
 - Backup/restore layout as JSON with privacy toggles, restore preview, and Nova backup migration import

@@ -261,6 +261,8 @@
     <string name="choose_icon_source">Choose Icon Source</string>
     <string name="pin_shortcut_to_home">Pin shortcut to home</string>
     <string name="pin_shortcut_to_dock">Pin shortcut to dock</string>
+    <string name="bind_shortcut_to_swipe_up">Use shortcut on app swipe-up</string>
+    <string name="clear_app_swipe_shortcut">Clear App Swipe Shortcut</string>
     <string name="app_info">App Info</string>
     <string name="remove_from_source">Remove from %1$s</string>
     <string name="dock_source">Dock</string>
@@ -336,6 +338,8 @@
     <string name="shortcut_added_to_dock">Shortcut added to dock</string>
     <string name="shortcut_already_pinned">Shortcut already pinned</string>
     <string name="shortcut_unavailable">Shortcut unavailable</string>
+    <string name="app_swipe_shortcut_bound">App swipe shortcut set</string>
+    <string name="app_swipe_shortcut_cleared">App swipe shortcut cleared</string>
     <string name="icon_override_applied">Icon override applied</string>
     <string name="icon_override_reset">Icon restored</string>
     <string name="recents_cleared">Recents cleared</string>

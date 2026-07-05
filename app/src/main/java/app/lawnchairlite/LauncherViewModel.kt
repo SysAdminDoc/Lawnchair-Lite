@@ -565,6 +565,36 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         _homeMenu.value = null; _drawerMenuApp.value = null; _shortcuts.value = emptyList()
     }}
 
+    fun bindAppSwipeShortcut(appKey: String, shortcut: AppShortcut) { viewModelScope.launch {
+        val app = _appMap.value[appKey] ?: return@launch
+        val map = settings.value.appGestureShortcuts.toMutableMap()
+        map[app.key] = shortcut.key
+        val cleaned = sanitizeAppGestureShortcuts(map)
+        prefs.saveAppGestureShortcuts(cleaned)
+        toast(R.string.app_swipe_shortcut_bound)
+        _homeMenu.value = null; _drawerMenuApp.value = null; _shortcuts.value = emptyList()
+    }}
+
+    fun clearAppSwipeShortcut(appKey: String) { viewModelScope.launch {
+        val map = settings.value.appGestureShortcuts.toMutableMap()
+        if (map.remove(appKey) != null) {
+            prefs.saveAppGestureShortcuts(map)
+            toast(R.string.app_swipe_shortcut_cleared)
+        }
+        _homeMenu.value = null; _drawerMenuApp.value = null; _shortcuts.value = emptyList()
+    }}
+
+    fun launchAppSwipeShortcut(appKey: String): Boolean {
+        val shortcutKey = settings.value.appGestureShortcuts[appKey] ?: return false
+        val parts = shortcutPartsFromKey(shortcutKey) ?: return false
+        val launched = shortcutRepo.launchShortcut(parts.first, parts.second)
+        if (!launched) {
+            toast(R.string.shortcut_unavailable)
+            debouncedReload()
+        }
+        return launched
+    }
+
     fun loadShortcutsForDrawerMenu(app: AppInfo) {
         viewModelScope.launch { _shortcuts.value = shortcutRepo.getShortcuts(app.packageName) }
     }
@@ -883,6 +913,15 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
             if (overrides.size != _iconOverrides.value.size) {
                 _iconOverrides.value = overrides
                 prefs.saveIconOverrides(overrides)
+            }
+            val gestureShortcuts = settings.value.appGestureShortcuts
+            val cleanedGestureShortcuts = sanitizeAppGestureShortcuts(gestureShortcuts)
+                .filter { (appKey, shortcutKey) ->
+                    val shortcutPackage = shortcutPartsFromKey(shortcutKey)?.first
+                    appKey in valid && shortcutPackage != null && shortcutPackage in validPackages
+                }
+            if (cleanedGestureShortcuts != gestureShortcuts) {
+                prefs.saveAppGestureShortcuts(cleanedGestureShortcuts)
             }
         } catch (e: Exception) {
             Log.e(TAG, "cleanupStaleKeys failed", e)

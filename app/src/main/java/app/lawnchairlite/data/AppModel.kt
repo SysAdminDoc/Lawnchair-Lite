@@ -224,6 +224,16 @@ private const val SHORTCUT_KEY_PREFIX = "shortcut:"
 fun shortcutKey(packageName: String, shortcutId: String): String =
     "$SHORTCUT_KEY_PREFIX${packageName.trim()}/${shortcutId.trim()}"
 
+fun shortcutPartsFromKey(key: String): Pair<String, String>? {
+    if (!key.startsWith(SHORTCUT_KEY_PREFIX)) return null
+    val body = key.removePrefix(SHORTCUT_KEY_PREFIX)
+    val slash = body.indexOf('/')
+    if (slash <= 0 || slash >= body.length - 1) return null
+    val packageName = body.substring(0, slash).trim()
+    val shortcutId = body.substring(slash + 1).trim()
+    return if (packageName.isNotBlank() && shortcutId.isNotBlank()) packageName to shortcutId else null
+}
+
 fun isIconOverrideTargetKey(key: String): Boolean =
     key.startsWith(SHORTCUT_KEY_PREFIX) || key.contains("/")
 
@@ -235,6 +245,18 @@ fun sanitizeIconOverrides(overrides: Map<String, String>): Map<String, String> =
                 source.contains("/") &&
                 !source.startsWith(SHORTCUT_KEY_PREFIX) &&
                 isIconOverrideTargetKey(target)
+        }
+        .distinctBy { it.first }
+        .take(200)
+        .toMap()
+
+fun sanitizeAppGestureShortcuts(bindings: Map<String, String>): Map<String, String> =
+    bindings.asSequence()
+        .map { (appKey, shortcutKey) -> appKey.trim() to shortcutKey.trim() }
+        .filter { (appKey, shortcutKey) ->
+            appKey.contains("/") &&
+                !appKey.startsWith(SHORTCUT_KEY_PREFIX) &&
+                shortcutPartsFromKey(shortcutKey) != null
         }
         .distinctBy { it.first }
         .take(200)

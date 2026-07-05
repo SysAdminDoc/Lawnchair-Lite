@@ -534,6 +534,7 @@ fun HomeScreen(vm: LauncherViewModel) {
                                         if (!isWidgetCell) {
                                             val cellBadge = if (settings.showNotifBadges && settings.badgeStyle != app.lawnchairlite.data.BadgeStyle.HIDDEN && cell is GridCell.App) notifCounts[cell.appKey.substringBefore("/")] ?: 0 else 0
                                             val folderBadge = if (settings.showNotifBadges && settings.badgeStyle != app.lawnchairlite.data.BadgeStyle.HIDDEN && cell is GridCell.Folder) cell.appKeys.sumOf { notifCounts[it.substringBefore("/")] ?: 0 } else 0
+                                            val appGestureKey = (cell as? GridCell.App)?.appKey?.takeIf { settings.appGestureShortcuts.containsKey(it) }
                                             GridCellView(
                                                 cell, settings.iconShape, iconDp, { vm.resolveApp(it) }, { vm.resolveShortcutIcon(it) }, customLabels,
                                                 isDragSrc, homeLabels, editMode,
@@ -546,11 +547,15 @@ fun HomeScreen(vm: LauncherViewModel) {
                                                     null -> {}
                                                 }},
                                                 onLongPress = { if (cell != null) vm.showHomeMenu(cell, DragSource.HOME, gi) },
+                                                onSwipeUp = appGestureKey?.let { key -> { vm.launchAppSwipeShortcut(key) } },
                                                 onDragStart = { rp -> if (cell != null) vm.startDrag(cell, DragSource.HOME, gi, rp) },
                                                 onDrag = { rp -> vm.updateDrag(rp); hitTest(rp) },
                                                 onDragEnd = { vm.endDrag() },
                                                 onDragCancel = { vm.cancelDrag() },
                                             )
+                                            if (appGestureKey != null && !isDragging && !editMode) {
+                                                Box(Modifier.align(Alignment.BottomCenter).offset(y = 2.dp).width(12.dp).height(2.dp).clip(RoundedCornerShape(1.dp)).background(colors.accent.copy(alpha = 0.5f)))
+                                            }
                                         }
                                     }
                                 }
@@ -657,7 +662,9 @@ fun HomeScreen(vm: LauncherViewModel) {
                             val isDS = drag?.source == DragSource.DOCK && drag?.sourceIndex == i
                             val dockHoverScale by animateFloatAsState(if (isH) 1.15f else 1f, spring(dampingRatio = 0.5f, stiffness = 400f), label = "dhs$i")
                             val dockHoverAlpha by animateFloatAsState(if (isH) 0.2f else 0f, tween(150), label = "dha$i")
-                            val hasDockSwipe = settings.dockSwipeApps.containsKey(i)
+                            val appGestureKey = (cell as? GridCell.App)?.appKey?.takeIf { settings.appGestureShortcuts.containsKey(it) }
+                            val hasDockSwipe = settings.dockSwipeApps.containsKey(i) && appGestureKey == null
+                            val hasSwipeIndicator = hasDockSwipe || appGestureKey != null
 
                             Box(
                                 Modifier.weight(1f).height(if (settings.dockLabels) 74.dp else 58.dp)
@@ -688,13 +695,14 @@ fun HomeScreen(vm: LauncherViewModel) {
                                         null -> {}
                                     }},
                                     onLongPress = { if (cell != null) vm.showHomeMenu(cell, DragSource.DOCK, i) },
+                                    onSwipeUp = appGestureKey?.let { key -> { vm.launchAppSwipeShortcut(key) } },
                                     onDragStart = { rp -> if (cell != null) vm.startDrag(cell, DragSource.DOCK, i, rp) },
                                     onDrag = { rp -> vm.updateDrag(rp); hitTest(rp) },
                                     onDragEnd = { vm.endDrag() },
                                     onDragCancel = { vm.cancelDrag() },
                                 )
                                 // Dock swipe indicator
-                                if (hasDockSwipe && !isDragging && !editMode) {
+                                if (hasSwipeIndicator && !isDragging && !editMode) {
                                     Box(Modifier.align(Alignment.BottomCenter).offset(y = 2.dp).width(12.dp).height(2.dp).clip(RoundedCornerShape(1.dp)).background(colors.accent.copy(alpha = 0.5f)))
                                 }
                             }
@@ -868,6 +876,7 @@ private fun GridCellView(
     dimmed: Boolean, showLabel: Boolean, editMode: Boolean,
     badgeCount: Int = 0, badgeDotOnly: Boolean = false, iconShadow: Boolean = false, labelSizeSp: Int = 11, labelAlpha: Float = 1f, folderBadgeCount: Int = 0, grayscale: Boolean = false, labelWeight: FontWeight = FontWeight.Normal,
     onTap: () -> Unit, onLongPress: () -> Unit,
+    onSwipeUp: (() -> Unit)? = null,
     onDragStart: (Offset) -> Unit, onDrag: (Offset) -> Unit, onDragEnd: () -> Unit, onDragCancel: () -> Unit,
 ) {
     if (cell == null) return
@@ -905,9 +914,21 @@ private fun GridCellView(
                         detectTapGestures(onTap = { onTap() })
                     }
                 } else {
-                    Modifier.pointerInput(Unit) {
-                        detectTapGestures(onTap = { onTap() }, onLongPress = { onLongPress() })
-                    }
+                    Modifier
+                        .then(if (onSwipeUp != null) Modifier.pointerInput(cell) {
+                            var totalDragY = 0f
+                            detectVerticalDragGestures(
+                                onDragStart = { totalDragY = 0f },
+                                onDragEnd = { if (totalDragY < -70f) onSwipeUp() },
+                                onDragCancel = {},
+                            ) { change, amount ->
+                                change.consume()
+                                totalDragY += amount
+                            }
+                        } else Modifier)
+                        .pointerInput(cell) {
+                            detectTapGestures(onTap = { onTap() }, onLongPress = { onLongPress() })
+                        }
                 }
             ),
         Alignment.Center,

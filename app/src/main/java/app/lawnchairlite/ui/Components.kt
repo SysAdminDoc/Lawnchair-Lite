@@ -582,12 +582,14 @@ fun HomeContextMenu(
     var showFolderCoverPicker by remember(cell) { mutableStateOf(false) }
     var showIconPicker by remember(cell) { mutableStateOf(false) }
     val iconOverrides by vm.iconOverrides.collectAsState()
+    val settings by vm.settings.collectAsState()
     val allAppsForIconPicker by vm.allApps.collectAsState()
     val iconTargetKey = when (cell) {
         is GridCell.App -> cell.appKey
         is GridCell.Shortcut -> cell.key
         else -> ""
     }
+    val boundSwipeShortcut = if (cell is GridCell.App) settings.appGestureShortcuts[cell.appKey] else null
 
     Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.5f)).pointerInput(Unit) { detectTapGestures { onDismiss() } }, Alignment.Center) {
         Column(
@@ -642,6 +644,7 @@ fun HomeContextMenu(
                         onClick = { vm.launchShortcut(shortcut) },
                         onPinHome = { vm.pinShortcutToHome(shortcut, cell.appKey) },
                         onPinDock = { vm.pinShortcutToDock(shortcut, cell.appKey) },
+                        onBindGesture = { vm.bindAppSwipeShortcut(cell.appKey, shortcut) },
                     )
                 }
             }
@@ -653,6 +656,7 @@ fun HomeContextMenu(
                 CtxItem(stringResource(R.string.rename), c) { vm.startLabelEdit(cell.appKey) }
                 CtxItem(stringResource(R.string.set_icon), c) { showIconPicker = !showIconPicker }
                 if (iconOverrides.containsKey(cell.appKey)) CtxItem(stringResource(R.string.reset_icon), c) { vm.clearIconOverride(cell.appKey); onDismiss() }
+                if (boundSwipeShortcut != null) CtxItem(stringResource(R.string.clear_app_swipe_shortcut), c) { vm.clearAppSwipeShortcut(cell.appKey) }
                 if (showIconPicker) {
                     IconOverridePicker(
                         apps = allAppsForIconPicker,
@@ -664,7 +668,7 @@ fun HomeContextMenu(
                 }
                 CtxItem(stringResource(R.string.rearrange_icons), c) { vm.enterEditMode() }
                 if (menuState.source == DragSource.DOCK) {
-                    val hasDockSwipe = vm.settings.collectAsState().value.dockSwipeApps.containsKey(menuState.index)
+                    val hasDockSwipe = settings.dockSwipeApps.containsKey(menuState.index)
                     if (hasDockSwipe) {
                         CtxItem(stringResource(R.string.clear_swipe_app), c) { vm.clearDockSwipeApp(menuState.index); onDismiss() }
                     }
@@ -908,8 +912,10 @@ fun DrawerContextMenu(app: AppInfo, shape: IconShape, vm: LauncherViewModel, sho
     val c = LocalLauncherColors.current
     var showIconPicker by remember(app.key) { mutableStateOf(false) }
     val iconOverrides by vm.iconOverrides.collectAsState()
+    val settings by vm.settings.collectAsState()
     val allAppsForIconPicker by vm.allApps.collectAsState()
     val displayApp = vm.resolveApp(app.key) ?: app
+    val boundSwipeShortcut = settings.appGestureShortcuts[app.key]
     Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.5f)).pointerInput(Unit) { detectTapGestures { onDismiss() } }, Alignment.Center) {
         Column(Modifier.widthIn(min = 240.dp, max = 280.dp).clip(RoundedCornerShape(20.dp)).background(c.surface).border(0.5.dp, c.border, RoundedCornerShape(20.dp)).pointerInput(Unit) { detectTapGestures { } }.padding(vertical = 12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Spacer(Modifier.height(8.dp))
@@ -929,6 +935,7 @@ fun DrawerContextMenu(app: AppInfo, shape: IconShape, vm: LauncherViewModel, sho
                         onClick = { onShortcutClick(shortcut) },
                         onPinHome = { vm.pinShortcutToHome(shortcut, app.key) },
                         onPinDock = { vm.pinShortcutToDock(shortcut, app.key) },
+                        onBindGesture = { vm.bindAppSwipeShortcut(app.key, shortcut) },
                     )
                 }
             }
@@ -936,6 +943,7 @@ fun DrawerContextMenu(app: AppInfo, shape: IconShape, vm: LauncherViewModel, sho
             CtxItem(stringResource(R.string.add_to_home_screen), c, onClick = onPinHome); CtxItem(stringResource(R.string.add_to_dock), c, onClick = onPinDock)
             CtxItem(stringResource(R.string.set_icon), c) { showIconPicker = !showIconPicker }
             if (iconOverrides.containsKey(app.key)) CtxItem(stringResource(R.string.reset_icon), c) { vm.clearIconOverride(app.key); onDismiss() }
+            if (boundSwipeShortcut != null) CtxItem(stringResource(R.string.clear_app_swipe_shortcut), c) { vm.clearAppSwipeShortcut(app.key) }
             if (showIconPicker) {
                 IconOverridePicker(
                     apps = allAppsForIconPicker,
@@ -1046,7 +1054,7 @@ private fun IconOverridePicker(
     }
 }
 
-@Composable private fun ShortcutItem(shortcut: AppShortcut, c: LauncherColors, onClick: () -> Unit, onPinHome: (() -> Unit)? = null, onPinDock: (() -> Unit)? = null) {
+@Composable private fun ShortcutItem(shortcut: AppShortcut, c: LauncherColors, onClick: () -> Unit, onPinHome: (() -> Unit)? = null, onPinDock: (() -> Unit)? = null, onBindGesture: (() -> Unit)? = null) {
     Row(
         Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -1072,6 +1080,11 @@ private fun IconOverridePicker(
         if (onPinDock != null) {
             IconButton(onClick = onPinDock, modifier = Modifier.size(32.dp)) {
                 Icon(Icons.Default.Apps, stringResource(R.string.pin_shortcut_to_dock), tint = c.textSecondary, modifier = Modifier.size(17.dp))
+            }
+        }
+        if (onBindGesture != null) {
+            IconButton(onClick = onBindGesture, modifier = Modifier.size(32.dp)) {
+                Icon(Icons.Default.KeyboardArrowUp, stringResource(R.string.bind_shortcut_to_swipe_up), tint = c.accent, modifier = Modifier.size(19.dp))
             }
         }
     }

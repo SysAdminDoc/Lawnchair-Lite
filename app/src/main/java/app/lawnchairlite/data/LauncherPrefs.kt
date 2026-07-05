@@ -91,6 +91,7 @@ data class LauncherSettings(
     val gestureAppDockTap: String = "",
     val swipeUpAction: GestureAction = GestureAction.APP_DRAWER,
     val gestureAppSwipeUp: String = "",
+    val appGestureShortcuts: Map<String, String> = emptyMap(),
     val categoryRules: List<AppCategoryRule> = emptyList(),
     val drawerGroups: List<DrawerGroup> = emptyList(),
 )
@@ -166,6 +167,7 @@ class LauncherPrefs(private val context: Context) {
         val GESTURE_APP_DOCK_TAP = stringPreferencesKey("gesture_app_dock_tap")
         val SWIPE_UP_ACTION = stringPreferencesKey("swipe_up_action")
         val GESTURE_APP_SWIPE_UP = stringPreferencesKey("gesture_app_swipe_up")
+        val APP_GESTURE_SHORTCUTS = stringPreferencesKey("app_gesture_shortcuts_v1")
         val CATEGORY_RULES = stringPreferencesKey("category_rules_v1")
         val DRAWER_GROUPS = stringPreferencesKey("drawer_groups_v1")
         val ICON_OVERRIDES = stringPreferencesKey("icon_overrides_v1")
@@ -238,6 +240,7 @@ class LauncherPrefs(private val context: Context) {
             gestureAppDockTap = p[GESTURE_APP_DOCK_TAP] ?: "",
             swipeUpAction = p[SWIPE_UP_ACTION]?.let { runCatching { GestureAction.valueOf(it) }.getOrNull() } ?: GestureAction.APP_DRAWER,
             gestureAppSwipeUp = p[GESTURE_APP_SWIPE_UP] ?: "",
+            appGestureShortcuts = p[APP_GESTURE_SHORTCUTS]?.let { parseAppGestureShortcuts(it) } ?: emptyMap(),
             categoryRules = p[CATEGORY_RULES]?.let { parseCategoryRules(it) } ?: emptyList(),
             drawerGroups = p[DRAWER_GROUPS]?.let { parseDrawerGroups(it) } ?: emptyList(),
         )
@@ -322,6 +325,7 @@ class LauncherPrefs(private val context: Context) {
                 p[DOCK_TAP_ACTION] = d.dockTapAction.name
                 p[SEARCH_ENGINE] = d.searchEngine.name
                 p[SWIPE_UP_ACTION] = d.swipeUpAction.name
+                p.remove(APP_GESTURE_SHORTCUTS)
                 p[CATEGORY_RULES] = ""
                 p[DRAWER_GROUPS] = ""
                 p[ICON_OVERRIDES] = ""
@@ -412,6 +416,15 @@ class LauncherPrefs(private val context: Context) {
                 if (serialized.isBlank()) prefs.remove(PAGE_WALLPAPER_DIMS) else prefs[PAGE_WALLPAPER_DIMS] = serialized
             }
         }.onFailure { Log.e(TAG, "Failed to save page wallpaper dims", it) }
+    }
+
+    suspend fun saveAppGestureShortcuts(bindings: Map<String, String>) {
+        runCatching {
+            context.dataStore.edit { prefs ->
+                val serialized = serializeAppGestureShortcuts(bindings)
+                if (serialized == "{}") prefs.remove(APP_GESTURE_SHORTCUTS) else prefs[APP_GESTURE_SHORTCUTS] = serialized
+            }
+        }.onFailure { Log.e(TAG, "Failed to save app gesture shortcuts", it) }
     }
 
     private fun serializeCategoryRules(rules: List<AppCategoryRule>): String = JSONArray().apply {
@@ -593,6 +606,7 @@ class LauncherPrefs(private val context: Context) {
             put("search_engine", p[SEARCH_ENGINE] ?: "GOOGLE")
             put("favorite_apps", p[FAVORITE_APPS] ?: "")
             put("swipe_up_action", p[SWIPE_UP_ACTION] ?: "APP_DRAWER")
+            put("app_gesture_shortcuts", p[APP_GESTURE_SHORTCUTS] ?: "")
             if (options.includeSearchHistory) put("search_history", p[SEARCH_HISTORY] ?: "")
             if (options.includeAppUsage) {
                 put("suggestion_usage", p[SUGGESTION_USAGE] ?: "")
@@ -674,6 +688,10 @@ class LauncherPrefs(private val context: Context) {
             j.optString("label_weight").takeIf { it.isNotBlank() && runCatching { LabelWeight.valueOf(it) }.isSuccess }?.let { p[LABEL_WEIGHT] = it }
             j.optString("search_engine").takeIf { it.isNotBlank() && runCatching { SearchEngine.valueOf(it) }.isSuccess }?.let { p[SEARCH_ENGINE] = it }
             if (j.has("favorite_apps")) p[FAVORITE_APPS] = j.optString("favorite_apps").split("|").filter { key -> key.isNotBlank() }.take(100).joinToString("|")
+            if (j.has("app_gesture_shortcuts")) {
+                val serialized = serializeAppGestureShortcuts(parseAppGestureShortcuts(j.optString("app_gesture_shortcuts")))
+                if (serialized == "{}") p.remove(APP_GESTURE_SHORTCUTS) else p[APP_GESTURE_SHORTCUTS] = serialized
+            }
             if (j.has("search_history")) p[SEARCH_HISTORY] = j.optString("search_history")
             if (j.has("suggestion_usage")) p[SUGGESTION_USAGE] = j.optString("suggestion_usage")
             if (j.has("app_usage")) p[APP_USAGE] = j.optString("app_usage")
@@ -768,3 +786,17 @@ internal fun parsePageWallpaperDims(raw: String): Map<Int, Int> {
         page to dim.coerceIn(0, 80)
     }.toMap()
 }
+
+internal fun serializeAppGestureShortcuts(bindings: Map<String, String>): String = JSONObject().apply {
+    sanitizeAppGestureShortcuts(bindings).forEach { (appKey, shortcutKey) ->
+        put(appKey, shortcutKey)
+    }
+}.toString()
+
+internal fun parseAppGestureShortcuts(raw: String): Map<String, String> = runCatching {
+    if (raw.isBlank()) return@runCatching emptyMap()
+    val obj = JSONObject(raw)
+    sanitizeAppGestureShortcuts(
+        obj.keys().asSequence().associateWith { appKey -> obj.optString(appKey) },
+    )
+}.getOrDefault(emptyMap())

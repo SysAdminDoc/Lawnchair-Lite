@@ -101,6 +101,20 @@ class BackupImportPreviewTest {
     }
 
     @Test
+    fun appGestureShortcutsAreRecognizedAsGestureBackupSection() {
+        val preview = BackupImportPreview.fromFields(
+            mapOf(
+                "schema" to 1,
+                "app_gesture_shortcuts" to "{}",
+            ),
+        )
+
+        assertTrue(preview.canImport)
+        assertEquals(listOf("Gestures"), preview.sections)
+        assertEquals(emptyList<String>(), preview.unknownFields)
+    }
+
+    @Test
     fun migrationMetadataIsRecognizedWithoutUnknownFields() {
         val preview = BackupImportPreview.fromFields(
             mapOf(
