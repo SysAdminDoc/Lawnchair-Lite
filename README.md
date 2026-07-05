@@ -67,10 +67,30 @@ Built on crash patterns identified across Lawnchair v14-v15 beta releases:
 ## Permissions
 
 - `QUERY_ALL_PACKAGES` powers the launcher app list, drawer search, categories, hidden apps, and gesture app binding.
+- `INTERNET` is used for optional Open-Meteo weather lookups and user-triggered web search handoff. The app does not include tracker, ad, analytics, Firebase, or Play services SDKs.
+- `VIBRATE` powers local haptic feedback for drawer scrolling, page limits, gestures, and long-press actions.
 - `POST_NOTIFICATIONS` is used only for local crash-copy notifications on Android 13+; denied access does not block launcher use.
 - `READ_CONTACTS`, `READ_CALENDAR`, and `ACCESS_COARSE_LOCATION` are optional search/Smartspace features with Settings recovery actions.
 - `KILL_BACKGROUND_PROCESSES` and `EXPAND_STATUS_BAR` back user-triggered quick actions and degrade gracefully when Android or OEM policy blocks them.
 - Widget placement uses Android's per-widget bind prompt; the protected `BIND_APPWIDGET` permission is not declared.
+
+## Libre / F-Droid Readiness
+
+The standard release variant is libre-compatible: it uses AndroidX/Compose framework dependencies only, has no ad/tracker/cloud-account SDKs, and ships Fastlane metadata under `fastlane/metadata/android/en-US/`.
+
+Local audit:
+
+```powershell
+.\tools\libre-audit.ps1
+```
+
+Build and audit:
+
+```powershell
+$env:JAVA_HOME = "C:\Program Files\Android\Android Studio\jbr"
+$env:ANDROID_HOME = "$HOME\AppData\Local\Android\Sdk"
+.\tools\libre-audit.ps1 -Build
+```
 
 ### v2.27.0
 

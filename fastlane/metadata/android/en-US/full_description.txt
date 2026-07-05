@@ -1,0 +1,16 @@
+Lawnchair Lite is a fast, local-first Android launcher focused on smooth home screens, a searchable app drawer, widgets, icon packs, gestures, and careful backup controls.
+
+Highlights:
+- Multiple home pages, dock, folders, widgets, and app drawer tabs
+- Fuzzy app search with local calculator and unit conversion
+- Optional contacts, calendar, weather, and notification badge integrations
+- Icon packs, shortcut icon overrides, drawer groups, and backup/restore preview
+- Local crash diagnostics and privacy-aware manual exports
+
+Privacy and libre distribution:
+- No ads
+- No analytics
+- No cloud account required
+- No Firebase, Play services, proprietary crash reporting, or tracker SDKs
+- Optional weather uses the no-key Open-Meteo API only after location permission is granted
+- Android Auto Backup excludes launcher DataStore state from cloud backup

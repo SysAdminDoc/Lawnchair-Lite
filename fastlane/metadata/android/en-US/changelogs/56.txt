@@ -1,0 +1,1 @@
+Adds privacy-aware backup handling, restore previews, local diagnostics, drawer groups, widget picker previews, shortcut icon overrides, Nova Launcher backup migration import, and Android/Compose build modernization.
