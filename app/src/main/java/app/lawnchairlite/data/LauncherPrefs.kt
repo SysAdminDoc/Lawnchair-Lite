@@ -608,7 +608,7 @@ class LauncherPrefs(private val context: Context) {
             j.optString("theme").takeIf { it.isNotBlank() && runCatching { ThemeMode.valueOf(it) }.isSuccess }?.let { p[THEME] = it }
             j.optString("icon_shape").takeIf { it.isNotBlank() && runCatching { IconShape.valueOf(it) }.isSuccess }?.let { p[ICON_SHAPE] = it }
             j.optString("icon_size").takeIf { it.isNotBlank() && runCatching { IconSize.valueOf(it) }.isSuccess }?.let { p[ICON_SIZE] = it }
-            j.optString("icon_pack").let { p[ICON_PACK] = it }
+            if (j.has("icon_pack")) p[ICON_PACK] = j.optString("icon_pack")
             if (j.has("grid_cols")) p[GRID_COLS] = j.getInt("grid_cols").coerceIn(3, 8)
             if (j.has("grid_rows")) p[GRID_ROWS] = j.getInt("grid_rows").coerceIn(3, 10)
             if (j.has("dock_count")) p[DOCK_COUNT] = j.getInt("dock_count").coerceIn(3, 7)
@@ -627,15 +627,15 @@ class LauncherPrefs(private val context: Context) {
             if (j.has("grid_padding_h")) p[GRID_PADDING_H] = j.getInt("grid_padding_h").coerceIn(0, 24)
             if (j.has("grid_padding_v")) p[GRID_PADDING_V] = j.getInt("grid_padding_v").coerceIn(0, 24)
             if (j.has("hide_status_bar")) p[HIDE_STATUS_BAR] = j.getBoolean("hide_status_bar")
-            j.optString("dock_swipe_apps").takeIf { it.isNotBlank() }?.let { p[DOCK_SWIPE_APPS] = it }
+            if (j.has("dock_swipe_apps")) p[DOCK_SWIPE_APPS] = j.optString("dock_swipe_apps")
             if (j.has("drawer_columns")) p[DRAWER_COLUMNS] = j.getInt("drawer_columns").coerceIn(0, 6)
             if (j.has("home_locked")) p[HOME_LOCKED] = j.getBoolean("home_locked")
             if (j.has("icon_shadow")) p[ICON_SHADOW] = j.getBoolean("icon_shadow")
-            j.optString("accent_override").let { p[ACCENT_OVERRIDE] = it }
+            if (j.has("accent_override")) p[ACCENT_OVERRIDE] = j.optString("accent_override")
             if (j.has("drawer_categories")) p[DRAWER_CATEGORIES] = j.getBoolean("drawer_categories")
-            j.optString("category_rules").let { p[CATEGORY_RULES] = serializeCategoryRules(parseCategoryRules(it)) }
-            j.optString("drawer_groups").let { p[DRAWER_GROUPS] = serializeDrawerGroups(parseDrawerGroups(it)) }
-            j.optString("icon_overrides").let { p[ICON_OVERRIDES] = serializeIconOverrides(parseIconOverrides(it)) }
+            if (j.has("category_rules")) p[CATEGORY_RULES] = serializeCategoryRules(parseCategoryRules(j.optString("category_rules")))
+            if (j.has("drawer_groups")) p[DRAWER_GROUPS] = serializeDrawerGroups(parseDrawerGroups(j.optString("drawer_groups")))
+            if (j.has("icon_overrides")) p[ICON_OVERRIDES] = serializeIconOverrides(parseIconOverrides(j.optString("icon_overrides")))
             j.optString("dock_style").takeIf { it.isNotBlank() && runCatching { DockStyle.valueOf(it) }.isSuccess }?.let { p[DOCK_STYLE] = it }
             if (j.has("dock_labels")) p[DOCK_LABELS] = j.getBoolean("dock_labels")
             if (j.has("dock_label_opacity")) p[DOCK_LABEL_OPACITY] = j.getInt("dock_label_opacity").coerceIn(35, 100)
@@ -658,15 +658,15 @@ class LauncherPrefs(private val context: Context) {
             j.optString("page_indicator_style").takeIf { it.isNotBlank() && runCatching { PageIndicatorStyle.valueOf(it) }.isSuccess }?.let { p[PAGE_INDICATOR_STYLE] = it }
             j.optString("label_weight").takeIf { it.isNotBlank() && runCatching { LabelWeight.valueOf(it) }.isSuccess }?.let { p[LABEL_WEIGHT] = it }
             j.optString("search_engine").takeIf { it.isNotBlank() && runCatching { SearchEngine.valueOf(it) }.isSuccess }?.let { p[SEARCH_ENGINE] = it }
-            j.optString("favorite_apps").let { p[FAVORITE_APPS] = it.split("|").filter { key -> key.isNotBlank() }.take(100).joinToString("|") }
+            if (j.has("favorite_apps")) p[FAVORITE_APPS] = j.optString("favorite_apps").split("|").filter { key -> key.isNotBlank() }.take(100).joinToString("|")
             if (j.has("search_history")) p[SEARCH_HISTORY] = j.optString("search_history")
             if (j.has("suggestion_usage")) p[SUGGESTION_USAGE] = j.optString("suggestion_usage")
             if (j.has("app_usage")) p[APP_USAGE] = j.optString("app_usage")
-            j.optString("widgets").takeIf { it.isNotBlank() }?.let { p[WIDGETS] = it }
-            j.optString("home_grid").takeIf { it.isNotBlank() }?.let { p[HOME_GRID] = it }
-            j.optString("dock_grid").takeIf { it.isNotBlank() }?.let { p[DOCK_GRID] = it }
+            if (j.has("widgets")) p[WIDGETS] = j.optString("widgets")
+            if (j.has("home_grid")) p[HOME_GRID] = j.optString("home_grid")
+            if (j.has("dock_grid")) p[DOCK_GRID] = j.optString("dock_grid")
             if (j.has("hidden_apps")) p[HIDDEN_APPS] = j.optString("hidden_apps")
-            j.optString("custom_labels").let { p[CUSTOM_LABELS] = it }
+            if (j.has("custom_labels")) p[CUSTOM_LABELS] = j.optString("custom_labels")
             p[INITIALIZED] = true
         }
         true

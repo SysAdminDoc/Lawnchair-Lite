@@ -49,7 +49,7 @@ Built on crash patterns identified across Lawnchair v14-v15 beta releases:
 - Notification badges (count/dot/hidden), app shortcuts via LauncherApps API, shortcut/PWA icon overrides
 - 5 page transitions (Slide, Cube, Stack, Fade, Depth, Carousel)
 - Wallpaper dimming (0-80%) with parallax effect
-- Backup/restore layout as JSON with privacy toggles and import error feedback
+- Backup/restore layout as JSON with privacy toggles, restore preview, and Nova backup migration import
 - Uninstall confirmation dialog (all paths: D&D, home menu, drawer menu)
 - Reset all settings with confirmation dialog
 - Settings search filter across 8 collapsible sections
@@ -84,6 +84,7 @@ Built on crash patterns identified across Lawnchair v14-v15 beta releases:
 - **Drawer groups** - Drawer folders can be created in Settings, populated manually or by package-prefix rule, filtered across All/Recent/Favorites/Work, and backed up with launcher JSON
 - **Widget picker previews** - The widget picker shows provider preview images when available, icon/placeholder fallbacks when unavailable, and confirms widget removal before deleting host IDs
 - **Shortcut icon overrides** - App shortcuts and pinned web/PWA-style entries can use manual source-app icon overrides, persist through backup/restore, and fall back safely when shortcut icon resources are missing
+- **Nova backup migration** - Restore accepts Nova Launcher ZIP backups, converts compatible apps/folders/dock items, and previews unsupported items before import
 
 ### v2.26.0
 

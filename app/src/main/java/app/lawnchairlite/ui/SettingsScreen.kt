@@ -92,19 +92,20 @@ fun SettingsPanel(
     val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
         uri ?: return@rememberLauncherForActivityResult
         scope.launch {
-            val json = runCatching { context.contentResolver.openInputStream(uri)?.bufferedReader()?.readText() }.getOrNull()
-            if (json == null) {
+            val payload = runCatching { context.contentResolver.openInputStream(uri)?.use { it.readBytes() } }.getOrNull()
+            if (payload == null) {
                 android.widget.Toast.makeText(context, invalidImportMessage, android.widget.Toast.LENGTH_SHORT).show()
                 return@launch
             }
-            val preview = vm.previewBackup(json)
+            val prepared = vm.prepareBackupImport(payload)
+            val preview = prepared.preview
             if (!preview.canImport) {
                 android.widget.Toast.makeText(context, preview.error ?: restoreFailedMessage, android.widget.Toast.LENGTH_SHORT).show()
                 restorePreview = preview
                 pendingRestoreJson = null
                 return@launch
             }
-            pendingRestoreJson = json
+            pendingRestoreJson = prepared.json
             restorePreview = preview
         }
     }
@@ -1203,6 +1204,10 @@ private fun IconPackSection(
                 color = colors.textSecondary,
                 fontSize = 12.sp,
             )
+            if (preview.migrationSource != null) {
+                Spacer(Modifier.height(6.dp))
+                Text(stringResource(R.string.migration_source, preview.migrationSource), color = colors.textSecondary, fontSize = 12.sp, lineHeight = 16.sp)
+            }
             Spacer(Modifier.height(12.dp))
             Text(stringResource(R.string.sections), color = colors.accent, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
             Text(preview.sectionSummary, color = colors.text, fontSize = 13.sp, lineHeight = 18.sp, modifier = Modifier.padding(top = 4.dp))
@@ -1213,6 +1218,10 @@ private fun IconPackSection(
             if (preview.omittedPrivateSections.isNotEmpty()) {
                 Spacer(Modifier.height(6.dp))
                 Text(stringResource(R.string.omitted_private_sections_list, preview.omittedPrivateSections.joinToString(", ")), color = colors.textSecondary, fontSize = 12.sp, lineHeight = 16.sp)
+            }
+            if (preview.migrationUnsupported.isNotEmpty()) {
+                Spacer(Modifier.height(10.dp))
+                Text(stringResource(R.string.unsupported_migration_items, preview.migrationUnsupported.take(5).joinToString(", ")), color = colors.textSecondary, fontSize = 12.sp, lineHeight = 16.sp)
             }
             if (preview.unknownFields.isNotEmpty()) {
                 Spacer(Modifier.height(10.dp))

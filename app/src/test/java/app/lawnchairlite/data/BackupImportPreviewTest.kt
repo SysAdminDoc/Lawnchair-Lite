@@ -87,6 +87,25 @@ class BackupImportPreviewTest {
     }
 
     @Test
+    fun migrationMetadataIsRecognizedWithoutUnknownFields() {
+        val preview = BackupImportPreview.fromFields(
+            mapOf(
+                "schema" to 1,
+                "migration_source" to "Nova Launcher",
+                "migration_unsupported" to listOf("Widgets require re-adding after migration"),
+                "home_grid" to "A:com.example/.Main",
+            ),
+        )
+
+        assertTrue(preview.canImport)
+        assertEquals("Nova Launcher", preview.migrationSource)
+        assertEquals(listOf("Widgets require re-adding after migration"), preview.migrationUnsupported)
+        assertEquals("Migration skipped unsupported items", preview.warning)
+        assertEquals(listOf("Layout & widgets"), preview.sections)
+        assertEquals(emptyList<String>(), preview.unknownFields)
+    }
+
+    @Test
     fun invalidJsonIsRejected() {
         val preview = BackupImportPreview.fromJson("{")
 

@@ -51,6 +51,8 @@
     <string name="drawer_results_count">%1$d resultados</string>
     <string name="search_query_quoted">Buscar \"%1$s\"</string>
     <string name="review_restore">Revisar restauracion</string>
+    <string name="migration_source">Origen de migracion: %1$s</string>
+    <string name="unsupported_migration_items">Elementos no compatibles: %1$s</string>
     <string name="enum_drawer_category_all">Todo</string>
     <string name="enum_drawer_tab_all">Todo</string>
     <string name="enum_drawer_tab_recent">Recientes</string>

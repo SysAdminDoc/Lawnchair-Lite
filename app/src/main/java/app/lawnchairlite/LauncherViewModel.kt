@@ -29,10 +29,12 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import app.lawnchairlite.data.*
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.util.Calendar
 import kotlin.math.max
 
@@ -56,6 +58,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     val widgetManager: AppWidgetManager = AppWidgetManager.getInstance(app)
     private val smartspaceService = SmartspaceService(ctx)
     private val backupService = LauncherBackupService(LauncherPrefsBackupGateway(prefs))
+    private val backupImportPreparer = BackupImportPreparer(ctx)
 
     private val _allApps = MutableStateFlow<List<AppInfo>>(emptyList())
     val allApps: StateFlow<List<AppInfo>> = _allApps.asStateFlow()
@@ -1549,6 +1552,8 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
 
     suspend fun exportBackup(options: BackupExportOptions = BackupExportOptions()): String = backupService.export(options)
     fun previewBackup(json: String): BackupImportPreview = backupService.preview(json)
+    suspend fun prepareBackupImport(payload: ByteArray): PreparedBackupImport =
+        withContext(Dispatchers.IO) { backupImportPreparer.prepare(payload) }
     suspend fun importBackup(json: String): Boolean {
         val result = backupService.importAndLoadRestoredSettings(json)
         if (result.imported) {

@@ -11,6 +11,8 @@ data class BackupImportPreview(
     val omittedPrivateSections: List<String>,
     val unknownFields: List<String>,
     val skippedFields: List<String>,
+    val migrationSource: String? = null,
+    val migrationUnsupported: List<String> = emptyList(),
     val warning: String? = null,
     val error: String? = null,
 ) {
@@ -22,6 +24,7 @@ data class BackupImportPreview(
 
         private val knownFields = setOf(
             "version", "schema", "exported_at", "backup_options", "omitted_private_sections",
+            "migration_source", "migration_unsupported",
             "theme", "icon_shape", "icon_size", "icon_pack", "icon_overrides", "themed_icons", "icon_shadow", "grayscale_icons",
             "accent_override", "wallpaper_dim", "page_transition", "badge_style", "label_style", "label_size",
             "label_weight", "grid_cols", "grid_rows", "grid_padding_h", "grid_padding_v", "home_grid",
@@ -48,6 +51,8 @@ data class BackupImportPreview(
                 omittedPrivateSections = emptyList(),
                 unknownFields = emptyList(),
                 skippedFields = emptyList(),
+                migrationSource = null,
+                migrationUnsupported = emptyList(),
                 error = "Invalid backup JSON",
             )
         }
@@ -57,6 +62,8 @@ data class BackupImportPreview(
             val unknown = fields.keys.filterNot { it in knownFields }.sorted()
             val skipped = invalidEnumFields(fields)
             val omittedPrivate = stringList(fields["omitted_private_sections"])
+            val migrationSource = fields["migration_source"].asString().takeIf { it.isNotBlank() }
+            val migrationUnsupported = stringList(fields["migration_unsupported"])
             val privateSections = listOfNotNull(
                 "Search history".takeIf { fields.containsKey("search_history") },
                 "Usage and recents".takeIf { fields.containsKey("suggestion_usage") || fields.containsKey("app_usage") },
@@ -70,6 +77,7 @@ data class BackupImportPreview(
             }
             val warning = when {
                 schema == 0 -> "Legacy backup without schema metadata"
+                migrationUnsupported.isNotEmpty() -> "Migration skipped unsupported items"
                 unknown.isNotEmpty() -> "Unknown fields will be ignored"
                 skipped.isNotEmpty() -> "Invalid values will be skipped"
                 else -> null
@@ -83,6 +91,8 @@ data class BackupImportPreview(
                 omittedPrivateSections = omittedPrivate,
                 unknownFields = unknown,
                 skippedFields = skipped,
+                migrationSource = migrationSource,
+                migrationUnsupported = migrationUnsupported,
                 warning = warning,
                 error = error,
             )

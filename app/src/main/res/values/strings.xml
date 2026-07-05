@@ -230,10 +230,12 @@
     <string name="launch_app_format">Launch: %1$s</string>
     <string name="review_restore">Review Restore</string>
     <string name="restore_schema_version">Schema %1$d%2$s</string>
+    <string name="migration_source">Migration source: %1$s</string>
     <string name="version_suffix"> · v%1$s</string>
     <string name="sections">Sections</string>
     <string name="private_data_list">Private data: %1$s</string>
     <string name="omitted_private_sections_list">Omitted private sections stay unchanged: %1$s</string>
+    <string name="unsupported_migration_items">Unsupported migration items: %1$s</string>
     <string name="unknown_fields_ignored">Unknown fields ignored: %1$s</string>
     <string name="invalid_values_skipped">Invalid values skipped: %1$s</string>
     <string name="bytes_count">%1$d bytes</string>
