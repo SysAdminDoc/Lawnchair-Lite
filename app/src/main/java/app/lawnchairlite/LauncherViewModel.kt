@@ -663,6 +663,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
                         "pinch" -> settings.value.gestureAppPinch
                         "dock_tap" -> settings.value.gestureAppDockTap
                         "swipe_up" -> settings.value.gestureAppSwipeUp
+                        "custom_gesture" -> settings.value.gestureAppCustom
                         else -> ""
                     }
                     if (appKey.isNotBlank()) resolveApp(appKey)?.let { launch(it) }
@@ -672,6 +673,14 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         } catch (e: Exception) {
             Log.e(TAG, "Gesture execution failed: $action", e)
         }
+    }
+
+    fun executeCustomGesture(points: List<CustomGesturePoint>): Boolean {
+        val current = settings.value
+        if (current.customGesturePattern.isBlank() || current.customGestureAction == GestureAction.NONE) return false
+        if (!customGestureMatches(current.customGesturePattern, points)) return false
+        executeGesture(current.customGestureAction, "custom_gesture")
+        return true
     }
 
     fun toggleFlashlight() {
@@ -1464,6 +1473,17 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     fun setPinchAction(a: GestureAction) = pref(LauncherPrefs.PINCH_ACTION, a.name)
     fun setDockTapAction(a: GestureAction) = pref(LauncherPrefs.DOCK_TAP_ACTION, a.name)
     fun setSwipeUpAction(a: GestureAction) = pref(LauncherPrefs.SWIPE_UP_ACTION, a.name)
+    fun setCustomGestureAction(a: GestureAction) = pref(LauncherPrefs.CUSTOM_GESTURE_ACTION, a.name)
+    fun saveCustomGesturePattern(pattern: String) {
+        val cleaned = sanitizeCustomGesturePattern(pattern)
+        if (cleaned.isBlank()) return
+        pref(LauncherPrefs.CUSTOM_GESTURE_PATTERN, cleaned)
+        toast(R.string.custom_gesture_saved)
+    }
+    fun clearCustomGesturePattern() {
+        pref(LauncherPrefs.CUSTOM_GESTURE_PATTERN, "")
+        toast(R.string.custom_gesture_cleared)
+    }
     fun setShowSuggestions(v: Boolean) = pref(LauncherPrefs.SHOW_SUGGESTIONS, v)
     fun setClockStyle(s: ClockStyle) = pref(LauncherPrefs.CLOCK_STYLE, s.name)
     fun setHideDock(v: Boolean) = pref(LauncherPrefs.HIDE_DOCK, v)
@@ -1479,6 +1499,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
             "pinch" -> LauncherPrefs.GESTURE_APP_PINCH
             "dock_tap" -> LauncherPrefs.GESTURE_APP_DOCK_TAP
             "swipe_up" -> LauncherPrefs.GESTURE_APP_SWIPE_UP
+            "custom_gesture" -> LauncherPrefs.GESTURE_APP_CUSTOM
             else -> return
         }
         pref(key, appKey)
@@ -1490,6 +1511,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         "pinch" -> settings.value.gestureAppPinch
         "dock_tap" -> settings.value.gestureAppDockTap
         "swipe_up" -> settings.value.gestureAppSwipeUp
+        "custom_gesture" -> settings.value.gestureAppCustom
         else -> ""
     }
     fun cycleClockStyle() {

@@ -115,6 +115,22 @@ class BackupImportPreviewTest {
     }
 
     @Test
+    fun customGestureRecorderFieldsAreRecognizedAsGestureBackupSection() {
+        val preview = BackupImportPreview.fromFields(
+            mapOf(
+                "schema" to 1,
+                "custom_gesture_pattern" to "02",
+                "custom_gesture_action" to "SETTINGS",
+                "gesture_app_custom" to "com.example/.Main",
+            ),
+        )
+
+        assertTrue(preview.canImport)
+        assertEquals(listOf("Gestures"), preview.sections)
+        assertEquals(emptyList<String>(), preview.unknownFields)
+    }
+
+    @Test
     fun migrationMetadataIsRecognizedWithoutUnknownFields() {
         val preview = BackupImportPreview.fromFields(
             mapOf(

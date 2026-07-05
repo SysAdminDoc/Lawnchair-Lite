@@ -8,6 +8,8 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -25,7 +27,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -120,7 +125,7 @@ fun SettingsPanel(
     val gridKeywords = "grid columns rows padding page transition indicator badge folder cube stack fade depth carousel slide dots line"
     val drawerKeywords = "drawer sort columns opacity categories category rules groups folders regex package prefix install source section headers animation suggestions search engine"
     val dockKeywords = "dock icons style search bar pill floating transparent hide labels label opacity"
-    val gesturesKeywords = "gesture double tap swipe down swipe up triple pinch dock lock screen notification flashlight edit mode recent app launch"
+    val gesturesKeywords = "gesture double tap swipe down swipe up triple pinch dock lock screen notification flashlight edit mode recent app launch custom draw recorder"
     val featuresKeywords = "clock smartspace at a glance weather calendar event auto place notification badges status bar home lock parallax haptic feedback"
     val advancedKeywords = "kill background apps clear search history reset settings backup restore export import hidden apps diagnostics crash report support bundle permissions package visibility notification contacts calendar location widget about"
     fun sectionMatches(keywords: String): Boolean = sq.isBlank() || keywords.contains(sq) || sq.split(" ").all { w -> keywords.contains(w) }
@@ -146,6 +151,7 @@ fun SettingsPanel(
     var gesturesExpanded by remember { mutableStateOf(false) }
     var featuresExpanded by remember { mutableStateOf(false) }
     var advancedExpanded by remember { mutableStateOf(false) }
+    var showCustomGestureRecorder by remember { mutableStateOf(false) }
 
     // Swipe-down-to-dismiss: track overscroll at top
     val scrollState = rememberScrollState()
@@ -491,9 +497,19 @@ fun SettingsPanel(
                         GesturePicker(stringResource(R.string.pinch_in), settings.pinchAction, colors, vm = vm, gestureSource = "pinch") { vm.setPinchAction(it) }
                         GesturePicker(stringResource(R.string.swipe_up), settings.swipeUpAction, colors, vm = vm, gestureSource = "swipe_up") { vm.setSwipeUpAction(it) }
                         GesturePicker(stringResource(R.string.dock_handle_tap), settings.dockTapAction, colors, vm = vm, gestureSource = "dock_tap") { vm.setDockTapAction(it) }
+                        GesturePicker(stringResource(R.string.custom_draw_gesture), settings.customGestureAction, colors, vm = vm, gestureSource = "custom_gesture") { vm.setCustomGestureAction(it) }
+                        ActionBtn(
+                            stringResource(R.string.record_custom_gesture),
+                            stringResource(if (settings.customGesturePattern.isBlank()) R.string.gesture_not_recorded else R.string.gesture_recorded),
+                            colors,
+                        ) { showCustomGestureRecorder = true }
+                        if (settings.customGesturePattern.isNotBlank()) {
+                            Spacer(Modifier.height(6.dp))
+                            ActionBtn(stringResource(R.string.clear_custom_gesture), stringResource(R.string.gesture_recorded), colors) { vm.clearCustomGesturePattern() }
+                        }
 
                         val adminEnabled = remember { mutableStateOf(vm.isDeviceAdminEnabled()) }
-                        if (listOf(settings.doubleTapAction, settings.swipeDownAction, settings.swipeUpAction, settings.tripleTapAction, settings.pinchAction, settings.dockTapAction).any { it == GestureAction.LOCK_SCREEN }) {
+                        if (listOf(settings.doubleTapAction, settings.swipeDownAction, settings.swipeUpAction, settings.tripleTapAction, settings.pinchAction, settings.dockTapAction, settings.customGestureAction).any { it == GestureAction.LOCK_SCREEN }) {
                             Spacer(Modifier.height(6.dp))
                             if (!adminEnabled.value) {
                                 ActionBtn(stringResource(R.string.enable_lock_screen), stringResource(R.string.requires_device_admin), colors) { vm.requestDeviceAdmin(); adminEnabled.value = vm.isDeviceAdminEnabled() }
@@ -507,6 +523,21 @@ fun SettingsPanel(
 
                 }
                 // ── FEATURES ──
+                if (showCustomGestureRecorder) {
+                    CustomGestureRecorderDialog(
+                        currentPattern = settings.customGesturePattern,
+                        colors = colors,
+                        onSave = { pattern ->
+                            vm.saveCustomGesturePattern(pattern)
+                            showCustomGestureRecorder = false
+                        },
+                        onClear = {
+                            vm.clearCustomGesturePattern()
+                            showCustomGestureRecorder = false
+                        },
+                        onDismiss = { showCustomGestureRecorder = false },
+                    )
+                }
                 if (showFeatures) {
                 SectionHeader(stringResource(R.string.features), searching || featuresExpanded, colors) { featuresExpanded = !featuresExpanded }
                 AnimatedVisibility(searching || featuresExpanded) {
@@ -1280,6 +1311,92 @@ private fun IconPackSection(
                         shape = RoundedCornerShape(12.dp),
                     ) { Text(stringResource(R.string.restore), color = Color.White) }
                 }
+            }
+        }
+    }
+}
+
+@Composable private fun CustomGestureRecorderDialog(
+    currentPattern: String,
+    colors: LauncherColors,
+    onSave: (String) -> Unit,
+    onClear: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var points by remember { mutableStateOf<List<Offset>>(emptyList()) }
+    var pattern by remember(currentPattern) { mutableStateOf(sanitizeCustomGesturePattern(currentPattern)) }
+    val ready = pattern.isNotBlank()
+
+    androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
+        Column(
+            Modifier.widthIn(min = 280.dp, max = 340.dp)
+                .clip(RoundedCornerShape(20.dp))
+                .background(colors.surface)
+                .border(0.5.dp, colors.border, RoundedCornerShape(20.dp))
+                .padding(18.dp),
+        ) {
+            Text(stringResource(R.string.draw_gesture_title), color = colors.text, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+            Spacer(Modifier.height(6.dp))
+            Text(stringResource(R.string.draw_gesture_hint), color = colors.textSecondary, fontSize = 12.sp, lineHeight = 16.sp)
+            Spacer(Modifier.height(14.dp))
+            Box(
+                Modifier.fillMaxWidth().height(220.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(colors.card)
+                    .border(0.5.dp, colors.border, RoundedCornerShape(16.dp)),
+            ) {
+                Canvas(
+                    Modifier.fillMaxSize().pointerInput(Unit) {
+                        awaitEachGesture {
+                            val captured = mutableListOf<Offset>()
+                            val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                            captured += down.position
+                            points = captured.toList()
+                            do {
+                                val event = awaitPointerEvent(PointerEventPass.Initial)
+                                val change = event.changes.firstOrNull() ?: continue
+                                if (change.pressed) {
+                                    captured += change.position
+                                    points = captured.toList()
+                                    change.consume()
+                                }
+                            } while (event.changes.any { it.pressed })
+                            pattern = encodeCustomGesture(captured.map { CustomGesturePoint(it.x, it.y) })
+                        }
+                    },
+                ) {
+                    points.zipWithNext().forEach { (start, end) ->
+                        drawLine(
+                            color = colors.accent,
+                            start = start,
+                            end = end,
+                            strokeWidth = 8f,
+                            cap = StrokeCap.Round,
+                        )
+                    }
+                }
+            }
+            Spacer(Modifier.height(10.dp))
+            Text(
+                stringResource(if (ready) R.string.gesture_recording_ready else R.string.gesture_too_short),
+                color = if (ready) colors.accent else colors.textSecondary,
+                fontSize = 12.sp,
+                lineHeight = 16.sp,
+            )
+            Spacer(Modifier.height(18.dp))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                if (currentPattern.isNotBlank()) {
+                    TextButton(onClick = onClear) { Text(stringResource(R.string.clear), color = colors.error) }
+                    Spacer(Modifier.width(8.dp))
+                }
+                TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel), color = colors.textSecondary) }
+                Spacer(Modifier.width(8.dp))
+                Button(
+                    onClick = { onSave(pattern) },
+                    enabled = ready,
+                    colors = ButtonDefaults.buttonColors(containerColor = colors.accent),
+                    shape = RoundedCornerShape(12.dp),
+                ) { Text(stringResource(R.string.save_gesture), color = Color.White) }
             }
         }
     }

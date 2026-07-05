@@ -92,6 +92,9 @@ data class LauncherSettings(
     val swipeUpAction: GestureAction = GestureAction.APP_DRAWER,
     val gestureAppSwipeUp: String = "",
     val appGestureShortcuts: Map<String, String> = emptyMap(),
+    val customGesturePattern: String = "",
+    val customGestureAction: GestureAction = GestureAction.NONE,
+    val gestureAppCustom: String = "",
     val categoryRules: List<AppCategoryRule> = emptyList(),
     val drawerGroups: List<DrawerGroup> = emptyList(),
 )
@@ -168,6 +171,9 @@ class LauncherPrefs(private val context: Context) {
         val SWIPE_UP_ACTION = stringPreferencesKey("swipe_up_action")
         val GESTURE_APP_SWIPE_UP = stringPreferencesKey("gesture_app_swipe_up")
         val APP_GESTURE_SHORTCUTS = stringPreferencesKey("app_gesture_shortcuts_v1")
+        val CUSTOM_GESTURE_PATTERN = stringPreferencesKey("custom_gesture_pattern")
+        val CUSTOM_GESTURE_ACTION = stringPreferencesKey("custom_gesture_action")
+        val GESTURE_APP_CUSTOM = stringPreferencesKey("gesture_app_custom")
         val CATEGORY_RULES = stringPreferencesKey("category_rules_v1")
         val DRAWER_GROUPS = stringPreferencesKey("drawer_groups_v1")
         val ICON_OVERRIDES = stringPreferencesKey("icon_overrides_v1")
@@ -241,6 +247,9 @@ class LauncherPrefs(private val context: Context) {
             swipeUpAction = p[SWIPE_UP_ACTION]?.let { runCatching { GestureAction.valueOf(it) }.getOrNull() } ?: GestureAction.APP_DRAWER,
             gestureAppSwipeUp = p[GESTURE_APP_SWIPE_UP] ?: "",
             appGestureShortcuts = p[APP_GESTURE_SHORTCUTS]?.let { parseAppGestureShortcuts(it) } ?: emptyMap(),
+            customGesturePattern = p[CUSTOM_GESTURE_PATTERN]?.let { sanitizeCustomGesturePattern(it) } ?: "",
+            customGestureAction = p[CUSTOM_GESTURE_ACTION]?.let { runCatching { GestureAction.valueOf(it) }.getOrNull() } ?: GestureAction.NONE,
+            gestureAppCustom = p[GESTURE_APP_CUSTOM] ?: "",
             categoryRules = p[CATEGORY_RULES]?.let { parseCategoryRules(it) } ?: emptyList(),
             drawerGroups = p[DRAWER_GROUPS]?.let { parseDrawerGroups(it) } ?: emptyList(),
         )
@@ -326,6 +335,9 @@ class LauncherPrefs(private val context: Context) {
                 p[SEARCH_ENGINE] = d.searchEngine.name
                 p[SWIPE_UP_ACTION] = d.swipeUpAction.name
                 p.remove(APP_GESTURE_SHORTCUTS)
+                p.remove(CUSTOM_GESTURE_PATTERN)
+                p[CUSTOM_GESTURE_ACTION] = d.customGestureAction.name
+                p[GESTURE_APP_CUSTOM] = ""
                 p[CATEGORY_RULES] = ""
                 p[DRAWER_GROUPS] = ""
                 p[ICON_OVERRIDES] = ""
@@ -607,6 +619,9 @@ class LauncherPrefs(private val context: Context) {
             put("favorite_apps", p[FAVORITE_APPS] ?: "")
             put("swipe_up_action", p[SWIPE_UP_ACTION] ?: "APP_DRAWER")
             put("app_gesture_shortcuts", p[APP_GESTURE_SHORTCUTS] ?: "")
+            put("custom_gesture_pattern", p[CUSTOM_GESTURE_PATTERN] ?: "")
+            put("custom_gesture_action", p[CUSTOM_GESTURE_ACTION] ?: "NONE")
+            put("gesture_app_custom", p[GESTURE_APP_CUSTOM] ?: "")
             if (options.includeSearchHistory) put("search_history", p[SEARCH_HISTORY] ?: "")
             if (options.includeAppUsage) {
                 put("suggestion_usage", p[SUGGESTION_USAGE] ?: "")
@@ -692,6 +707,12 @@ class LauncherPrefs(private val context: Context) {
                 val serialized = serializeAppGestureShortcuts(parseAppGestureShortcuts(j.optString("app_gesture_shortcuts")))
                 if (serialized == "{}") p.remove(APP_GESTURE_SHORTCUTS) else p[APP_GESTURE_SHORTCUTS] = serialized
             }
+            if (j.has("custom_gesture_pattern")) {
+                val pattern = sanitizeCustomGesturePattern(j.optString("custom_gesture_pattern"))
+                if (pattern.isBlank()) p.remove(CUSTOM_GESTURE_PATTERN) else p[CUSTOM_GESTURE_PATTERN] = pattern
+            }
+            j.optString("custom_gesture_action").takeIf { it.isNotBlank() && runCatching { GestureAction.valueOf(it) }.isSuccess }?.let { p[CUSTOM_GESTURE_ACTION] = it }
+            if (j.has("gesture_app_custom")) p[GESTURE_APP_CUSTOM] = j.optString("gesture_app_custom").takeIf { it.contains("/") } ?: ""
             if (j.has("search_history")) p[SEARCH_HISTORY] = j.optString("search_history")
             if (j.has("suggestion_usage")) p[SUGGESTION_USAGE] = j.optString("suggestion_usage")
             if (j.has("app_usage")) p[APP_USAGE] = j.optString("app_usage")

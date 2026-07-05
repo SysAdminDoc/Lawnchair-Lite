@@ -263,6 +263,16 @@
     <string name="pin_shortcut_to_dock">Pin shortcut to dock</string>
     <string name="bind_shortcut_to_swipe_up">Use shortcut on app swipe-up</string>
     <string name="clear_app_swipe_shortcut">Clear App Swipe Shortcut</string>
+    <string name="custom_draw_gesture">Custom Draw Gesture</string>
+    <string name="record_custom_gesture">Record Gesture</string>
+    <string name="gesture_recorded">Recorded</string>
+    <string name="gesture_not_recorded">Not recorded</string>
+    <string name="clear_custom_gesture">Clear Custom Gesture</string>
+    <string name="draw_gesture_title">Draw Gesture</string>
+    <string name="draw_gesture_hint">Draw a shape with one finger, then save it.</string>
+    <string name="save_gesture">Save Gesture</string>
+    <string name="gesture_recording_ready">Gesture ready</string>
+    <string name="gesture_too_short">Draw a longer shape with at least one turn</string>
     <string name="app_info">App Info</string>
     <string name="remove_from_source">Remove from %1$s</string>
     <string name="dock_source">Dock</string>
@@ -340,6 +350,8 @@
     <string name="shortcut_unavailable">Shortcut unavailable</string>
     <string name="app_swipe_shortcut_bound">App swipe shortcut set</string>
     <string name="app_swipe_shortcut_cleared">App swipe shortcut cleared</string>
+    <string name="custom_gesture_saved">Custom gesture saved</string>
+    <string name="custom_gesture_cleared">Custom gesture cleared</string>
     <string name="icon_override_applied">Icon override applied</string>
     <string name="icon_override_reset">Icon restored</string>
     <string name="recents_cleared">Recents cleared</string>

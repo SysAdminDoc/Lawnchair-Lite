@@ -38,8 +38,9 @@ Built on crash patterns identified across Lawnchair v14-v15 beta releases:
 - Drawer category rules by app-name regex, package prefix, or install source with backup/restore support
 - Configurable grid (3-8 cols, 3-10 rows), dock (3-7 icons), icon sizes (S/M/L/XL)
 - Optional dock labels with opacity control
-- 9 gesture actions: double-tap, triple-tap, swipe-down, swipe-up, pinch, dock-tap, dock-swipe
+- 9 gesture actions: double-tap, triple-tap, swipe-down, swipe-up, pinch, dock-tap, dock-swipe, custom draw
 - Gesture app binding: assign any gesture to launch a specific app (with icon preview in settings)
+- Custom draw gesture recorder: trace a saved shape on the home screen to run a bound action
 - Smart fuzzy search with relevance scoring (exact > starts > word > contains > pkg > subsequence)
 - Inline calculator and unit converter in drawer search
 - Time-aware app suggestions (morning/afternoon/evening/night usage patterns)
@@ -106,6 +107,7 @@ $env:ANDROID_HOME = "$HOME\AppData\Local\Android\Sdk"
 - **Widget picker previews** - The widget picker shows provider preview images when available, icon/placeholder fallbacks when unavailable, and confirms widget removal before deleting host IDs
 - **Shortcut icon overrides** - App shortcuts and pinned web/PWA-style entries can use manual source-app icon overrides, persist through backup/restore, and fall back safely when shortcut icon resources are missing
 - **Per-app swipe shortcuts** - App long-press shortcut rows can bind a shortcut to that app icon's swipe-up gesture, with backup persistence
+- **Custom draw gesture** - Settings can record a freeform home-screen shape and bind it to any existing gesture action, with backup persistence
 - **Nova backup migration** - Restore accepts Nova Launcher ZIP backups, converts compatible apps/folders/dock items, and previews unsupported items before import
 - **Drawer background blur** - Android 12+ RenderEffect blur runs behind the app drawer with safe fallback on older Android versions
 - **Per-page wallpaper dim** - Home pages can override the default wallpaper dim and interpolate between page-specific values while swiping

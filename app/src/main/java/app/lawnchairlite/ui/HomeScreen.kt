@@ -408,6 +408,23 @@ fun HomeScreen(vm: LauncherViewModel) {
                         }
                     }
                 }
+                // Freeform recorded gesture recognition. Straight swipes are ignored by the recognizer.
+                .pointerInput(isDragging, settingsOpen, settings.customGesturePattern, settings.customGestureAction) {
+                    if (!isDragging && !settingsOpen && settings.customGesturePattern.isNotBlank() && settings.customGestureAction != GestureAction.NONE) {
+                        awaitEachGesture {
+                            val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Final)
+                            val points = mutableListOf(CustomGesturePoint(down.position.x, down.position.y))
+                            do {
+                                val event = awaitPointerEvent(PointerEventPass.Final)
+                                val change = event.changes.firstOrNull() ?: continue
+                                if (change.pressed) {
+                                    points += CustomGesturePoint(change.position.x, change.position.y)
+                                }
+                            } while (event.changes.any { it.pressed })
+                            vm.executeCustomGesture(points)
+                        }
+                    }
+                }
         ) {
             Column(Modifier.fillMaxSize().then(if (!settings.hideStatusBar) Modifier.statusBarsPadding() else Modifier)) {
                 // Drop zones (visible when dragging)
