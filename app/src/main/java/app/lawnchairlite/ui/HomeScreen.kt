@@ -295,7 +295,17 @@ fun HomeScreen(vm: LauncherViewModel) {
 
     Box(Modifier.fillMaxSize()) {
         // Wallpaper dim overlay
-        val wallpaperDim = settings.wallpaperDim
+        fun dimForPage(page: Int): Int = settings.pageWallpaperDims[page] ?: settings.wallpaperDim
+        val pageOffsetFraction = pagerState.currentPageOffsetFraction.coerceIn(-1f, 1f)
+        val maxPageIndex = (numPages - 1).coerceAtLeast(0)
+        val targetPage = (currentPage + when {
+            pageOffsetFraction > 0f -> 1
+            pageOffsetFraction < 0f -> -1
+            else -> 0
+        }).coerceIn(0, maxPageIndex)
+        val currentPageDim = dimForPage(currentPage.coerceIn(0, maxPageIndex))
+        val targetPageDim = dimForPage(targetPage)
+        val wallpaperDim = (currentPageDim + (targetPageDim - currentPageDim) * kotlin.math.abs(pageOffsetFraction)).toInt()
         if (wallpaperDim > 0) {
             val parallaxOffset = if (settings.wallpaperParallax && numPages > 1) {
                 val pageOffset = pagerState.currentPage + pagerState.currentPageOffsetFraction

@@ -87,6 +87,20 @@ class BackupImportPreviewTest {
     }
 
     @Test
+    fun pageWallpaperDimsAreRecognizedAsAppearanceBackupSection() {
+        val preview = BackupImportPreview.fromFields(
+            mapOf(
+                "schema" to 1,
+                "page_wallpaper_dims" to "0=15|1=45",
+            ),
+        )
+
+        assertTrue(preview.canImport)
+        assertEquals(listOf("Appearance"), preview.sections)
+        assertEquals(emptyList<String>(), preview.unknownFields)
+    }
+
+    @Test
     fun migrationMetadataIsRecognizedWithoutUnknownFields() {
         val preview = BackupImportPreview.fromFields(
             mapOf(

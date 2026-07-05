@@ -48,7 +48,7 @@ Built on crash patterns identified across Lawnchair v14-v15 beta releases:
 - Contact search with permission chip, web search fallback
 - Notification badges (count/dot/hidden), app shortcuts via LauncherApps API, shortcut/PWA icon overrides
 - 5 page transitions (Slide, Cube, Stack, Fade, Depth, Carousel)
-- Wallpaper dimming (0-80%) with parallax effect
+- Wallpaper dimming (0-80%) with parallax effect and per-page overrides
 - Backup/restore layout as JSON with privacy toggles, restore preview, and Nova backup migration import
 - Uninstall confirmation dialog (all paths: D&D, home menu, drawer menu)
 - Reset all settings with confirmation dialog
@@ -107,6 +107,7 @@ $env:ANDROID_HOME = "$HOME\AppData\Local\Android\Sdk"
 - **Shortcut icon overrides** - App shortcuts and pinned web/PWA-style entries can use manual source-app icon overrides, persist through backup/restore, and fall back safely when shortcut icon resources are missing
 - **Nova backup migration** - Restore accepts Nova Launcher ZIP backups, converts compatible apps/folders/dock items, and previews unsupported items before import
 - **Drawer background blur** - Android 12+ RenderEffect blur runs behind the app drawer with safe fallback on older Android versions
+- **Per-page wallpaper dim** - Home pages can override the default wallpaper dim and interpolate between page-specific values while swiping
 
 ### v2.26.0
 

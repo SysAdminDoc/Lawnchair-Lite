@@ -84,6 +84,9 @@
     <string name="change_wallpaper">Change Wallpaper</string>
     <string name="system_picker">System Picker</string>
     <string name="wallpaper_dim_format">Wallpaper Dim: %1$d%%</string>
+    <string name="page_wallpaper_dim_overrides">Per-page dim</string>
+    <string name="page_wallpaper_dim_format">Page %1$d Dim: %2$d%%</string>
+    <string name="page_dim_uses_default">Default</string>
     <string name="accent_color">Accent Color</string>
     <string name="default_accent">Default Accent</string>
     <string name="icons_labels">Icons &amp; Labels</string>

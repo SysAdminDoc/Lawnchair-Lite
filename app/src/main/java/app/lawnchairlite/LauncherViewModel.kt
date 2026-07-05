@@ -826,6 +826,14 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
             when { w.page == pageIndex -> null; w.page > pageIndex -> w.copy(page = w.page - 1); else -> w }
         }
         _widgets.value = updated; prefs.saveWidgets(updated)
+        val shiftedDims = settings.value.pageWallpaperDims.mapNotNull { (page, dim) ->
+            when {
+                page == pageIndex -> null
+                page > pageIndex -> page - 1 to dim
+                else -> page to dim
+            }
+        }.toMap()
+        prefs.savePageWallpaperDims(shiftedDims)
         toast(R.string.page_removed)
     }}
 
@@ -1235,6 +1243,22 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     fun setDoubleTapAction(a: GestureAction) = pref(LauncherPrefs.DOUBLE_TAP_ACTION, a.name)
     fun setSwipeDownAction(a: GestureAction) = pref(LauncherPrefs.SWIPE_DOWN_ACTION, a.name)
     fun setWallpaperDim(v: Int) = pref(LauncherPrefs.WALLPAPER_DIM, v.coerceIn(0, 100))
+    fun setPageWallpaperDim(pageIndex: Int, v: Int) {
+        if (pageIndex < 0) return
+        viewModelScope.launch {
+            val dims = settings.value.pageWallpaperDims.toMutableMap()
+            dims[pageIndex] = v.coerceIn(0, 80)
+            prefs.savePageWallpaperDims(dims)
+        }
+    }
+    fun resetPageWallpaperDim(pageIndex: Int) {
+        if (pageIndex < 0) return
+        viewModelScope.launch {
+            val dims = settings.value.pageWallpaperDims.toMutableMap()
+            dims.remove(pageIndex)
+            prefs.savePageWallpaperDims(dims)
+        }
+    }
     fun setShowNotifBadges(v: Boolean) = pref(LauncherPrefs.SHOW_NOTIF_BADGES, v)
     fun setDrawerSort(s: DrawerSort) = pref(LauncherPrefs.DRAWER_SORT, s.name)
     fun setLabelStyle(s: LabelStyle) = pref(LauncherPrefs.LABEL_STYLE, s.name)

@@ -61,6 +61,7 @@ fun SettingsPanel(
     val restoreFailedMessage = stringResource(R.string.restore_failed)
     val hiddenApps by vm.hiddenApps.collectAsState()
     val allAppsRaw by vm.allApps.collectAsState()
+    val homeGrid by vm.homeGrid.collectAsState()
     val availablePacks by vm.availablePacks.collectAsState()
     val iconPackLoading by vm.iconPackLoading.collectAsState()
     var includeBackupSearchHistory by remember { mutableStateOf(false) }
@@ -131,6 +132,8 @@ fun SettingsPanel(
     val showGestures = sectionMatches(gesturesKeywords)
     val showFeatures = sectionMatches(featuresKeywords)
     val showAdvanced = sectionMatches(advancedKeywords)
+    val pageSize = (settings.gridColumns * settings.gridRows).coerceAtLeast(1)
+    val pageCount = ((homeGrid.size + pageSize - 1) / pageSize).coerceAtLeast(1)
     // Auto-expand matching sections when searching
     val searching = sq.isNotBlank()
 
@@ -252,6 +255,36 @@ fun SettingsPanel(
                             valueRange = 0f..80f, steps = 15,
                             colors = SliderDefaults.colors(thumbColor = colors.accent, activeTrackColor = colors.accent, inactiveTrackColor = colors.card),
                         )
+                        if (pageCount > 1) {
+                            Spacer(Modifier.height(10.dp))
+                            Lbl(stringResource(R.string.page_wallpaper_dim_overrides), colors)
+                            (0 until pageCount).forEach { page ->
+                                val hasOverride = settings.pageWallpaperDims.containsKey(page)
+                                val pageDim = settings.pageWallpaperDims[page] ?: settings.wallpaperDim
+                                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                                    Text(stringResource(R.string.page_wallpaper_dim_format, page + 1, pageDim), color = colors.text, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                                    Spacer(Modifier.weight(1f))
+                                    Text(
+                                        stringResource(if (hasOverride) R.string.reset else R.string.page_dim_uses_default),
+                                        color = if (hasOverride) colors.error else colors.textSecondary,
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(8.dp))
+                                            .background((if (hasOverride) colors.error else colors.card).copy(alpha = if (hasOverride) 0.1f else 0.65f))
+                                            .then(if (hasOverride) Modifier.clickable { vm.resetPageWallpaperDim(page) } else Modifier)
+                                            .padding(horizontal = 8.dp, vertical = 4.dp),
+                                    )
+                                }
+                                Slider(
+                                    value = pageDim.toFloat(),
+                                    onValueChange = { vm.setPageWallpaperDim(page, it.toInt()) },
+                                    valueRange = 0f..80f,
+                                    steps = 15,
+                                    colors = SliderDefaults.colors(thumbColor = colors.accent, activeTrackColor = colors.accent, inactiveTrackColor = colors.card),
+                                )
+                            }
+                        }
 
                         // Accent Color Override
                         Lbl(stringResource(R.string.accent_color), colors)

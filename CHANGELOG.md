@@ -23,6 +23,7 @@ All notable changes to Lawnchair-Lite will be documented in this file.
 - Added Nova Launcher backup migration import with previewed unsupported items before restore.
 - Added Fastlane/F-Droid metadata plus a local libre audit gate for permission, backup-rule, repository, and proprietary-SDK checks.
 - Added Android 12+ RenderEffect blur behind the app drawer with safe fallback on older devices.
+- Added per-page wallpaper dim overrides with backup persistence and page-removal shifting.
 - Updated the Android build lane to Gradle 9.4.1, AGP 9.2.1 built-in Kotlin, Compose compiler 2.3.21, Compose BOM 2026.06.01, compile SDK 37, target SDK 36, and current stable AndroidX libraries while removing Accompanist DrawablePainter.
 - Added backup export metadata and unit tests for privacy defaults.
 - Updated release version metadata to v2.27.0.

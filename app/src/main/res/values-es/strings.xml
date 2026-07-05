@@ -16,6 +16,9 @@
     <string name="delete">Eliminar</string>
     <string name="set_icon">Cambiar icono</string>
     <string name="reset_icon">Restaurar icono</string>
+    <string name="page_wallpaper_dim_overrides">Atenuacion por pagina</string>
+    <string name="page_wallpaper_dim_format">Pagina %1$d: %2$d%%</string>
+    <string name="page_dim_uses_default">Predeterminado</string>
     <string name="choose_icon_source">Elegir origen del icono</string>
     <string name="pin_shortcut_to_home">Fijar atajo al inicio</string>
     <string name="pin_shortcut_to_dock">Fijar atajo al dock</string>

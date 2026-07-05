@@ -47,6 +47,7 @@ data class LauncherSettings(
     val swipeDownAction: GestureAction = GestureAction.NOTIFICATION_SHADE,
     val autoPlaceNew: Boolean = true,
     val wallpaperDim: Int = 0, // 0-100
+    val pageWallpaperDims: Map<Int, Int> = emptyMap(),
     val showNotifBadges: Boolean = true,
     val drawerSort: DrawerSort = DrawerSort.NAME,
     val labelStyle: LabelStyle = LabelStyle.SHOWN,
@@ -116,6 +117,7 @@ class LauncherPrefs(private val context: Context) {
         val CUSTOM_LABELS = stringPreferencesKey("custom_labels")
         val AUTO_PLACE_NEW = booleanPreferencesKey("auto_place_new")
         val WALLPAPER_DIM = intPreferencesKey("wallpaper_dim")
+        val PAGE_WALLPAPER_DIMS = stringPreferencesKey("page_wallpaper_dims_v1")
         val SHOW_NOTIF_BADGES = booleanPreferencesKey("show_notif_badges")
         val APP_USAGE = stringPreferencesKey("app_usage")
         val DRAWER_SORT = stringPreferencesKey("drawer_sort")
@@ -192,6 +194,7 @@ class LauncherPrefs(private val context: Context) {
             swipeDownAction = p[SWIPE_DOWN_ACTION]?.let { runCatching { GestureAction.valueOf(it) }.getOrNull() } ?: GestureAction.NOTIFICATION_SHADE,
             autoPlaceNew = p[AUTO_PLACE_NEW] ?: true,
             wallpaperDim = (p[WALLPAPER_DIM] ?: 0).coerceIn(0, 100),
+            pageWallpaperDims = p[PAGE_WALLPAPER_DIMS]?.let { parsePageWallpaperDims(it) } ?: emptyMap(),
             showNotifBadges = p[SHOW_NOTIF_BADGES] ?: true,
             drawerSort = p[DRAWER_SORT]?.let { runCatching { DrawerSort.valueOf(it) }.getOrNull() } ?: DrawerSort.NAME,
             labelStyle = p[LABEL_STYLE]?.let { runCatching { LabelStyle.valueOf(it) }.getOrNull() } ?: LabelStyle.SHOWN,
@@ -299,6 +302,7 @@ class LauncherPrefs(private val context: Context) {
                 p[ICON_PACK] = ""; p[GRID_COLS] = d.gridColumns; p[GRID_ROWS] = d.gridRows; p[DOCK_COUNT] = d.dockCount
                 p[SHOW_CLOCK] = d.showClock; p[SHOW_DOCK_SEARCH] = d.showDockSearch; p[AUTO_PLACE_NEW] = d.autoPlaceNew
                 p[WALLPAPER_DIM] = d.wallpaperDim; p[SHOW_NOTIF_BADGES] = d.showNotifBadges
+                p.remove(PAGE_WALLPAPER_DIMS)
                 p[DOUBLE_TAP_ACTION] = d.doubleTapAction.name; p[SWIPE_DOWN_ACTION] = d.swipeDownAction.name
                 p[DRAWER_SORT] = d.drawerSort.name; p[LABEL_STYLE] = d.labelStyle.name; p[THEMED_ICONS] = d.themedIcons
                 p[PAGE_TRANSITION] = d.pageTransition.name; p[BADGE_STYLE] = d.badgeStyle.name
@@ -399,6 +403,15 @@ class LauncherPrefs(private val context: Context) {
         runCatching {
             context.dataStore.edit { it[DRAWER_GROUPS] = serializeDrawerGroups(groups) }
         }.onFailure { Log.e(TAG, "Failed to save drawer groups", it) }
+    }
+
+    suspend fun savePageWallpaperDims(dims: Map<Int, Int>) {
+        runCatching {
+            context.dataStore.edit { prefs ->
+                val serialized = serializePageWallpaperDims(dims)
+                if (serialized.isBlank()) prefs.remove(PAGE_WALLPAPER_DIMS) else prefs[PAGE_WALLPAPER_DIMS] = serialized
+            }
+        }.onFailure { Log.e(TAG, "Failed to save page wallpaper dims", it) }
     }
 
     private fun serializeCategoryRules(rules: List<AppCategoryRule>): String = JSONArray().apply {
@@ -538,6 +551,7 @@ class LauncherPrefs(private val context: Context) {
             put("double_tap", p[DOUBLE_TAP_ACTION] ?: "LOCK_SCREEN"); put("swipe_down", p[SWIPE_DOWN_ACTION] ?: "NOTIFICATION_SHADE")
             put("auto_place_new", p[AUTO_PLACE_NEW] ?: true)
             put("wallpaper_dim", p[WALLPAPER_DIM] ?: 0)
+            put("page_wallpaper_dims", p[PAGE_WALLPAPER_DIMS] ?: "")
             put("show_notif_badges", p[SHOW_NOTIF_BADGES] ?: true)
             put("drawer_sort", p[DRAWER_SORT] ?: "NAME")
             put("label_style", p[LABEL_STYLE] ?: "SHOWN")
@@ -618,6 +632,7 @@ class LauncherPrefs(private val context: Context) {
             j.optString("swipe_down").takeIf { it.isNotBlank() && runCatching { GestureAction.valueOf(it) }.isSuccess }?.let { p[SWIPE_DOWN_ACTION] = it }
             if (j.has("auto_place_new")) p[AUTO_PLACE_NEW] = j.getBoolean("auto_place_new")
             if (j.has("wallpaper_dim")) p[WALLPAPER_DIM] = j.getInt("wallpaper_dim").coerceIn(0, 100)
+            if (j.has("page_wallpaper_dims")) p[PAGE_WALLPAPER_DIMS] = serializePageWallpaperDims(parsePageWallpaperDims(j.optString("page_wallpaper_dims")))
             if (j.has("show_notif_badges")) p[SHOW_NOTIF_BADGES] = j.getBoolean("show_notif_badges")
             j.optString("drawer_sort").takeIf { it.isNotBlank() && runCatching { DrawerSort.valueOf(it) }.isSuccess }?.let { p[DRAWER_SORT] = it }
             j.optString("label_style").takeIf { it.isNotBlank() && runCatching { LabelStyle.valueOf(it) }.isSuccess }?.let { p[LABEL_STYLE] = it }
@@ -735,3 +750,21 @@ internal fun parseIconOverrides(raw: String): Map<String, String> = runCatching 
         obj.keys().asSequence().associateWith { key -> obj.optString(key) },
     )
 }.getOrDefault(emptyMap())
+
+internal fun serializePageWallpaperDims(dims: Map<Int, Int>): String =
+    dims.toSortedMap()
+        .filterKeys { it in 0..49 }
+        .entries
+        .joinToString("|") { (page, dim) -> "$page=${dim.coerceIn(0, 80)}" }
+
+internal fun parsePageWallpaperDims(raw: String): Map<Int, Int> {
+    if (raw.isBlank()) return emptyMap()
+    return raw.split("|").mapNotNull { entry ->
+        val eq = entry.indexOf('=')
+        if (eq <= 0 || eq >= entry.length - 1) return@mapNotNull null
+        val page = entry.substring(0, eq).toIntOrNull() ?: return@mapNotNull null
+        if (page !in 0..49) return@mapNotNull null
+        val dim = entry.substring(eq + 1).toIntOrNull() ?: return@mapNotNull null
+        page to dim.coerceIn(0, 80)
+    }.toMap()
+}
