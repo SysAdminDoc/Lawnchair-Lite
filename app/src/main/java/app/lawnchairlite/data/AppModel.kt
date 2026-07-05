@@ -229,6 +229,8 @@ data class WidgetInfo(
     val spanX: Int = 1,
     val spanY: Int = 1,
     val provider: String = "",
+    val stackId: String = "",
+    val stackOrder: Int = 0,
 )
 
 enum class DragSource { HOME, DOCK, DRAWER }

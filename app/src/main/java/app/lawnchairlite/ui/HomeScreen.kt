@@ -22,6 +22,8 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
@@ -601,41 +603,116 @@ fun HomeScreen(vm: LauncherViewModel) {
                             }
                         }
                         // Widget overlays on this page
-                        val pageWidgets = widgetInfos.filter { it.page == page }
+                        val pageWidgetGroups = widgetInfos
+                            .filter { it.page == page }
+                            .groupBy { it.stackId.ifBlank { "single:${it.appWidgetId}" } }
                         val context = androidx.compose.ui.platform.LocalContext.current
-                        pageWidgets.forEach { wi ->
-                            val cellW = 1f / cols
-                            val cellH = 1f / rows
-                            val hostView = remember(wi.appWidgetId) {
-                                try {
-                                    val info = vm.widgetManager.getAppWidgetInfo(wi.appWidgetId)
-                                    if (info != null) {
-                                        vm.widgetHost.createView(context, wi.appWidgetId, info)
-                                    } else {
-                                        // Widget provider uninstalled — clean up stale entry
-                                        vm.removeWidget(wi.appWidgetId)
-                                        null
-                                    }
-                                } catch (e: Exception) {
-                                    android.util.Log.w("HomeScreen", "Widget create failed: ${wi.appWidgetId}", e)
-                                    null
-                                }
-                            }
-                            if (hostView != null) {
+                        pageWidgetGroups.forEach { (groupKey, groupWidgets) ->
+                            key(groupKey) {
+                                val stackWidgets = groupWidgets.sortedWith(compareBy<WidgetInfo> { it.stackOrder }.thenBy { it.appWidgetId })
+                                val anchor = stackWidgets.first()
+                                val widgetPagerState = rememberPagerState(pageCount = { stackWidgets.size })
+                                val activeWidget = stackWidgets.getOrNull(widgetPagerState.currentPage) ?: anchor
+                                val cellW = 1f / cols
+                                val cellH = 1f / rows
                                 BoxWithConstraints(
                                     Modifier.fillMaxSize().graphicsLayer(clip = true)
                                 ) {
-                                    WidgetHostViewComposable(
-                                        hostView = hostView,
-                                        modifier = Modifier
-                                            .width(maxWidth * cellW * wi.spanX)
-                                            .height(maxHeight * cellH * wi.spanY)
+                                    Box(
+                                        Modifier
+                                            .width(maxWidth * cellW * anchor.spanX)
+                                            .height(maxHeight * cellH * anchor.spanY)
                                             .absoluteOffset(
-                                                x = maxWidth * wi.col * cellW,
-                                                y = maxHeight * wi.row * cellH,
-                                            )
-                                            .then(if (editMode) Modifier.clickable { vm.requestRemoveWidget(wi.appWidgetId) } else Modifier),
-                                    )
+                                                x = maxWidth * anchor.col * cellW,
+                                                y = maxHeight * anchor.row * cellH,
+                                            ),
+                                    ) {
+                                        HorizontalPager(
+                                            state = widgetPagerState,
+                                            userScrollEnabled = stackWidgets.size > 1,
+                                            modifier = Modifier.fillMaxSize(),
+                                        ) { stackPage ->
+                                            val wi = stackWidgets[stackPage]
+                                            val hostView = remember(wi.appWidgetId) {
+                                                try {
+                                                    val info = vm.widgetManager.getAppWidgetInfo(wi.appWidgetId)
+                                                    if (info != null) {
+                                                        vm.widgetHost.createView(context, wi.appWidgetId, info)
+                                                    } else {
+                                                        vm.removeWidget(wi.appWidgetId)
+                                                        null
+                                                    }
+                                                } catch (e: Exception) {
+                                                    android.util.Log.w("HomeScreen", "Widget create failed: ${wi.appWidgetId}", e)
+                                                    null
+                                                }
+                                            }
+                                            WidgetHostViewComposable(hostView = hostView, modifier = Modifier.fillMaxSize())
+                                        }
+                                        if (stackWidgets.size > 1) {
+                                            Row(
+                                                Modifier
+                                                    .align(Alignment.BottomCenter)
+                                                    .padding(bottom = 8.dp)
+                                                    .clip(RoundedCornerShape(50))
+                                                    .background(colors.surface.copy(alpha = 0.72f))
+                                                    .padding(horizontal = 7.dp, vertical = 4.dp),
+                                                horizontalArrangement = Arrangement.spacedBy(5.dp),
+                                            ) {
+                                                stackWidgets.forEachIndexed { index, _ ->
+                                                    Box(
+                                                        Modifier
+                                                            .size(if (widgetPagerState.currentPage == index) 7.dp else 5.dp)
+                                                            .clip(RoundedCornerShape(50))
+                                                            .background(
+                                                                if (widgetPagerState.currentPage == index) {
+                                                                    colors.accent
+                                                                } else {
+                                                                    colors.textSecondary.copy(alpha = 0.55f)
+                                                                },
+                                                            ),
+                                                    )
+                                                }
+                                            }
+                                        }
+                                        if (editMode) {
+                                            Row(
+                                                Modifier
+                                                    .align(Alignment.TopEnd)
+                                                    .padding(6.dp),
+                                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                            ) {
+                                                IconButton(
+                                                    onClick = { vm.openWidgetPickerForStack(anchor.appWidgetId) },
+                                                    modifier = Modifier
+                                                        .size(34.dp)
+                                                        .clip(RoundedCornerShape(12.dp))
+                                                        .background(colors.surface.copy(alpha = 0.86f)),
+                                                ) {
+                                                    Icon(
+                                                        Icons.Default.Add,
+                                                        stringResource(R.string.add_to_widget_stack),
+                                                        tint = colors.accent,
+                                                        modifier = Modifier.size(18.dp),
+                                                    )
+                                                }
+                                                IconButton(
+                                                    onClick = { vm.requestRemoveWidget(activeWidget.appWidgetId) },
+                                                    modifier = Modifier
+                                                        .size(34.dp)
+                                                        .clip(RoundedCornerShape(12.dp))
+                                                        .background(colors.surface.copy(alpha = 0.86f)),
+                                                ) {
+                                                    Icon(
+                                                        Icons.Default.Delete,
+                                                        stringResource(R.string.remove_widget),
+                                                        tint = colors.error,
+                                                        modifier = Modifier.size(18.dp),
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }

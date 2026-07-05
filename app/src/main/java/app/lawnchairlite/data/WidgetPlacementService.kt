@@ -10,6 +10,7 @@ data class PendingWidgetPlacement(
     val col: Int,
     val spanX: Int,
     val spanY: Int,
+    val stackTargetWidgetId: Int = 0,
 )
 
 enum class WidgetSetupStep {
@@ -67,4 +68,10 @@ object WidgetPlacementService {
             pending.spanY,
             pending.providerInfo.provider.flattenToString(),
         )
+
+    fun stackIdForTarget(target: WidgetInfo): String =
+        target.stackId.ifBlank { "stack:${target.appWidgetId}" }
+
+    fun nextStackOrder(widgets: List<WidgetInfo>, stackId: String): Int =
+        (widgets.filter { it.stackId == stackId }.maxOfOrNull { it.stackOrder } ?: 0).plus(1).coerceIn(1, 99)
 }

@@ -19,6 +19,7 @@ All notable changes to Lawnchair-Lite will be documented in this file.
 - Improved app drawer search with diacritic folding, common transliteration, initials, aliases, and typo-tolerant matching.
 - Added drawer groups/folders that filter All/Recent/Favorites/Work tabs by selected apps or package-prefix rules and persist through launcher backups.
 - Added widget picker preview imagery with icon/placeholder fallbacks, unavailable-preview copy, and confirmation before widget host IDs are removed.
+- Added widget stacks so edit-mode widgets can add compatible widgets into the same grid slot, swipe between stack pages, and remove the active stack item without clearing the rest.
 - Added shortcut/PWA icon overrides with pinned shortcut cells, live LauncherApps shortcut pinning, backup persistence, and safe source-app icon fallback.
 - Added Nova Launcher backup migration import with previewed unsupported items before restore.
 - Added Fastlane/F-Droid metadata plus a local libre audit gate for permission, backup-rule, repository, and proprietary-SDK checks.

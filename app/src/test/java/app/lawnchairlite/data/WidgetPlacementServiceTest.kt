@@ -34,6 +34,34 @@ class WidgetPlacementServiceTest {
     }
 
     @Test
+    fun createsStableStackIdsAndNextOrder() {
+        val target = WidgetInfo(
+            appWidgetId = 7,
+            page = 0,
+            row = 1,
+            col = 2,
+            spanX = 2,
+            spanY = 1,
+        )
+        val widgets = listOf(
+            target.copy(stackId = "stack:7", stackOrder = 0),
+            WidgetInfo(
+                appWidgetId = 8,
+                page = 0,
+                row = 1,
+                col = 2,
+                spanX = 2,
+                spanY = 1,
+                stackId = "stack:7",
+                stackOrder = 1,
+            ),
+        )
+
+        assertEquals("stack:7", WidgetPlacementService.stackIdForTarget(target))
+        assertEquals(2, WidgetPlacementService.nextStackOrder(widgets, "stack:7"))
+    }
+
+    @Test
     fun delegatesSpanPlanningThroughLauncherSettings() {
         val grid = listOf<GridCell?>(
             GridCell.App("one"),

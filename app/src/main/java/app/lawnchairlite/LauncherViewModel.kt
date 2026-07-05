@@ -103,6 +103,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     val widgets: StateFlow<List<WidgetInfo>> = _widgets.asStateFlow()
     private val _widgetPickerOpen = MutableStateFlow(false)
     val widgetPickerOpen: StateFlow<Boolean> = _widgetPickerOpen.asStateFlow()
+    private val _widgetStackTargetId = MutableStateFlow<Int?>(null)
     private val _pendingWidgetPlacement = MutableStateFlow<PendingWidgetPlacement?>(null)
     val pendingWidgetPlacement: StateFlow<PendingWidgetPlacement?> = _pendingWidgetPlacement.asStateFlow()
     data class WidgetRemoveConfirm(val appWidgetId: Int, val label: String)
@@ -1834,8 +1835,12 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     fun startWidgetHost() { runCatching { widgetHost.startListening() }.onFailure { Log.e(TAG, "startWidgetHost failed", it) } }
     fun stopWidgetHost() { runCatching { widgetHost.stopListening() }.onFailure { Log.e(TAG, "stopWidgetHost failed", it) } }
 
-    fun openWidgetPicker() { _widgetPickerOpen.value = true }
-    fun closeWidgetPicker() { _widgetPickerOpen.value = false }
+    fun openWidgetPicker() { _widgetStackTargetId.value = null; _widgetPickerOpen.value = true }
+    fun openWidgetPickerForStack(appWidgetId: Int) {
+        _widgetStackTargetId.value = appWidgetId
+        _widgetPickerOpen.value = true
+    }
+    fun closeWidgetPicker() { _widgetPickerOpen.value = false; _widgetStackTargetId.value = null }
 
     fun getAvailableWidgets(): List<AppWidgetProviderInfo> = runCatching {
         widgetManager.installedProviders.sortedBy { it.loadLabel(ctx.packageManager).toString().lowercase() }
@@ -1847,6 +1852,31 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
             Log.e(TAG, "allocateWidgetId failed", it)
             toast(R.string.couldnt_start_widget_setup)
             return null
+        }
+        val stackTargetId = _widgetStackTargetId.value
+        val stackTarget = stackTargetId?.let { targetId -> _widgets.value.find { it.appWidgetId == targetId } }
+        if (stackTargetId != null && stackTarget == null) {
+            _widgetStackTargetId.value = null
+            runCatching { widgetHost.deleteAppWidgetId(widgetId) }
+            toast(R.string.couldnt_start_widget_setup)
+            return null
+        }
+        if (stackTarget != null) {
+            if (spanX > stackTarget.spanX || spanY > stackTarget.spanY) {
+                runCatching { widgetHost.deleteAppWidgetId(widgetId) }
+                toast(R.string.widget_too_large_for_stack)
+                return null
+            }
+            return PendingWidgetPlacement(
+                appWidgetId = widgetId,
+                providerInfo = providerInfo,
+                page = stackTarget.page,
+                row = stackTarget.row,
+                col = stackTarget.col,
+                spanX = stackTarget.spanX,
+                spanY = stackTarget.spanY,
+                stackTargetWidgetId = stackTarget.appWidgetId,
+            ).also { _pendingWidgetPlacement.value = it }
         }
         val span = findFirstEmptySpan(page, spanX, spanY)
         if (span == null) {
@@ -1892,12 +1922,13 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     fun completePendingWidget() {
         val pending = _pendingWidgetPlacement.value ?: return
         _pendingWidgetPlacement.value = null
-        addWidget(WidgetPlacementService.createWidgetInfo(pending))
+        addWidget(WidgetPlacementService.createWidgetInfo(pending), pending.stackTargetWidgetId)
     }
 
     fun cancelPendingWidget(@StringRes messageRes: Int = R.string.widget_setup_canceled) {
         val pending = _pendingWidgetPlacement.value ?: return
         _pendingWidgetPlacement.value = null
+        _widgetStackTargetId.value = null
         runCatching { widgetHost.deleteAppWidgetId(pending.appWidgetId) }
             .onFailure { Log.w(TAG, "delete pending widget id failed: ${pending.appWidgetId}", it) }
         toast(messageRes)
@@ -1906,34 +1937,75 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     private fun discardPendingWidget() {
         val pending = _pendingWidgetPlacement.value ?: return
         _pendingWidgetPlacement.value = null
+        _widgetStackTargetId.value = null
         runCatching { widgetHost.deleteAppWidgetId(pending.appWidgetId) }
             .onFailure { Log.w(TAG, "discard pending widget id failed: ${pending.appWidgetId}", it) }
     }
 
-    fun addWidget(info: WidgetInfo) { viewModelScope.launch {
-        val list = _widgets.value + info
-        _widgets.value = list; prefs.saveWidgets(list)
-        // Mark grid cells as occupied
-        val ps = pageSize(); val grid = padGrid(_homeGrid.value, ps).toMutableList()
-        val pageStart = info.page * ps
-        for (r in info.row until (info.row + info.spanY)) {
-            for (c in info.col until (info.col + info.spanX)) {
-                val idx = pageStart + r * settings.value.gridColumns + c
-                if (idx in grid.indices && grid[idx] == null) grid[idx] = GridCell.Widget(info.appWidgetId)
-            }
+    fun addWidget(info: WidgetInfo, stackTargetWidgetId: Int = 0) { viewModelScope.launch {
+        var existing = _widgets.value
+        var widgetInfo = info
+        val stackTarget = stackTargetWidgetId.takeIf { it != 0 }?.let { targetId -> existing.find { it.appWidgetId == targetId } }
+        if (stackTargetWidgetId != 0 && stackTarget == null) {
+            runCatching { widgetHost.deleteAppWidgetId(info.appWidgetId) }
+            _widgetPickerOpen.value = false
+            _widgetStackTargetId.value = null
+            toast(R.string.couldnt_start_widget_setup)
+            return@launch
         }
-        _homeGrid.value = grid; prefs.saveHome(grid)
+        if (stackTarget != null) {
+            val stackId = WidgetPlacementService.stackIdForTarget(stackTarget)
+            existing = existing.map { widget ->
+                if (widget.appWidgetId == stackTarget.appWidgetId || widget.stackId == stackId) {
+                    widget.copy(stackId = stackId)
+                } else {
+                    widget
+                }
+            }
+            widgetInfo = info.copy(
+                page = stackTarget.page,
+                row = stackTarget.row,
+                col = stackTarget.col,
+                spanX = stackTarget.spanX,
+                spanY = stackTarget.spanY,
+                stackId = stackId,
+                stackOrder = WidgetPlacementService.nextStackOrder(existing, stackId),
+            )
+        }
+        val list = existing + widgetInfo
+        _widgets.value = list; prefs.saveWidgets(list)
+        if (stackTarget == null) {
+            // Mark grid cells as occupied
+            val ps = pageSize(); val grid = padGrid(_homeGrid.value, ps).toMutableList()
+            val pageStart = info.page * ps
+            for (r in info.row until (info.row + info.spanY)) {
+                for (c in info.col until (info.col + info.spanX)) {
+                    val idx = pageStart + r * settings.value.gridColumns + c
+                    if (idx in grid.indices && grid[idx] == null) grid[idx] = GridCell.Widget(info.appWidgetId)
+                }
+            }
+            _homeGrid.value = grid; prefs.saveHome(grid)
+        }
         _widgetPickerOpen.value = false
-        toast(R.string.widget_added)
+        _widgetStackTargetId.value = null
+        toast(if (stackTarget == null) R.string.widget_added else R.string.widget_added_to_stack)
     }}
 
     fun removeWidget(appWidgetId: Int) { viewModelScope.launch {
+        val removed = _widgets.value.find { it.appWidgetId == appWidgetId }
         widgetHost.deleteAppWidgetId(appWidgetId)
         val list = _widgets.value.filter { it.appWidgetId != appWidgetId }
         _widgets.value = list; prefs.saveWidgets(list)
+        val replacement = removed?.stackId?.takeIf { it.isNotBlank() }?.let { stackId ->
+            list.filter { it.stackId == stackId }.minByOrNull { it.stackOrder }
+        }
         // Clear grid cells
         val grid = _homeGrid.value.toMutableList()
-        for (i in grid.indices) { if (grid[i] is GridCell.Widget && (grid[i] as GridCell.Widget).widgetId == appWidgetId) grid[i] = null }
+        for (i in grid.indices) {
+            if (grid[i] is GridCell.Widget && (grid[i] as GridCell.Widget).widgetId == appWidgetId) {
+                grid[i] = replacement?.let { GridCell.Widget(it.appWidgetId) }
+            }
+        }
         _homeGrid.value = trimGrid(grid, pageSize()); prefs.saveHome(_homeGrid.value)
         toast(R.string.widget_removed)
     }}

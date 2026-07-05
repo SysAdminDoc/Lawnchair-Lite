@@ -497,4 +497,7 @@
     <string name="enum_search_engine_bing">Bing</string>
     <string name="enum_search_engine_brave">Brave</string>
     <string name="enum_search_engine_startpage">Startpage</string>
+    <string name="add_to_widget_stack">Add to Stack</string>
+    <string name="widget_added_to_stack">Widget added to stack</string>
+    <string name="widget_too_large_for_stack">Widget is too large for this stack</string>
 </resources>

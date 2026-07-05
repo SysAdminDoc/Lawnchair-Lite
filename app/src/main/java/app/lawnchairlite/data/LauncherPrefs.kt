@@ -563,7 +563,9 @@ class LauncherPrefs(private val context: Context) {
     }
 
     private fun serializeWidgets(list: List<WidgetInfo>): String =
-        list.joinToString("|") { "${it.appWidgetId},${it.page},${it.row},${it.col},${it.spanX},${it.spanY},${it.provider}" }
+        list.joinToString("|") {
+            "${it.appWidgetId},${it.page},${it.row},${it.col},${it.spanX},${it.spanY},${it.provider},${it.stackId},${it.stackOrder}"
+        }
 
     private fun parseWidgets(s: String): List<WidgetInfo> {
         if (s.isBlank()) return emptyList()
@@ -578,6 +580,8 @@ class LauncherPrefs(private val context: Context) {
                     spanX = p[4].toInt().coerceIn(1, 4),
                     spanY = p[5].toInt().coerceIn(1, 4),
                     provider = p.getOrElse(6) { "" },
+                    stackId = p.getOrElse(7) { "" }.take(80),
+                    stackOrder = p.getOrElse(8) { "0" }.toIntOrNull()?.coerceIn(0, 99) ?: 0,
                 ) else null
             }.getOrNull()
         }

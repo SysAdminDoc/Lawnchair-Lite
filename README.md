@@ -49,7 +49,7 @@ Built on crash patterns identified across Lawnchair v14-v15 beta releases:
 - Inline calculator and unit converter in drawer search
 - Time-aware app suggestions (morning/afternoon/evening/night usage patterns)
 - Search history chips with fade gradient, recent apps row with clear button
-- Home screen widgets via AppWidgetHost with provider previews, grid-cell sizing, bind recovery, configuration, and removal confirmation
+- Home screen widgets via AppWidgetHost with provider previews, grid-cell sizing, bind recovery, configuration, stack paging, and removal confirmation
 - Contact search with permission chip, web search fallback
 - Notification badges (count/dot/hidden), app shortcuts via LauncherApps API, shortcut/PWA icon overrides, per-app swipe-up shortcut bindings, and a swipe-open global shortcut shelf
 - 5 page transitions (Slide, Cube, Stack, Fade, Depth, Carousel)
@@ -115,6 +115,7 @@ $env:ANDROID_HOME = "$HOME\AppData\Local\Android\Sdk"
 - **Local diagnostics** - Crashes are saved to private app storage with Settings copy/share/delete support even when notifications are unavailable
 - **Drawer groups** - Drawer folders can be created in Settings, populated manually or by package-prefix rule, filtered across All/Recent/Favorites/Work, and backed up with launcher JSON
 - **Widget picker previews** - The widget picker shows provider preview images when available, icon/placeholder fallbacks when unavailable, and confirms widget removal before deleting host IDs
+- **Widget stacks** - Edit-mode widgets can add compatible widgets into the same grid slot, swipe between stack pages, and remove the active stack item without clearing the rest
 - **Shortcut icon overrides** - App shortcuts and pinned web/PWA-style entries can use manual source-app icon overrides, persist through backup/restore, and fall back safely when shortcut icon resources are missing
 - **Per-app swipe shortcuts** - App long-press shortcut rows can bind a shortcut to that app icon's swipe-up gesture, with backup persistence
 - **Custom draw gesture** - Settings can record a freeform home-screen shape and bind it to any existing gesture action, with backup persistence
