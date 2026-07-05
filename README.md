@@ -54,7 +54,7 @@ Built on crash patterns identified across Lawnchair v14-v15 beta releases:
 - Notification badges (count/dot/hidden), app shortcuts via LauncherApps API, shortcut/PWA icon overrides, per-app swipe-up shortcut bindings, and a swipe-open global shortcut shelf
 - 5 page transitions (Slide, Cube, Stack, Fade, Depth, Carousel)
 - Wallpaper dimming (0-80%) with parallax effect and per-page overrides
-- Backup/restore layout as JSON with privacy toggles, restore preview, and Nova backup migration import
+- Backup/restore layout as JSON with section selection, privacy toggles, restore preview, and Nova backup migration import
 - Uninstall confirmation dialog (all paths: D&D, home menu, drawer menu)
 - Reset all settings with confirmation dialog
 - Settings search filter across 8 collapsible sections
@@ -109,6 +109,7 @@ $env:ANDROID_HOME = "$HOME\AppData\Local\Android\Sdk"
 - **Cloud backup privacy** - Android Auto Backup excludes launcher DataStore state from silent cloud backup
 - **Local transfer rule** - Android 12+ device transfer can keep the launcher DataStore state for on-device migration
 - **Manual export controls** - Search history, usage/recents, and hidden apps are excluded unless explicitly enabled
+- **Selective backup sections** - Backup export can include only appearance, layout/widgets, drawer/search, gestures, feature settings, custom labels, or selected private data
 - **Private restore preservation** - Omitted private sections no longer clear existing local search, usage, or hidden-app data
 - **Permission audit panel** - Advanced Settings explains each broad/runtime permission, current status, recovery action, and degraded behavior
 - **Restore preview** - Backup import now validates schema compatibility and shows sections, skipped fields, and private-data handling before applying

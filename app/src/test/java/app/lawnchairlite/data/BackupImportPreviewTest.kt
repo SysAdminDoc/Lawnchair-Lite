@@ -59,6 +59,22 @@ class BackupImportPreviewTest {
     }
 
     @Test
+    fun sectionSelectionMetadataIsRecognizedWithoutUnknownFields() {
+        val preview = BackupImportPreview.fromFields(
+            mapOf(
+                "schema" to 1,
+                "included_sections" to listOf("gestures"),
+                "omitted_sections" to listOf("appearance", "layout_widgets"),
+                "double_tap" to "SETTINGS",
+            ),
+        )
+
+        assertTrue(preview.canImport)
+        assertEquals(listOf("Gestures"), preview.sections)
+        assertEquals(emptyList<String>(), preview.unknownFields)
+    }
+
+    @Test
     fun drawerGroupsAreRecognizedAsDrawerSearchBackupSection() {
         val preview = BackupImportPreview.fromFields(
             mapOf(
@@ -163,6 +179,20 @@ class BackupImportPreviewTest {
             mapOf(
                 "schema" to 1,
                 "shortcut_shelf" to "S:com.example.mail:compose:Compose:com.example.mail/.Main",
+            ),
+        )
+
+        assertTrue(preview.canImport)
+        assertEquals(listOf("Layout & widgets"), preview.sections)
+        assertEquals(emptyList<String>(), preview.unknownFields)
+    }
+
+    @Test
+    fun pageIndicatorStyleIsRecognizedAsLayoutBackupSection() {
+        val preview = BackupImportPreview.fromFields(
+            mapOf(
+                "schema" to 1,
+                "page_indicator_style" to "DOTS",
             ),
         )
 

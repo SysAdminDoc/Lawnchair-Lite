@@ -200,6 +200,15 @@
     <string name="restore_defaults">Restore defaults</string>
     <string name="reset_all_settings_body">This will restore all settings to defaults. Your home screen layout will be preserved.</string>
     <string name="backup_restore">Backup &amp; Restore</string>
+    <string name="backup_sections">Backup Sections</string>
+    <string name="backup_section_appearance">Appearance</string>
+    <string name="backup_section_layout_widgets">Layout &amp; Widgets</string>
+    <string name="backup_section_drawer_search">Drawer &amp; Search</string>
+    <string name="backup_section_gestures">Gestures</string>
+    <string name="backup_section_feature_settings">Feature Settings</string>
+    <string name="backup_section_custom_labels">Custom Labels</string>
+    <string name="selected_backup_sections">%1$d sections selected</string>
+    <string name="select_at_least_one_backup_section">Select at least one backup section</string>
     <string name="private_data_backup_note">Private data is excluded unless enabled below.</string>
     <string name="include_search_history">Include Search History</string>
     <string name="include_usage_recents">Include Usage &amp; Recents</string>

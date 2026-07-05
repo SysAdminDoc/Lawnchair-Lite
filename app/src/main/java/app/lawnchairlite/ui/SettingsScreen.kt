@@ -66,11 +66,18 @@ fun SettingsPanel(
     val exportFailedMessage = stringResource(R.string.export_failed)
     val invalidImportMessage = stringResource(R.string.import_failed_invalid_file)
     val restoreFailedMessage = stringResource(R.string.restore_failed)
+    val selectBackupSectionMessage = stringResource(R.string.select_at_least_one_backup_section)
     val hiddenApps by vm.hiddenApps.collectAsState()
     val allAppsRaw by vm.allApps.collectAsState()
     val homeGrid by vm.homeGrid.collectAsState()
     val availablePacks by vm.availablePacks.collectAsState()
     val iconPackLoading by vm.iconPackLoading.collectAsState()
+    var includeBackupAppearance by remember { mutableStateOf(true) }
+    var includeBackupLayout by remember { mutableStateOf(true) }
+    var includeBackupDrawerSearch by remember { mutableStateOf(true) }
+    var includeBackupGestures by remember { mutableStateOf(true) }
+    var includeBackupFeatureSettings by remember { mutableStateOf(true) }
+    var includeBackupCustomLabels by remember { mutableStateOf(true) }
     var includeBackupSearchHistory by remember { mutableStateOf(false) }
     var includeBackupUsage by remember { mutableStateOf(false) }
     var includeBackupHiddenApps by remember { mutableStateOf(false) }
@@ -668,18 +675,49 @@ fun SettingsPanel(
                         }
 
                         Lbl(stringResource(R.string.backup_restore), colors)
+                        Lbl(stringResource(R.string.backup_sections), colors)
+                        Tog(stringResource(R.string.backup_section_appearance), includeBackupAppearance, colors) { includeBackupAppearance = it }
+                        Tog(stringResource(R.string.backup_section_layout_widgets), includeBackupLayout, colors) { includeBackupLayout = it }
+                        Tog(stringResource(R.string.backup_section_drawer_search), includeBackupDrawerSearch, colors) { includeBackupDrawerSearch = it }
+                        Tog(stringResource(R.string.backup_section_gestures), includeBackupGestures, colors) { includeBackupGestures = it }
+                        Tog(stringResource(R.string.backup_section_feature_settings), includeBackupFeatureSettings, colors) { includeBackupFeatureSettings = it }
+                        Tog(stringResource(R.string.backup_section_custom_labels), includeBackupCustomLabels, colors) { includeBackupCustomLabels = it }
                         Text(stringResource(R.string.private_data_backup_note), color = colors.textSecondary, fontSize = 12.sp, modifier = Modifier.padding(bottom = 6.dp))
                         Tog(stringResource(R.string.include_search_history), includeBackupSearchHistory, colors) { includeBackupSearchHistory = it }
                         Tog(stringResource(R.string.include_usage_recents), includeBackupUsage, colors) { includeBackupUsage = it }
                         Tog(stringResource(R.string.include_hidden_apps), includeBackupHiddenApps, colors) { includeBackupHiddenApps = it }
+                        val selectedBackupSections = listOf(
+                            includeBackupAppearance,
+                            includeBackupLayout,
+                            includeBackupDrawerSearch,
+                            includeBackupGestures,
+                            includeBackupFeatureSettings,
+                            includeBackupCustomLabels,
+                            includeBackupSearchHistory,
+                            includeBackupUsage,
+                            includeBackupHiddenApps,
+                        ).count { it }
+                        val sectionSummary = stringResource(R.string.selected_backup_sections, selectedBackupSections)
                         val privateSummary = stringResource(if (includeBackupSearchHistory || includeBackupUsage || includeBackupHiddenApps) R.string.with_selected_private_data else R.string.private_data_excluded)
+                        val exportSummary = stringResource(R.string.two_part_summary, sectionSummary, privateSummary)
                         Spacer(Modifier.height(8.dp))
-                        ActionBtn(stringResource(R.string.export_layout), privateSummary, colors) {
-                            pendingBackupOptions = BackupExportOptions(
+                        ActionBtn(stringResource(R.string.export_layout), exportSummary, colors) {
+                            val options = BackupExportOptions(
                                 includeSearchHistory = includeBackupSearchHistory,
                                 includeAppUsage = includeBackupUsage,
                                 includeHiddenApps = includeBackupHiddenApps,
+                                includeAppearance = includeBackupAppearance,
+                                includeLayout = includeBackupLayout,
+                                includeDrawerSearch = includeBackupDrawerSearch,
+                                includeGestures = includeBackupGestures,
+                                includeFeatureSettings = includeBackupFeatureSettings,
+                                includeCustomLabels = includeBackupCustomLabels,
                             )
+                            if (!options.hasAnySection()) {
+                                android.widget.Toast.makeText(context, selectBackupSectionMessage, android.widget.Toast.LENGTH_SHORT).show()
+                                return@ActionBtn
+                            }
+                            pendingBackupOptions = options
                             exportLauncher.launch("lawnchair-lite-backup.json")
                         }
                         Spacer(Modifier.height(8.dp))
