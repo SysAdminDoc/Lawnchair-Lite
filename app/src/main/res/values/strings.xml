@@ -91,6 +91,10 @@
     <string name="material_you_dynamic_color">Material You Dynamic Color</string>
     <string name="material_you_requires_android_12">Material You dynamic color requires Android 12+</string>
     <string name="default_accent">Default Accent</string>
+    <string name="custom_font">Custom Font</string>
+    <string name="system_font">System Font</string>
+    <string name="import_font">Import Font</string>
+    <string name="clear_font">Clear Font</string>
     <string name="export_theme">Export Theme</string>
     <string name="import_theme">Import Theme</string>
     <string name="lawnchair_theme_file">.lawnchair-theme file</string>
@@ -319,6 +323,9 @@
     <string name="theme_exported">Theme exported</string>
     <string name="theme_imported">Theme imported</string>
     <string name="theme_import_failed">Theme import failed</string>
+    <string name="custom_font_applied">Custom font applied</string>
+    <string name="custom_font_cleared">Custom font cleared</string>
+    <string name="custom_font_failed">Couldn\'t load font file</string>
     <string name="export_failed">Export failed</string>
     <string name="import_failed_invalid_file">Import failed - invalid file</string>
     <string name="restore_failed">Restore failed</string>

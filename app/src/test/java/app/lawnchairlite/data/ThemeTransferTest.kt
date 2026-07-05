@@ -12,6 +12,8 @@ class ThemeTransferTest {
             themeMode = ThemeMode.AURORA,
             dynamicColor = true,
             accentOverride = "#80CBC4",
+            customFontUri = "content://downloads/document/Inter.ttf",
+            customFontName = "Inter.ttf",
             iconPack = "com.example.icons",
             iconPacks = listOf("com.example.icons", "com.example.fallback"),
             themedIcons = true,

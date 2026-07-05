@@ -35,7 +35,8 @@ Built on crash patterns identified across Lawnchair v14-v15 beta releases:
 - 6 theme modes (Midnight, Glass, OLED, Mocha, Aurora, Neon) with per-theme error colors
 - Custom accent color with 12 presets + hex input + theme-default reset chip
 - Material You dynamic color can pull the Android 12+ wallpaper palette into any theme
-- Theme import/export shares the active theme, icon pack, icon shape, and accent as a `.lawnchair-theme` JSON file
+- Custom font import applies a persisted local `.ttf` or `.otf` file across launcher text
+- Theme import/export shares the active theme, icon pack chain, custom font reference, icon shape, and accent as a `.lawnchair-theme` JSON file
 - First-party Smartspace with local weather, next calendar event, next alarm, and permission prompts
 - Drawer category rules by app-name regex, package prefix, or install source with backup/restore support
 - Configurable grid (3-8 cols, 3-10 rows), dock (3-7 icons), icon sizes (S/M/L/XL)
@@ -72,6 +73,7 @@ Built on crash patterns identified across Lawnchair v14-v15 beta releases:
 - **R8 full mode** - release builds explicitly use full optimization while retaining metadata required by preference/model serialization paths
 - **Bounded icon bitmap cache** - icon-pack drawables are rendered into a byte-capped LRU cache with explicit bitmap recycling
 - **Icon pack mixer** - Settings can combine multiple installed icon packs in priority order, using later packs as fallbacks for missing appfilter entries
+- **Custom font loading** - persisted SAF font files load off the UI thread and fall back to the system font if access is revoked
 - **Drawer grid pre-warm** - the app drawer pre-measures the first offscreen rows while hidden to avoid first-scroll jank
 
 ## Permissions
@@ -122,9 +124,10 @@ $env:ANDROID_HOME = "$HOME\AppData\Local\Android\Sdk"
 - **R8 full mode** - Release shrinking now pins full-mode optimization and keeps required Kotlin/Java metadata attributes for retained launcher models
 - **Icon bitmap cache tuning** - Icon-pack resources now use a bounded bitmap LRU that recycles evicted cache entries and avoids permanently caching misses
 - **Icon pack mixer** - Settings can combine multiple installed icon packs with an ordered fallback chain that persists through backups and theme exports
+- **Custom font import** - Theme Settings can import a local font file, validate it before applying, and clear back to the system font
 - **Drawer lazy grid pre-warm** - The hidden drawer now pre-measures the first offscreen rows before the first open so the initial scroll is already composed
 - **Material You dynamic color** - Android 12+ devices can opt into wallpaper-derived accents for any selected theme, while custom hex accents still take precedence
-- **Theme import/export** - Settings can export or import `.lawnchair-theme` JSON files containing theme mode, dynamic color, accent, icon pack, and icon appearance options
+- **Theme import/export** - Settings can export or import `.lawnchair-theme` JSON files containing theme mode, dynamic color, accent, icon pack chain, custom font reference, and icon appearance options
 - **Nova backup migration** - Restore accepts Nova Launcher ZIP backups, converts compatible apps/folders/dock items, and previews unsupported items before import
 - **Drawer background blur** - Android 12+ RenderEffect blur runs behind the app drawer with safe fallback on older Android versions
 - **Per-page wallpaper dim** - Home pages can override the default wallpaper dim and interpolate between page-specific values while swiping

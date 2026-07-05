@@ -4,6 +4,8 @@ data class ThemeSnapshot(
     val themeMode: ThemeMode = ThemeMode.MIDNIGHT,
     val dynamicColor: Boolean = false,
     val accentOverride: String = "",
+    val customFontUri: String = "",
+    val customFontName: String = "",
     val iconPack: String = "",
     val iconPacks: List<String> = emptyList(),
     val themedIcons: Boolean = false,
@@ -25,6 +27,13 @@ object ThemeTransfer {
             jsonPair("theme", snapshot.themeMode.name),
             jsonPair("dynamic_color", snapshot.dynamicColor),
             jsonPair("accent_override", snapshot.accentOverride),
+            jsonPair("custom_font_uri", sanitizeCustomFontUri(snapshot.customFontUri)),
+            jsonPair(
+                "custom_font_name",
+                sanitizeCustomFontUri(snapshot.customFontUri).takeIf { it.isNotBlank() }?.let { uri ->
+                    sanitizeCustomFontName(snapshot.customFontName, uri)
+                }.orEmpty(),
+            ),
             jsonPair("icon_pack", snapshot.iconPack),
             jsonPair("icon_packs", serializeIconPackChain(snapshot.iconPacks.ifEmpty { listOf(snapshot.iconPack) })),
             jsonPair("themed_icons", snapshot.themedIcons),
@@ -43,6 +52,10 @@ object ThemeTransfer {
             themeMode = fields.optEnum("theme", ThemeMode.MIDNIGHT),
             dynamicColor = fields["dynamic_color"] == "true",
             accentOverride = fields["accent_override"].orEmpty().take(32),
+            customFontUri = sanitizeCustomFontUri(fields["custom_font_uri"].orEmpty()),
+            customFontName = sanitizeCustomFontUri(fields["custom_font_uri"].orEmpty()).takeIf { it.isNotBlank() }?.let { uri ->
+                sanitizeCustomFontName(fields["custom_font_name"].orEmpty(), uri)
+            }.orEmpty(),
             iconPack = fields["icon_pack"].orEmpty().take(240),
             iconPacks = fields["icon_packs"]?.let { parseIconPackChain(it) }?.takeIf { it.isNotEmpty() }
                 ?: parseIconPackChain(fields["icon_pack"].orEmpty()),

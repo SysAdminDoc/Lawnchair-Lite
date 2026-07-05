@@ -1413,6 +1413,23 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     fun setIconShadow(v: Boolean) = pref(LauncherPrefs.ICON_SHADOW, v)
     fun setAccentOverride(hex: String) = pref(LauncherPrefs.ACCENT_OVERRIDE, hex)
     fun setDynamicColor(v: Boolean) = pref(LauncherPrefs.DYNAMIC_COLOR, v)
+    fun setCustomFont(uri: String, name: String) { viewModelScope.launch {
+        val cleanUri = sanitizeCustomFontUri(uri)
+        val cleanName = sanitizeCustomFontName(name, cleanUri)
+        val canLoad = withContext(Dispatchers.IO) { loadCustomAndroidTypeface(ctx, cleanUri) != null }
+        if (!canLoad) {
+            toast(R.string.custom_font_failed)
+            return@launch
+        }
+        prefs.set(LauncherPrefs.CUSTOM_FONT_URI, cleanUri)
+        prefs.set(LauncherPrefs.CUSTOM_FONT_NAME, cleanName)
+        toast(R.string.custom_font_applied)
+    }}
+    fun clearCustomFont() { viewModelScope.launch {
+        prefs.set(LauncherPrefs.CUSTOM_FONT_URI, "")
+        prefs.set(LauncherPrefs.CUSTOM_FONT_NAME, "")
+        toast(R.string.custom_font_cleared)
+    }}
     fun setDrawerCategories(v: Boolean) = pref(LauncherPrefs.DRAWER_CATEGORIES, v)
     fun addDrawerGroup(name: String) {
         val cleanName = normalizeDrawerGroupName(name)

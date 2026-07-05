@@ -1,6 +1,7 @@
 package app.lawnchairlite.ui
 
 import android.Manifest
+import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -120,6 +121,13 @@ fun SettingsPanel(
             vm.importTheme(payload.decodeToString())
         }
     }
+    val importFontLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
+        uri ?: return@rememberLauncherForActivityResult
+        runCatching {
+            context.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        vm.setCustomFont(uri.toString(), resolveCustomFontName(context, uri))
+    }
     val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
         uri ?: return@rememberLauncherForActivityResult
         scope.launch {
@@ -145,7 +153,7 @@ fun SettingsPanel(
     var settingsSearch by remember { mutableStateOf("") }
     val sq = settingsSearch.lowercase()
     // Keywords per section for search matching
-    val themeKeywords = "theme wallpaper dim accent color dynamic material monet midnight glass oled mocha aurora neon"
+    val themeKeywords = "theme wallpaper dim accent color dynamic material monet midnight glass oled mocha aurora neon font typeface ttf otf"
     val iconsKeywords = "icon shape size pack themed shadow grayscale label weight squircle circle square teardrop hexagon diamond"
     val gridKeywords = "grid columns rows padding page transition indicator badge folder cube stack fade depth carousel slide dots line"
     val drawerKeywords = "drawer sort columns opacity categories category rules groups folders regex package prefix install source section headers animation suggestions search engine"
@@ -367,6 +375,21 @@ fun SettingsPanel(
                                     modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(colors.error.copy(alpha = 0.1f))
                                         .clickable { accentInput = ""; vm.setAccentOverride("") }.padding(horizontal = 10.dp, vertical = 6.dp))
                             }
+                        }
+                        Spacer(Modifier.height(10.dp))
+                        Lbl(stringResource(R.string.custom_font), colors)
+                        ActionBtn(
+                            stringResource(R.string.import_font),
+                            settings.customFontName.ifBlank { stringResource(R.string.system_font) },
+                            colors,
+                        ) {
+                            importFontLauncher.launch(arrayOf("font/*", "application/x-font-ttf", "application/vnd.ms-opentype", "application/octet-stream", "*/*"))
+                        }
+                        if (settings.customFontUri.isNotBlank()) {
+                            Spacer(Modifier.height(8.dp))
+                            Text(stringResource(R.string.clear_font), color = colors.error, fontSize = 12.sp, fontWeight = FontWeight.Medium,
+                                modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(colors.error.copy(alpha = 0.1f))
+                                    .clickable { vm.clearCustomFont() }.padding(horizontal = 10.dp, vertical = 6.dp))
                         }
                         Spacer(Modifier.height(10.dp))
                         ActionBtn(stringResource(R.string.export_theme), stringResource(R.string.lawnchair_theme_file), colors) {

@@ -129,6 +129,21 @@ class BackupImportPreviewTest {
     }
 
     @Test
+    fun customFontFieldsAreRecognizedAsAppearanceBackupSection() {
+        val preview = BackupImportPreview.fromFields(
+            mapOf(
+                "schema" to 1,
+                "custom_font_uri" to "content://downloads/document/Inter.ttf",
+                "custom_font_name" to "Inter.ttf",
+            ),
+        )
+
+        assertTrue(preview.canImport)
+        assertEquals(listOf("Appearance"), preview.sections)
+        assertEquals(emptyList<String>(), preview.unknownFields)
+    }
+
+    @Test
     fun appGestureShortcutsAreRecognizedAsGestureBackupSection() {
         val preview = BackupImportPreview.fromFields(
             mapOf(

@@ -64,6 +64,8 @@ data class LauncherSettings(
     val iconShadow: Boolean = false,
     val accentOverride: String = "", // hex color or empty for theme default
     val dynamicColor: Boolean = false,
+    val customFontUri: String = "",
+    val customFontName: String = "",
     val drawerCategories: Boolean = false,
     val dockStyle: DockStyle = DockStyle.SOLID,
     val dockLabels: Boolean = false,
@@ -142,6 +144,8 @@ class LauncherPrefs(private val context: Context) {
         val ICON_SHADOW = booleanPreferencesKey("icon_shadow")
         val ACCENT_OVERRIDE = stringPreferencesKey("accent_override")
         val DYNAMIC_COLOR = booleanPreferencesKey("dynamic_color")
+        val CUSTOM_FONT_URI = stringPreferencesKey("custom_font_uri_v1")
+        val CUSTOM_FONT_NAME = stringPreferencesKey("custom_font_name_v1")
         val DRAWER_CATEGORIES = booleanPreferencesKey("drawer_categories")
         val DOCK_STYLE = stringPreferencesKey("dock_style")
         val DOCK_LABELS = booleanPreferencesKey("dock_labels")
@@ -230,6 +234,10 @@ class LauncherPrefs(private val context: Context) {
             iconShadow = p[ICON_SHADOW] ?: false,
             accentOverride = p[ACCENT_OVERRIDE] ?: "",
             dynamicColor = p[DYNAMIC_COLOR] ?: false,
+            customFontUri = sanitizeCustomFontUri(p[CUSTOM_FONT_URI].orEmpty()),
+            customFontName = sanitizeCustomFontUri(p[CUSTOM_FONT_URI].orEmpty()).takeIf { it.isNotBlank() }?.let { uri ->
+                sanitizeCustomFontName(p[CUSTOM_FONT_NAME].orEmpty(), uri)
+            }.orEmpty(),
             drawerCategories = p[DRAWER_CATEGORIES] ?: false,
             dockStyle = p[DOCK_STYLE]?.let { runCatching { DockStyle.valueOf(it) }.getOrNull() } ?: DockStyle.SOLID,
             dockLabels = p[DOCK_LABELS] ?: false,
@@ -337,6 +345,7 @@ class LauncherPrefs(private val context: Context) {
                 p[PAGE_TRANSITION] = d.pageTransition.name; p[BADGE_STYLE] = d.badgeStyle.name
                 p[GRID_PADDING_H] = d.gridPaddingH; p[GRID_PADDING_V] = d.gridPaddingV
                 p[HIDE_STATUS_BAR] = d.hideStatusBar; p[ACCENT_OVERRIDE] = ""; p[DYNAMIC_COLOR] = d.dynamicColor
+                p[CUSTOM_FONT_URI] = ""; p[CUSTOM_FONT_NAME] = ""
                 p[DOCK_STYLE] = d.dockStyle.name; p[SEARCH_BAR_STYLE] = d.searchBarStyle.name
                 p[DOCK_LABELS] = d.dockLabels; p[DOCK_LABEL_OPACITY] = d.dockLabelOpacity
                 p[HAPTIC_LEVEL] = d.hapticLevel.name; p[DRAWER_OPACITY] = d.drawerOpacity
@@ -622,6 +631,11 @@ class LauncherPrefs(private val context: Context) {
             put("icon_shadow", p[ICON_SHADOW] ?: false)
             put("accent_override", p[ACCENT_OVERRIDE] ?: "")
             put("dynamic_color", p[DYNAMIC_COLOR] ?: false)
+            val customFontUri = sanitizeCustomFontUri(p[CUSTOM_FONT_URI].orEmpty())
+            put("custom_font_uri", customFontUri)
+            put("custom_font_name", customFontUri.takeIf { it.isNotBlank() }?.let {
+                sanitizeCustomFontName(p[CUSTOM_FONT_NAME].orEmpty(), it)
+            }.orEmpty())
             put("drawer_categories", p[DRAWER_CATEGORIES] ?: false)
             put("category_rules", p[CATEGORY_RULES] ?: "")
             put("drawer_groups", p[DRAWER_GROUPS] ?: "")
@@ -674,6 +688,10 @@ class LauncherPrefs(private val context: Context) {
                 themeMode = p[THEME]?.let { runCatching { ThemeMode.valueOf(it) }.getOrNull() } ?: ThemeMode.MIDNIGHT,
                 dynamicColor = p[DYNAMIC_COLOR] ?: false,
                 accentOverride = p[ACCENT_OVERRIDE] ?: "",
+                customFontUri = sanitizeCustomFontUri(p[CUSTOM_FONT_URI].orEmpty()),
+                customFontName = sanitizeCustomFontUri(p[CUSTOM_FONT_URI].orEmpty()).takeIf { it.isNotBlank() }?.let { uri ->
+                    sanitizeCustomFontName(p[CUSTOM_FONT_NAME].orEmpty(), uri)
+                }.orEmpty(),
                 iconPack = p[ICON_PACK] ?: "",
                 iconPacks = p[ICON_PACKS]?.takeIf { it.isNotBlank() }?.let { parseIconPackChain(it) }
                     ?: parseIconPackChain(p[ICON_PACK].orEmpty()),
@@ -692,6 +710,8 @@ class LauncherPrefs(private val context: Context) {
             p[THEME] = snapshot.themeMode.name
             p[DYNAMIC_COLOR] = snapshot.dynamicColor
             p[ACCENT_OVERRIDE] = snapshot.accentOverride
+            p[CUSTOM_FONT_URI] = sanitizeCustomFontUri(snapshot.customFontUri)
+            p[CUSTOM_FONT_NAME] = sanitizeCustomFontName(snapshot.customFontName, snapshot.customFontUri)
             p[ICON_PACK] = snapshot.iconPacks.firstOrNull().orEmpty()
             p[ICON_PACKS] = serializeIconPackChain(snapshot.iconPacks)
             p[THEMED_ICONS] = snapshot.themedIcons
@@ -756,6 +776,13 @@ class LauncherPrefs(private val context: Context) {
             if (j.has("icon_shadow")) p[ICON_SHADOW] = j.getBoolean("icon_shadow")
             if (j.has("accent_override")) p[ACCENT_OVERRIDE] = j.optString("accent_override")
             if (j.has("dynamic_color")) p[DYNAMIC_COLOR] = j.getBoolean("dynamic_color")
+            if (j.has("custom_font_uri")) {
+                val uri = sanitizeCustomFontUri(j.optString("custom_font_uri"))
+                p[CUSTOM_FONT_URI] = uri
+                p[CUSTOM_FONT_NAME] = sanitizeCustomFontName(j.optString("custom_font_name"), uri)
+            } else if (j.has("custom_font_name")) {
+                p[CUSTOM_FONT_NAME] = sanitizeCustomFontName(j.optString("custom_font_name"))
+            }
             if (j.has("drawer_categories")) p[DRAWER_CATEGORIES] = j.getBoolean("drawer_categories")
             if (j.has("category_rules")) p[CATEGORY_RULES] = serializeCategoryRules(parseCategoryRules(j.optString("category_rules")))
             if (j.has("drawer_groups")) p[DRAWER_GROUPS] = serializeDrawerGroups(parseDrawerGroups(j.optString("drawer_groups")))

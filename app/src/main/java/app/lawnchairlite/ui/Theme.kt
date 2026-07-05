@@ -1,14 +1,23 @@
 package app.lawnchairlite.ui
 
 import android.os.Build
+import android.util.Log
+import androidx.compose.material3.ProvideTextStyle
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
+import app.lawnchairlite.data.loadCustomAndroidTypeface
 import app.lawnchairlite.data.ThemeMode
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /** Lawnchair Lite - Theme Engine */
 data class LauncherColors(
@@ -154,6 +163,7 @@ fun LauncherTheme(
     themeMode: ThemeMode = ThemeMode.GLASS,
     accentOverride: String = "",
     dynamicColor: Boolean = false,
+    customFontUri: String = "",
     content: @Composable () -> Unit,
 ) {
     val context = LocalContext.current
@@ -163,7 +173,24 @@ fun LauncherTheme(
     val colors = remember(themeMode, accentOverride, dynamicAccent) {
         themeColorsWithAccent(themeMode, accentOverride, dynamicAccent)
     }
-    CompositionLocalProvider(LocalLauncherColors provides colors) { content() }
+    val customFont by produceState<FontFamily?>(initialValue = null, context, customFontUri) {
+        value = if (customFontUri.isBlank()) {
+            null
+        } else {
+            withContext(Dispatchers.IO) {
+                runCatching { loadCustomAndroidTypeface(context, customFontUri)?.let { FontFamily(it) } }
+                    .onFailure { Log.w("LauncherTheme", "Custom font unavailable", it) }
+                    .getOrNull()
+            }
+        }
+    }
+    CompositionLocalProvider(LocalLauncherColors provides colors) {
+        if (customFont == null) {
+            content()
+        } else {
+            ProvideTextStyle(TextStyle(fontFamily = customFont)) { content() }
+        }
+    }
 }
 
 private fun LauncherColors.withAccent(accent: Color): LauncherColors =

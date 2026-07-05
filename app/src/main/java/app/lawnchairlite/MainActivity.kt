@@ -59,6 +59,7 @@ class MainActivity : ComponentActivity() {
                 themeMode = settings.themeMode,
                 accentOverride = settings.accentOverride,
                 dynamicColor = settings.dynamicColor,
+                customFontUri = settings.customFontUri,
             ) { HomeScreen(vm = vm) }
             DisposableEffect(Unit) {
                 registerPkgReceiver(vm)
