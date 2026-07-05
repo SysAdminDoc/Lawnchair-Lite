@@ -69,6 +69,7 @@ Built on crash patterns identified across Lawnchair v14-v15 beta releases:
 - **Baseline profile** - startup, home, drawer/search, settings, shortcut, widget, and backup classes ship pre-profiled for faster first-run compilation
 - **R8 full mode** - release builds explicitly use full optimization while retaining metadata required by preference/model serialization paths
 - **Bounded icon bitmap cache** - icon-pack drawables are rendered into a byte-capped LRU cache with explicit bitmap recycling
+- **Drawer grid pre-warm** - the app drawer pre-measures the first offscreen rows while hidden to avoid first-scroll jank
 
 ## Permissions
 
@@ -117,6 +118,7 @@ $env:ANDROID_HOME = "$HOME\AppData\Local\Android\Sdk"
 - **Baseline profile** - Release builds ship `baseline-prof.txt` plus ProfileInstaller so startup and primary launcher journeys are precompiled after install
 - **R8 full mode** - Release shrinking now pins full-mode optimization and keeps required Kotlin/Java metadata attributes for retained launcher models
 - **Icon bitmap cache tuning** - Icon-pack resources now use a bounded bitmap LRU that recycles evicted cache entries and avoids permanently caching misses
+- **Drawer lazy grid pre-warm** - The hidden drawer now pre-measures the first offscreen rows before the first open so the initial scroll is already composed
 - **Nova backup migration** - Restore accepts Nova Launcher ZIP backups, converts compatible apps/folders/dock items, and previews unsupported items before import
 - **Drawer background blur** - Android 12+ RenderEffect blur runs behind the app drawer with safe fallback on older Android versions
 - **Per-page wallpaper dim** - Home pages can override the default wallpaper dim and interpolate between page-specific values while swiping

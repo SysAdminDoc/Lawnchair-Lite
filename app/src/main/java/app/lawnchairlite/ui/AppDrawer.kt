@@ -238,6 +238,33 @@ fun AppDrawer(
     // and the alphabet rail wouldn't match the visible grid position anyway.
     val showFastScroller = letters.size > 3 && searchQuery.isBlank() &&
         !(showCategoriesForTab && selectedCategory != app.lawnchairlite.data.DrawerCategory.ALL)
+    val sectionHeadersActive = showSectionHeaders && searchQuery.isBlank() && effectiveTab != DrawerTab.RECENT && !showCategoriesForTab
+    val drawerHidden = progress < 0.01f
+    val prewarmLabels = remember(displayApps) { displayApps.map { it.label } }
+    val prewarmTargetIndex = remember(prewarmLabels, columns, sectionHeadersActive, showRecent) {
+        drawerPrewarmTargetIndex(
+            labels = prewarmLabels,
+            columns = columns,
+            showSectionHeaders = sectionHeadersActive,
+            showRecentRow = showRecent,
+        )
+    }
+    val prewarmKey = remember(prewarmLabels, columns, sectionHeadersActive, showRecent) {
+        listOf(prewarmLabels, columns, sectionHeadersActive, showRecent).hashCode()
+    }
+    var warmedDrawerKey by remember { mutableStateOf<Int?>(null) }
+
+    LaunchedEffect(prewarmKey, drawerHidden, prewarmTargetIndex) {
+        if (!drawerHidden || warmedDrawerKey == prewarmKey || prewarmTargetIndex <= 0) return@LaunchedEffect
+        withFrameNanos { }
+        if (currentProgress < 0.01f && gridState.firstVisibleItemIndex == 0 && gridState.firstVisibleItemScrollOffset == 0) {
+            runCatching {
+                gridState.scrollToItem(prewarmTargetIndex)
+                gridState.scrollToItem(0)
+                warmedDrawerKey = prewarmKey
+            }
+        }
+    }
 
     Box(
         Modifier
@@ -558,6 +585,33 @@ fun AppDrawer(
             Spacer(Modifier.navigationBarsPadding())
         }
     }
+}
+
+internal fun drawerPrewarmTargetIndex(
+    labels: List<String>,
+    columns: Int,
+    showSectionHeaders: Boolean,
+    showRecentRow: Boolean,
+    rowsToWarm: Int = 4,
+): Int {
+    if (labels.size <= 1) return 0
+    val appTarget = (columns.coerceAtLeast(1) * rowsToWarm).coerceAtMost(labels.lastIndex)
+    var gridIndex = if (showRecentRow) 1 else 0
+    var lastLetter: Char? = null
+
+    labels.forEachIndexed { index, label ->
+        if (showSectionHeaders) {
+            val letter = label.firstOrNull()?.uppercaseChar() ?: '#'
+            if (letter != lastLetter) {
+                lastLetter = letter
+                gridIndex++
+            }
+        }
+        if (index == appTarget) return gridIndex
+        gridIndex++
+    }
+
+    return 0
 }
 
 @Composable
