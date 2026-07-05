@@ -61,6 +61,7 @@ fun SettingsPanel(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val backupExportedMessage = stringResource(R.string.backup_exported)
+    val themeExportedMessage = stringResource(R.string.theme_exported)
     val exportFailedMessage = stringResource(R.string.export_failed)
     val invalidImportMessage = stringResource(R.string.import_failed_invalid_file)
     val restoreFailedMessage = stringResource(R.string.restore_failed)
@@ -93,6 +94,30 @@ fun SettingsPanel(
             }.onFailure {
                 android.widget.Toast.makeText(context, exportFailedMessage, android.widget.Toast.LENGTH_SHORT).show()
             }
+        }
+    }
+    val exportThemeLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri: Uri? ->
+        uri ?: return@rememberLauncherForActivityResult
+        scope.launch {
+            val json = vm.exportTheme()
+            runCatching {
+                context.contentResolver.openOutputStream(uri)?.use { it.write(json.toByteArray()) }
+            }.onSuccess {
+                android.widget.Toast.makeText(context, themeExportedMessage, android.widget.Toast.LENGTH_SHORT).show()
+            }.onFailure {
+                android.widget.Toast.makeText(context, exportFailedMessage, android.widget.Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+    val importThemeLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
+        uri ?: return@rememberLauncherForActivityResult
+        scope.launch {
+            val payload = runCatching { context.contentResolver.openInputStream(uri)?.use { it.readBytes() } }.getOrNull()
+            if (payload == null) {
+                android.widget.Toast.makeText(context, invalidImportMessage, android.widget.Toast.LENGTH_SHORT).show()
+                return@launch
+            }
+            vm.importTheme(payload.decodeToString())
         }
     }
     val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
@@ -342,6 +367,14 @@ fun SettingsPanel(
                                     modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(colors.error.copy(alpha = 0.1f))
                                         .clickable { accentInput = ""; vm.setAccentOverride("") }.padding(horizontal = 10.dp, vertical = 6.dp))
                             }
+                        }
+                        Spacer(Modifier.height(10.dp))
+                        ActionBtn(stringResource(R.string.export_theme), stringResource(R.string.lawnchair_theme_file), colors) {
+                            exportThemeLauncher.launch("lawnchair-lite-theme.lawnchair-theme")
+                        }
+                        Spacer(Modifier.height(8.dp))
+                        ActionBtn(stringResource(R.string.import_theme), stringResource(R.string.lawnchair_theme_file), colors) {
+                            importThemeLauncher.launch(arrayOf("application/json", "*/*"))
                         }
                         Spacer(Modifier.height(8.dp))
                     }

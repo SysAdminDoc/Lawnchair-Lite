@@ -91,6 +91,9 @@
     <string name="material_you_dynamic_color">Material You Dynamic Color</string>
     <string name="material_you_requires_android_12">Material You dynamic color requires Android 12+</string>
     <string name="default_accent">Default Accent</string>
+    <string name="export_theme">Export Theme</string>
+    <string name="import_theme">Import Theme</string>
+    <string name="lawnchair_theme_file">.lawnchair-theme file</string>
     <string name="icons_labels">Icons &amp; Labels</string>
     <string name="icon_shape">Icon Shape</string>
     <string name="icon_size">Icon Size</string>
@@ -309,6 +312,9 @@
     <string name="widget_cells_description">%1$d by %2$d cells</string>
     <string name="add_widget_content_description">Add widget %1$s from %2$s, %3$d by %4$d cells</string>
     <string name="backup_exported">Backup exported</string>
+    <string name="theme_exported">Theme exported</string>
+    <string name="theme_imported">Theme imported</string>
+    <string name="theme_import_failed">Theme import failed</string>
     <string name="export_failed">Export failed</string>
     <string name="import_failed_invalid_file">Import failed - invalid file</string>
     <string name="restore_failed">Restore failed</string>

@@ -658,6 +658,41 @@ class LauncherPrefs(private val context: Context) {
         }.toString(2)
     }
 
+    suspend fun exportTheme(): String {
+        val p = runCatching { context.dataStore.data.first() }.getOrDefault(emptyPreferences())
+        return ThemeTransfer.export(
+            ThemeSnapshot(
+                themeMode = p[THEME]?.let { runCatching { ThemeMode.valueOf(it) }.getOrNull() } ?: ThemeMode.MIDNIGHT,
+                dynamicColor = p[DYNAMIC_COLOR] ?: false,
+                accentOverride = p[ACCENT_OVERRIDE] ?: "",
+                iconPack = p[ICON_PACK] ?: "",
+                themedIcons = p[THEMED_ICONS] ?: false,
+                iconShape = p[ICON_SHAPE]?.let { runCatching { IconShape.valueOf(it) }.getOrNull() } ?: IconShape.NONE,
+                iconShadow = p[ICON_SHADOW] ?: false,
+                grayscaleIcons = p[GRAYSCALE_ICONS] ?: false,
+            ),
+            appVersion = app.lawnchairlite.BuildConfig.VERSION_NAME,
+        )
+    }
+
+    suspend fun importTheme(jsonStr: String): Boolean = runCatching {
+        val snapshot = ThemeTransfer.parse(jsonStr) ?: return@runCatching false
+        context.dataStore.edit { p ->
+            p[THEME] = snapshot.themeMode.name
+            p[DYNAMIC_COLOR] = snapshot.dynamicColor
+            p[ACCENT_OVERRIDE] = snapshot.accentOverride
+            p[ICON_PACK] = snapshot.iconPack
+            p[THEMED_ICONS] = snapshot.themedIcons
+            p[ICON_SHAPE] = snapshot.iconShape.name
+            p[ICON_SHADOW] = snapshot.iconShadow
+            p[GRAYSCALE_ICONS] = snapshot.grayscaleIcons
+        }
+        true
+    }.getOrElse { e ->
+        Log.e(TAG, "Theme import failed", e)
+        false
+    }
+
     /**
      * Import with validation: verifies JSON structure before applying.
      * Invalid fields are silently skipped rather than failing the whole import.

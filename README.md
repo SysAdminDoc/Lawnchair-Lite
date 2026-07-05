@@ -35,6 +35,7 @@ Built on crash patterns identified across Lawnchair v14-v15 beta releases:
 - 6 theme modes (Midnight, Glass, OLED, Mocha, Aurora, Neon) with per-theme error colors
 - Custom accent color with 12 presets + hex input + theme-default reset chip
 - Material You dynamic color can pull the Android 12+ wallpaper palette into any theme
+- Theme import/export shares the active theme, icon pack, icon shape, and accent as a `.lawnchair-theme` JSON file
 - First-party Smartspace with local weather, next calendar event, next alarm, and permission prompts
 - Drawer category rules by app-name regex, package prefix, or install source with backup/restore support
 - Configurable grid (3-8 cols, 3-10 rows), dock (3-7 icons), icon sizes (S/M/L/XL)
@@ -121,6 +122,7 @@ $env:ANDROID_HOME = "$HOME\AppData\Local\Android\Sdk"
 - **Icon bitmap cache tuning** - Icon-pack resources now use a bounded bitmap LRU that recycles evicted cache entries and avoids permanently caching misses
 - **Drawer lazy grid pre-warm** - The hidden drawer now pre-measures the first offscreen rows before the first open so the initial scroll is already composed
 - **Material You dynamic color** - Android 12+ devices can opt into wallpaper-derived accents for any selected theme, while custom hex accents still take precedence
+- **Theme import/export** - Settings can export or import `.lawnchair-theme` JSON files containing theme mode, dynamic color, accent, icon pack, and icon appearance options
 - **Nova backup migration** - Restore accepts Nova Launcher ZIP backups, converts compatible apps/folders/dock items, and previews unsupported items before import
 - **Drawer background blur** - Android 12+ RenderEffect blur runs behind the app drawer with safe fallback on older Android versions
 - **Per-page wallpaper dim** - Home pages can override the default wallpaper dim and interpolate between page-specific values while swiping

@@ -1708,6 +1708,23 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     suspend fun exportBackup(options: BackupExportOptions = BackupExportOptions()): String = backupService.export(options)
+    suspend fun exportTheme(): String = prefs.exportTheme()
+    suspend fun importTheme(json: String): Boolean {
+        val imported = prefs.importTheme(json)
+        if (imported) {
+            val restored = runCatching { prefs.settings.first() }.getOrNull()
+            if (restored?.iconPack.isNullOrBlank()) {
+                iconPackManager.clearPack()
+                loadAppsInternal()
+            } else {
+                applyIconPack(restored.iconPack)
+            }
+            toast(R.string.theme_imported)
+        } else {
+            toast(R.string.theme_import_failed)
+        }
+        return imported
+    }
     fun previewBackup(json: String): BackupImportPreview = backupService.preview(json)
     suspend fun prepareBackupImport(payload: ByteArray): PreparedBackupImport =
         withContext(Dispatchers.IO) { backupImportPreparer.prepare(payload) }
