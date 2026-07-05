@@ -1,10 +1,13 @@
 package app.lawnchairlite.ui
 
+import android.os.Build
+import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import app.lawnchairlite.data.ThemeMode
 
 /** Lawnchair Lite - Theme Engine */
@@ -138,17 +141,44 @@ fun themeColors(mode: ThemeMode): LauncherColors = when (mode) {
     ThemeMode.NEON -> NeonColors
 }
 
-fun themeColorsWithAccent(mode: ThemeMode, accentOverride: String): LauncherColors {
+fun themeColorsWithAccent(mode: ThemeMode, accentOverride: String, dynamicAccent: Color? = null): LauncherColors {
     val base = themeColors(mode)
-    if (accentOverride.isBlank()) return base
-    val accent = try { Color(android.graphics.Color.parseColor(accentOverride)) } catch (_: Exception) { return base }
-    val glow = accent.copy(alpha = 0.25f)
-    val border = accent.copy(alpha = 0.12f)
-    return base.copy(accent = accent, accentGlow = glow, border = border)
+    val dynamicBase = dynamicAccent?.let { base.withAccent(it) } ?: base
+    if (accentOverride.isBlank()) return dynamicBase
+    val accent = parseHexColor(accentOverride) ?: return dynamicBase
+    return base.withAccent(accent)
 }
 
 @Composable
-fun LauncherTheme(themeMode: ThemeMode = ThemeMode.GLASS, accentOverride: String = "", content: @Composable () -> Unit) {
-    val colors = remember(themeMode, accentOverride) { themeColorsWithAccent(themeMode, accentOverride) }
+fun LauncherTheme(
+    themeMode: ThemeMode = ThemeMode.GLASS,
+    accentOverride: String = "",
+    dynamicColor: Boolean = false,
+    content: @Composable () -> Unit,
+) {
+    val context = LocalContext.current
+    val dynamicAccent = if (dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        dynamicDarkColorScheme(context).primary
+    } else null
+    val colors = remember(themeMode, accentOverride, dynamicAccent) {
+        themeColorsWithAccent(themeMode, accentOverride, dynamicAccent)
+    }
     CompositionLocalProvider(LocalLauncherColors provides colors) { content() }
+}
+
+private fun LauncherColors.withAccent(accent: Color): LauncherColors =
+    copy(
+        accent = accent,
+        accentGlow = accent.copy(alpha = 0.25f),
+        border = accent.copy(alpha = 0.12f),
+    )
+
+internal fun parseHexColor(raw: String): Color? {
+    val hex = raw.trim().removePrefix("#")
+    val argb = when (hex.length) {
+        6 -> 0xFF000000L or (hex.toLongOrNull(16) ?: return null)
+        8 -> hex.toLongOrNull(16) ?: return null
+        else -> return null
+    }
+    return Color(argb.toInt())
 }

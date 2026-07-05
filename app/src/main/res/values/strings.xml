@@ -88,6 +88,8 @@
     <string name="page_wallpaper_dim_format">Page %1$d Dim: %2$d%%</string>
     <string name="page_dim_uses_default">Default</string>
     <string name="accent_color">Accent Color</string>
+    <string name="material_you_dynamic_color">Material You Dynamic Color</string>
+    <string name="material_you_requires_android_12">Material You dynamic color requires Android 12+</string>
     <string name="default_accent">Default Accent</string>
     <string name="icons_labels">Icons &amp; Labels</string>
     <string name="icon_shape">Icon Shape</string>

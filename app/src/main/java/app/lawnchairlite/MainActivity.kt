@@ -55,7 +55,11 @@ class MainActivity : ComponentActivity() {
             val vm: LauncherViewModel = viewModel()
             LaunchedEffect(vm) { vmRef = vm }
             val settings by vm.settings.collectAsState()
-            LauncherTheme(themeMode = settings.themeMode, accentOverride = settings.accentOverride) { HomeScreen(vm = vm) }
+            LauncherTheme(
+                themeMode = settings.themeMode,
+                accentOverride = settings.accentOverride,
+                dynamicColor = settings.dynamicColor,
+            ) { HomeScreen(vm = vm) }
             DisposableEffect(Unit) {
                 registerPkgReceiver(vm)
                 vm.startWidgetHost()

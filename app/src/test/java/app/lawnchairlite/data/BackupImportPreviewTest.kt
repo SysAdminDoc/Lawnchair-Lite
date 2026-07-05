@@ -101,6 +101,20 @@ class BackupImportPreviewTest {
     }
 
     @Test
+    fun dynamicColorIsRecognizedAsAppearanceBackupSection() {
+        val preview = BackupImportPreview.fromFields(
+            mapOf(
+                "schema" to 1,
+                "dynamic_color" to true,
+            ),
+        )
+
+        assertTrue(preview.canImport)
+        assertEquals(listOf("Appearance"), preview.sections)
+        assertEquals(emptyList<String>(), preview.unknownFields)
+    }
+
+    @Test
     fun appGestureShortcutsAreRecognizedAsGestureBackupSection() {
         val preview = BackupImportPreview.fromFields(
             mapOf(

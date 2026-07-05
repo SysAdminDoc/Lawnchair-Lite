@@ -62,6 +62,7 @@ data class LauncherSettings(
     val homeLocked: Boolean = false,
     val iconShadow: Boolean = false,
     val accentOverride: String = "", // hex color or empty for theme default
+    val dynamicColor: Boolean = false,
     val drawerCategories: Boolean = false,
     val dockStyle: DockStyle = DockStyle.SOLID,
     val dockLabels: Boolean = false,
@@ -138,6 +139,7 @@ class LauncherPrefs(private val context: Context) {
         val HOME_LOCKED = booleanPreferencesKey("home_locked")
         val ICON_SHADOW = booleanPreferencesKey("icon_shadow")
         val ACCENT_OVERRIDE = stringPreferencesKey("accent_override")
+        val DYNAMIC_COLOR = booleanPreferencesKey("dynamic_color")
         val DRAWER_CATEGORIES = booleanPreferencesKey("drawer_categories")
         val DOCK_STYLE = stringPreferencesKey("dock_style")
         val DOCK_LABELS = booleanPreferencesKey("dock_labels")
@@ -220,6 +222,7 @@ class LauncherPrefs(private val context: Context) {
             homeLocked = p[HOME_LOCKED] ?: false,
             iconShadow = p[ICON_SHADOW] ?: false,
             accentOverride = p[ACCENT_OVERRIDE] ?: "",
+            dynamicColor = p[DYNAMIC_COLOR] ?: false,
             drawerCategories = p[DRAWER_CATEGORIES] ?: false,
             dockStyle = p[DOCK_STYLE]?.let { runCatching { DockStyle.valueOf(it) }.getOrNull() } ?: DockStyle.SOLID,
             dockLabels = p[DOCK_LABELS] ?: false,
@@ -326,7 +329,7 @@ class LauncherPrefs(private val context: Context) {
                 p[DRAWER_SORT] = d.drawerSort.name; p[LABEL_STYLE] = d.labelStyle.name; p[THEMED_ICONS] = d.themedIcons
                 p[PAGE_TRANSITION] = d.pageTransition.name; p[BADGE_STYLE] = d.badgeStyle.name
                 p[GRID_PADDING_H] = d.gridPaddingH; p[GRID_PADDING_V] = d.gridPaddingV
-                p[HIDE_STATUS_BAR] = d.hideStatusBar; p[ACCENT_OVERRIDE] = ""
+                p[HIDE_STATUS_BAR] = d.hideStatusBar; p[ACCENT_OVERRIDE] = ""; p[DYNAMIC_COLOR] = d.dynamicColor
                 p[DOCK_STYLE] = d.dockStyle.name; p[SEARCH_BAR_STYLE] = d.searchBarStyle.name
                 p[DOCK_LABELS] = d.dockLabels; p[DOCK_LABEL_OPACITY] = d.dockLabelOpacity
                 p[HAPTIC_LEVEL] = d.hapticLevel.name; p[DRAWER_OPACITY] = d.drawerOpacity
@@ -609,6 +612,7 @@ class LauncherPrefs(private val context: Context) {
             put("home_locked", p[HOME_LOCKED] ?: false)
             put("icon_shadow", p[ICON_SHADOW] ?: false)
             put("accent_override", p[ACCENT_OVERRIDE] ?: "")
+            put("dynamic_color", p[DYNAMIC_COLOR] ?: false)
             put("drawer_categories", p[DRAWER_CATEGORIES] ?: false)
             put("category_rules", p[CATEGORY_RULES] ?: "")
             put("drawer_groups", p[DRAWER_GROUPS] ?: "")
@@ -696,6 +700,7 @@ class LauncherPrefs(private val context: Context) {
             if (j.has("home_locked")) p[HOME_LOCKED] = j.getBoolean("home_locked")
             if (j.has("icon_shadow")) p[ICON_SHADOW] = j.getBoolean("icon_shadow")
             if (j.has("accent_override")) p[ACCENT_OVERRIDE] = j.optString("accent_override")
+            if (j.has("dynamic_color")) p[DYNAMIC_COLOR] = j.getBoolean("dynamic_color")
             if (j.has("drawer_categories")) p[DRAWER_CATEGORIES] = j.getBoolean("drawer_categories")
             if (j.has("category_rules")) p[CATEGORY_RULES] = serializeCategoryRules(parseCategoryRules(j.optString("category_rules")))
             if (j.has("drawer_groups")) p[DRAWER_GROUPS] = serializeDrawerGroups(parseDrawerGroups(j.optString("drawer_groups")))

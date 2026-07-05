@@ -1390,6 +1390,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     fun setHomeLocked(v: Boolean) { pref(LauncherPrefs.HOME_LOCKED, v); if (v) { _editMode.value = false }; toast(if (v) R.string.home_screen_locked_toast else R.string.home_screen_unlocked_toast) }
     fun setIconShadow(v: Boolean) = pref(LauncherPrefs.ICON_SHADOW, v)
     fun setAccentOverride(hex: String) = pref(LauncherPrefs.ACCENT_OVERRIDE, hex)
+    fun setDynamicColor(v: Boolean) = pref(LauncherPrefs.DYNAMIC_COLOR, v)
     fun setDrawerCategories(v: Boolean) = pref(LauncherPrefs.DRAWER_CATEGORIES, v)
     fun addDrawerGroup(name: String) {
         val cleanName = normalizeDrawerGroupName(name)

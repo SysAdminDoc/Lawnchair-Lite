@@ -120,7 +120,7 @@ fun SettingsPanel(
     var settingsSearch by remember { mutableStateOf("") }
     val sq = settingsSearch.lowercase()
     // Keywords per section for search matching
-    val themeKeywords = "theme wallpaper dim accent color midnight glass oled mocha aurora neon"
+    val themeKeywords = "theme wallpaper dim accent color dynamic material monet midnight glass oled mocha aurora neon"
     val iconsKeywords = "icon shape size pack themed shadow grayscale label weight squircle circle square teardrop hexagon diamond"
     val gridKeywords = "grid columns rows padding page transition indicator badge folder cube stack fade depth carousel slide dots line"
     val drawerKeywords = "drawer sort columns opacity categories category rules groups folders regex package prefix install source section headers animation suggestions search engine"
@@ -294,10 +294,15 @@ fun SettingsPanel(
 
                         // Accent Color Override
                         Lbl(stringResource(R.string.accent_color), colors)
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                            Tog(stringResource(R.string.material_you_dynamic_color), settings.dynamicColor, colors) { vm.setDynamicColor(it) }
+                        } else {
+                            Text(stringResource(R.string.material_you_requires_android_12), color = colors.textSecondary, fontSize = 12.sp, modifier = Modifier.padding(bottom = 8.dp))
+                        }
                         val presetColors = listOf("#F44336", "#E91E63", "#9C27B0", "#673AB7", "#3F51B5", "#2196F3", "#00BCD4", "#4CAF50", "#FF9800", "#FF5722", "#795548", "#607D8B")
                         Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                             // Default (theme native accent) chip
-                            val themeAccent = themeColors(settings.themeMode).accent
+                            val themeAccent = if (settings.dynamicColor) colors.accent else themeColors(settings.themeMode).accent
                             val isDefault = settings.accentOverride.isBlank()
                             Box(Modifier.size(28.dp).clip(CircleShape).background(themeAccent)
                                 .border(if (isDefault) 2.dp else 0.dp, if (isDefault) colors.text else Color.Transparent, CircleShape)

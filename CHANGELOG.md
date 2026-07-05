@@ -32,6 +32,7 @@ All notable changes to Lawnchair-Lite will be documented in this file.
 - Enabled explicit R8 full-mode release optimization with metadata keep rules for retained launcher models.
 - Replaced the icon-pack drawable cache with a byte-bounded bitmap LRU that recycles evicted entries and keeps misses bounded.
 - Added hidden-state app drawer grid pre-warming to compose the first offscreen rows before the initial scroll.
+- Added an Android 12+ Material You dynamic color toggle that applies wallpaper-derived accents per selected theme.
 - Updated the Android build lane to Gradle 9.4.1, AGP 9.2.1 built-in Kotlin, Compose compiler 2.3.21, Compose BOM 2026.06.01, compile SDK 37, target SDK 36, and current stable AndroidX libraries while removing Accompanist DrawablePainter.
 - Added backup export metadata and unit tests for privacy defaults.
 - Updated release version metadata to v2.27.0.
