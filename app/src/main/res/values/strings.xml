@@ -216,6 +216,13 @@
     <string name="with_selected_private_data">With selected private data</string>
     <string name="private_data_excluded">Private data excluded</string>
     <string name="export_layout">Export Layout</string>
+    <string name="cloud_backup">Cloud Backup</string>
+    <string name="choose_cloud_backup_target">Choose Cloud Target</string>
+    <string name="cloud_backup_provider_desc">Drive, OneDrive, or WebDAV provider</string>
+    <string name="cloud_backup_target_format">Target: %1$s</string>
+    <string name="backup_to_cloud">Backup to Cloud</string>
+    <string name="clear_cloud_backup_target">Clear Cloud Target</string>
+    <string name="cloud_backup_ready">Ready</string>
     <string name="restore_layout">Restore Layout</string>
     <string name="omitted_private_data_kept">Omitted private data is kept</string>
     <string name="diagnostics">Diagnostics</string>
@@ -333,6 +340,11 @@
     <string name="widget_cells_description">%1$d by %2$d cells</string>
     <string name="add_widget_content_description">Add widget %1$s from %2$s, %3$d by %4$d cells</string>
     <string name="backup_exported">Backup exported</string>
+    <string name="cloud_backup_exported">Cloud backup exported</string>
+    <string name="cloud_backup_failed">Cloud backup failed</string>
+    <string name="cloud_backup_not_configured">Choose a cloud backup target first</string>
+    <string name="cloud_backup_target_failed">Couldn\'t keep access to that cloud target</string>
+    <string name="cloud_backup_target_cleared">Cloud target cleared</string>
     <string name="theme_exported">Theme exported</string>
     <string name="theme_imported">Theme imported</string>
     <string name="theme_import_failed">Theme import failed</string>

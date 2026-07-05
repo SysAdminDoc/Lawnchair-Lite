@@ -16,6 +16,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.database.Cursor
 import android.hardware.camera2.CameraManager
+import android.net.Uri
 import android.os.Build
 import android.os.VibrationEffect
 import android.os.Vibrator
@@ -65,6 +66,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     val allApps: StateFlow<List<AppInfo>> = _allApps.asStateFlow()
     private val _appMap = MutableStateFlow<Map<String, AppInfo>>(emptyMap())
     val settings = prefs.settings.stateIn(viewModelScope, SharingStarted.Eagerly, LauncherSettings())
+    val cloudBackupTarget = prefs.cloudBackupTarget.stateIn(viewModelScope, SharingStarted.Eagerly, CloudBackupTarget())
 
     private val _availablePacks = MutableStateFlow<List<IconPackInfo>>(emptyList())
     val availablePacks: StateFlow<List<IconPackInfo>> = _availablePacks.asStateFlow()
@@ -1799,6 +1801,56 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     suspend fun exportBackup(options: BackupExportOptions = BackupExportOptions()): String = backupService.export(options)
+    suspend fun saveCloudBackupTarget(uriString: String, displayName: String): Boolean {
+        val uri = Uri.parse(uriString)
+        val persisted = runCatching {
+            ctx.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+        }.onFailure {
+            Log.e(TAG, "Cloud backup target permission failed", it)
+        }.isSuccess
+        if (!persisted) {
+            toast(R.string.cloud_backup_target_failed)
+            return false
+        }
+        prefs.saveCloudBackupTarget(uriString, displayName)
+        return true
+    }
+
+    suspend fun clearCloudBackupTarget() {
+        val target = cloudBackupTarget.value
+        if (target.isConfigured) {
+            runCatching {
+                ctx.contentResolver.releasePersistableUriPermission(
+                    Uri.parse(target.uri),
+                    Intent.FLAG_GRANT_WRITE_URI_PERMISSION,
+                )
+            }
+        }
+        prefs.clearCloudBackupTarget()
+        toast(R.string.cloud_backup_target_cleared)
+    }
+
+    suspend fun exportBackupToCloud(options: BackupExportOptions = BackupExportOptions()): Boolean {
+        val target = cloudBackupTarget.value
+        if (!target.isConfigured) {
+            toast(R.string.cloud_backup_not_configured)
+            return false
+        }
+        val json = backupService.export(options)
+        val ok = withContext(Dispatchers.IO) {
+            runCatching {
+                ctx.contentResolver.openOutputStream(Uri.parse(target.uri), "wt")?.use { stream ->
+                    stream.write(json.toByteArray(Charsets.UTF_8))
+                } ?: error("Cloud backup output stream unavailable")
+                prefs.markCloudBackupSuccess()
+            }.onFailure {
+                Log.e(TAG, "Cloud backup export failed", it)
+            }.isSuccess
+        }
+        toast(if (ok) R.string.cloud_backup_exported else R.string.cloud_backup_failed)
+        return ok
+    }
+
     suspend fun exportTheme(): String = prefs.exportTheme()
     suspend fun importTheme(json: String): Boolean {
         val imported = prefs.importTheme(json)

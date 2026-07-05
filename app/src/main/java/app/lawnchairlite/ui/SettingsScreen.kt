@@ -1,9 +1,11 @@
 package app.lawnchairlite.ui
 
 import android.Manifest
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
+import android.provider.OpenableColumns
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
@@ -72,6 +74,7 @@ fun SettingsPanel(
     val homeGrid by vm.homeGrid.collectAsState()
     val availablePacks by vm.availablePacks.collectAsState()
     val iconPackLoading by vm.iconPackLoading.collectAsState()
+    val cloudBackupTarget by vm.cloudBackupTarget.collectAsState()
     var includeBackupAppearance by remember { mutableStateOf(true) }
     var includeBackupLayout by remember { mutableStateOf(true) }
     var includeBackupDrawerSearch by remember { mutableStateOf(true) }
@@ -101,6 +104,15 @@ fun SettingsPanel(
                 android.widget.Toast.makeText(context, backupExportedMessage, android.widget.Toast.LENGTH_SHORT).show()
             }.onFailure {
                 android.widget.Toast.makeText(context, exportFailedMessage, android.widget.Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+    val cloudBackupLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri: Uri? ->
+        uri ?: return@rememberLauncherForActivityResult
+        scope.launch {
+            val label = resolveDocumentName(context, uri).ifBlank { "lawnchair-lite-cloud-backup.json" }
+            if (vm.saveCloudBackupTarget(uri.toString(), label)) {
+                vm.exportBackupToCloud(pendingBackupOptions)
             }
         }
     }
@@ -167,7 +179,7 @@ fun SettingsPanel(
     val dockKeywords = "dock icons style search bar pill floating transparent hide labels label opacity"
     val gesturesKeywords = "gesture double tap swipe down swipe up triple pinch dock lock screen notification flashlight edit mode recent app launch custom draw recorder assistant replacement corner voice default"
     val featuresKeywords = "clock smartspace at a glance weather calendar event auto place notification badges status bar home lock parallax haptic feedback"
-    val advancedKeywords = "kill background apps clear search history reset settings backup restore export import hidden apps diagnostics crash report support bundle permissions package visibility notification contacts calendar location widget about"
+    val advancedKeywords = "kill background apps clear search history reset settings backup restore export import cloud drive onedrive webdav hidden apps diagnostics crash report support bundle permissions package visibility notification contacts calendar location widget about"
     fun sectionMatches(keywords: String): Boolean = sq.isBlank() || keywords.contains(sq) || sq.split(" ").all { w -> keywords.contains(w) }
     val showTheme = sectionMatches(themeKeywords)
     val showIcons = sectionMatches(iconsKeywords)
@@ -700,27 +712,51 @@ fun SettingsPanel(
                         val sectionSummary = stringResource(R.string.selected_backup_sections, selectedBackupSections)
                         val privateSummary = stringResource(if (includeBackupSearchHistory || includeBackupUsage || includeBackupHiddenApps) R.string.with_selected_private_data else R.string.private_data_excluded)
                         val exportSummary = stringResource(R.string.two_part_summary, sectionSummary, privateSummary)
+                        fun currentBackupOptions(): BackupExportOptions = BackupExportOptions(
+                            includeSearchHistory = includeBackupSearchHistory,
+                            includeAppUsage = includeBackupUsage,
+                            includeHiddenApps = includeBackupHiddenApps,
+                            includeAppearance = includeBackupAppearance,
+                            includeLayout = includeBackupLayout,
+                            includeDrawerSearch = includeBackupDrawerSearch,
+                            includeGestures = includeBackupGestures,
+                            includeFeatureSettings = includeBackupFeatureSettings,
+                            includeCustomLabels = includeBackupCustomLabels,
+                        )
+                        fun validBackupSelection(options: BackupExportOptions): Boolean {
+                            if (options.hasAnySection()) return true
+                            android.widget.Toast.makeText(context, selectBackupSectionMessage, android.widget.Toast.LENGTH_SHORT).show()
+                            return false
+                        }
                         Spacer(Modifier.height(8.dp))
                         ActionBtn(stringResource(R.string.export_layout), exportSummary, colors) {
-                            val options = BackupExportOptions(
-                                includeSearchHistory = includeBackupSearchHistory,
-                                includeAppUsage = includeBackupUsage,
-                                includeHiddenApps = includeBackupHiddenApps,
-                                includeAppearance = includeBackupAppearance,
-                                includeLayout = includeBackupLayout,
-                                includeDrawerSearch = includeBackupDrawerSearch,
-                                includeGestures = includeBackupGestures,
-                                includeFeatureSettings = includeBackupFeatureSettings,
-                                includeCustomLabels = includeBackupCustomLabels,
-                            )
-                            if (!options.hasAnySection()) {
-                                android.widget.Toast.makeText(context, selectBackupSectionMessage, android.widget.Toast.LENGTH_SHORT).show()
-                                return@ActionBtn
-                            }
+                            val options = currentBackupOptions()
+                            if (!validBackupSelection(options)) return@ActionBtn
                             pendingBackupOptions = options
                             exportLauncher.launch("lawnchair-lite-backup.json")
                         }
                         Spacer(Modifier.height(8.dp))
+                        Lbl(stringResource(R.string.cloud_backup), colors)
+                        ActionBtn(stringResource(R.string.choose_cloud_backup_target), stringResource(R.string.cloud_backup_provider_desc), colors) {
+                            val options = currentBackupOptions()
+                            if (!validBackupSelection(options)) return@ActionBtn
+                            pendingBackupOptions = options
+                            cloudBackupLauncher.launch("lawnchair-lite-cloud-backup.json")
+                        }
+                        if (cloudBackupTarget.isConfigured) {
+                            Text(stringResource(R.string.cloud_backup_target_format, cloudBackupTarget.label), color = colors.textSecondary, fontSize = 12.sp, modifier = Modifier.padding(top = 6.dp, bottom = 2.dp))
+                            Spacer(Modifier.height(8.dp))
+                            ActionBtn(stringResource(R.string.backup_to_cloud), sectionSummary, colors) {
+                                val options = currentBackupOptions()
+                                if (!validBackupSelection(options)) return@ActionBtn
+                                scope.launch { vm.exportBackupToCloud(options) }
+                            }
+                            Spacer(Modifier.height(8.dp))
+                            ActionBtn(stringResource(R.string.clear_cloud_backup_target), stringResource(R.string.cloud_backup_ready), colors) {
+                                scope.launch { vm.clearCloudBackupTarget() }
+                            }
+                            Spacer(Modifier.height(8.dp))
+                        }
                         ActionBtn(stringResource(R.string.restore_layout), stringResource(R.string.omitted_private_data_kept), colors) { importLauncher.launch(arrayOf("application/json", "*/*")) }
                         val preview = restorePreview
                         val restoreJson = pendingRestoreJson
@@ -1651,6 +1687,13 @@ private fun IconPackSection(
         }
     }
 }
+
+private fun resolveDocumentName(context: Context, uri: Uri): String =
+    runCatching {
+        context.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->
+            if (cursor.moveToFirst()) cursor.getString(0) else ""
+        }.orEmpty()
+    }.getOrDefault("").ifBlank { uri.lastPathSegment.orEmpty().substringAfterLast('/') }
 
 @Composable private fun GesturePicker(label: String, current: GestureAction, c: LauncherColors, vm: LauncherViewModel? = null, gestureSource: String = "", onChange: (GestureAction) -> Unit) {
     var expanded by remember { mutableStateOf(false) }

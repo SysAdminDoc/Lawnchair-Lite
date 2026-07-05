@@ -188,6 +188,9 @@ class LauncherPrefs(private val context: Context) {
         val CATEGORY_RULES = stringPreferencesKey("category_rules_v1")
         val DRAWER_GROUPS = stringPreferencesKey("drawer_groups_v1")
         val ICON_OVERRIDES = stringPreferencesKey("icon_overrides_v1")
+        val CLOUD_BACKUP_URI = stringPreferencesKey("cloud_backup_uri_v1")
+        val CLOUD_BACKUP_NAME = stringPreferencesKey("cloud_backup_name_v1")
+        val CLOUD_BACKUP_LAST_SUCCESS = longPreferencesKey("cloud_backup_last_success_v1")
     }
 
     // Safe data flow: catches IOException (disk errors) and emits defaults
@@ -274,6 +277,14 @@ class LauncherPrefs(private val context: Context) {
             assistantApp = p[ASSISTANT_APP] ?: "",
             categoryRules = p[CATEGORY_RULES]?.let { parseCategoryRules(it) } ?: emptyList(),
             drawerGroups = p[DRAWER_GROUPS]?.let { parseDrawerGroups(it) } ?: emptyList(),
+        )
+    }
+
+    val cloudBackupTarget: Flow<CloudBackupTarget> = safeData.map { p ->
+        CloudBackupTarget(
+            uri = p[CLOUD_BACKUP_URI].orEmpty(),
+            displayName = p[CLOUD_BACKUP_NAME].orEmpty(),
+            lastSuccessAt = p[CLOUD_BACKUP_LAST_SUCCESS] ?: 0L,
         )
     }
 
@@ -596,6 +607,31 @@ class LauncherPrefs(private val context: Context) {
     suspend fun markInitialized() {
         runCatching { context.dataStore.edit { it[INITIALIZED] = true } }
             .onFailure { Log.e(TAG, "Failed to mark initialized", it) }
+    }
+
+    suspend fun saveCloudBackupTarget(uri: String, displayName: String) {
+        runCatching {
+            context.dataStore.edit {
+                it[CLOUD_BACKUP_URI] = uri
+                it[CLOUD_BACKUP_NAME] = displayName
+            }
+        }.onFailure { Log.e(TAG, "Failed to save cloud backup target", it) }
+    }
+
+    suspend fun clearCloudBackupTarget() {
+        runCatching {
+            context.dataStore.edit {
+                it.remove(CLOUD_BACKUP_URI)
+                it.remove(CLOUD_BACKUP_NAME)
+                it.remove(CLOUD_BACKUP_LAST_SUCCESS)
+            }
+        }.onFailure { Log.e(TAG, "Failed to clear cloud backup target", it) }
+    }
+
+    suspend fun markCloudBackupSuccess(timestamp: Long = System.currentTimeMillis()) {
+        runCatching {
+            context.dataStore.edit { it[CLOUD_BACKUP_LAST_SUCCESS] = timestamp }
+        }.onFailure { Log.e(TAG, "Failed to mark cloud backup success", it) }
     }
 
     suspend fun exportBackup(options: BackupExportOptions = BackupExportOptions()): String {
