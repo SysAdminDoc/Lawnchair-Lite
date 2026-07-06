@@ -27,7 +27,7 @@ Built on crash patterns identified across Lawnchair v14-v15 beta releases:
 
 - Multiple home pages with swipe navigation, add/remove pages from long-press menu
 - App drawer with alphabetical fast scroller (haptic feedback on letter changes)
-- Material 3 drawer tabs for All, Recent, Favorites, and Work profile apps
+- Material 3 drawer tabs for All, Recent, Favorites, and Work profile apps with work badges and managed-profile action handling
 - Drawer groups/folders that filter any drawer tab by selected apps or package-prefix rules
 - Folder creation via drag-and-drop with 3x3 preview, app-icon covers, and emoji covers
 - Icon pack support (ADW/Nova format) with 4-icon preview per pack and ordered multi-pack fallback mixing
@@ -117,6 +117,7 @@ $env:ANDROID_HOME = "$HOME\AppData\Local\Android\Sdk"
 - **Permission audit panel** - Advanced Settings explains each broad/runtime permission, current status, recovery action, and degraded behavior
 - **Restore preview** - Backup import now validates schema compatibility and shows sections, skipped fields, and private-data handling before applying
 - **Local diagnostics** - Crashes are saved to private app storage with Settings copy/share/delete support even when notifications are unavailable
+- **Work profile parity** - Work apps render with a profile badge, open app info through `LauncherApps`, and block personal-profile uninstall flows when managed policy owns the app
 - **Drawer groups** - Drawer folders can be created in Settings, populated manually or by package-prefix rule, filtered across All/Recent/Favorites/Work, and backed up with launcher JSON
 - **Widget picker previews** - The widget picker shows provider preview images when available, icon/placeholder fallbacks when unavailable, and confirms widget removal before deleting host IDs
 - **Widget stacks** - Edit-mode widgets can add compatible widgets into the same grid slot, swipe between stack pages, and remove the active stack item without clearing the rest

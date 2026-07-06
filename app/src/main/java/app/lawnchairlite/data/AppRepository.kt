@@ -205,25 +205,36 @@ class AppRepository(private val context: Context) {
         }
     }
 
-    fun openAppInfo(app: AppInfo) {
+    fun openAppInfo(app: AppInfo): Boolean {
         try {
+            val user = app.userHandle
+            if (user != null) {
+                val launcher = launcherApps ?: return false
+                launcher.startAppDetailsActivity(app.componentName, user, null, null)
+                return true
+            }
             context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
                 data = Uri.parse("package:${app.packageName}")
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK
             })
+            return true
         } catch (e: Exception) {
             Log.e(TAG, "Failed to open app info for ${app.packageName}", e)
         }
+        return false
     }
 
-    fun uninstallApp(app: AppInfo) {
+    fun uninstallApp(app: AppInfo): Boolean {
+        if (app.isWorkProfile) return false
         try {
             context.startActivity(Intent(Intent.ACTION_DELETE).apply {
                 data = Uri.parse("package:${app.packageName}")
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK
             })
+            return true
         } catch (e: Exception) {
             Log.e(TAG, "Failed to uninstall ${app.packageName}", e)
         }
+        return false
     }
 }

@@ -129,6 +129,7 @@ fun AppIconContent(app: AppInfo, shape: IconShape, iconSizeDp: Dp = 50.dp, modif
                 if (app.icon != null) Image(rememberDrawablePainter(app.icon), app.label, Modifier.fillMaxSize().then(if (isNone) Modifier else Modifier.padding((iconSizeDp.value * 0.1f).dp)),
                     colorFilter = if (grayscale) GrayscaleColorFilter else null)
             }
+            if (app.isWorkProfile) WorkProfileBadge(c, Modifier.align(Alignment.BottomEnd).offset(x = 3.dp, y = 3.dp))
             if (badgeCount > 0) {
                 if (badgeDotOnly) {
                     Box(Modifier.align(Alignment.TopEnd).offset(x = 2.dp, y = (-1).dp).size(10.dp).clip(CircleShape).background(c.accent))
@@ -159,6 +160,7 @@ fun TappableAppIcon(app: AppInfo, shape: IconShape, iconSizeDp: Dp = 50.dp, modi
                 if (app.icon != null) Image(rememberDrawablePainter(app.icon), app.label, Modifier.fillMaxSize().then(if (isNoneT) Modifier else Modifier.padding((iconSizeDp.value * 0.1f).dp)),
                     colorFilter = if (grayscale) GrayscaleColorFilter else null)
             }
+            if (app.isWorkProfile) WorkProfileBadge(c, Modifier.align(Alignment.BottomEnd).offset(x = 3.dp, y = 3.dp))
             if (badgeCount > 0) {
                 if (badgeDotOnly) {
                     Box(Modifier.align(Alignment.TopEnd).offset(x = 2.dp, y = (-1).dp).size(10.dp).clip(CircleShape).background(c.accent))
@@ -175,6 +177,26 @@ fun TappableAppIcon(app: AppInfo, shape: IconShape, iconSizeDp: Dp = 50.dp, modi
             }
         }
         if (showLabel) { Spacer(Modifier.height(3.dp)); Text(customLabel ?: app.label, color = c.text, fontSize = labelSizeSp.sp, fontWeight = labelWeight, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, modifier = Modifier.widthIn(max = 76.dp), style = TextStyle(shadow = Shadow(color = Color.Black.copy(alpha = 0.5f), offset = Offset(0f, 1f), blurRadius = 3f))) }
+    }
+}
+
+@Composable
+private fun WorkProfileBadge(c: LauncherColors, modifier: Modifier = Modifier) {
+    Box(
+        modifier
+            .size(18.dp)
+            .shadow(3.dp, CircleShape)
+            .clip(CircleShape)
+            .background(c.accent)
+            .border(1.dp, c.surface, CircleShape),
+        Alignment.Center,
+    ) {
+        Icon(
+            Icons.Default.Work,
+            stringResource(R.string.work_profile_badge),
+            tint = Color.White,
+            modifier = Modifier.size(11.dp),
+        )
     }
 }
 
@@ -281,11 +303,17 @@ fun RemoveZone(hovering: Boolean, modifier: Modifier = Modifier) {
 }
 
 @Composable
-fun UninstallZone(hovering: Boolean, isSystemApp: Boolean, modifier: Modifier = Modifier) {
-    val c = LocalLauncherColors.current; val bg by animateColorAsState(when { isSystemApp -> c.surface.copy(alpha = 0.5f); hovering -> Color(0xFFD32F2F); else -> c.surface.copy(alpha = 0.85f) }, label = "uz")
-    val scale by animateFloatAsState(if (hovering && !isSystemApp) 1.08f else 1f, spring(stiffness = 300f), label = "uzs")
-    val t = when { isSystemApp -> c.textSecondary.copy(alpha = 0.4f); hovering -> Color.White; else -> c.textSecondary }
-    Box(modifier.fillMaxWidth(1f).height(52.dp).graphicsLayer(scaleX = scale, scaleY = scale).background(bg, RoundedCornerShape(bottomEnd = 14.dp)), Alignment.Center) { Row(verticalAlignment = Alignment.CenterVertically) { Icon(Icons.Default.Delete, null, tint = t, modifier = Modifier.size(16.dp)); Spacer(Modifier.width(5.dp)); Text(stringResource(if (isSystemApp) R.string.system_app else R.string.uninstall), color = t, fontSize = 12.sp, fontWeight = FontWeight.Medium) } }
+fun UninstallZone(hovering: Boolean, isSystemApp: Boolean, isWorkProfile: Boolean = false, modifier: Modifier = Modifier) {
+    val blocked = isSystemApp || isWorkProfile
+    val c = LocalLauncherColors.current; val bg by animateColorAsState(when { blocked -> c.surface.copy(alpha = 0.5f); hovering -> Color(0xFFD32F2F); else -> c.surface.copy(alpha = 0.85f) }, label = "uz")
+    val scale by animateFloatAsState(if (hovering && !blocked) 1.08f else 1f, spring(stiffness = 300f), label = "uzs")
+    val t = when { blocked -> c.textSecondary.copy(alpha = 0.4f); hovering -> Color.White; else -> c.textSecondary }
+    val label = when {
+        isSystemApp -> R.string.system_app
+        isWorkProfile -> R.string.work_profile_app
+        else -> R.string.uninstall
+    }
+    Box(modifier.fillMaxWidth(1f).height(52.dp).graphicsLayer(scaleX = scale, scaleY = scale).background(bg, RoundedCornerShape(bottomEnd = 14.dp)), Alignment.Center) { Row(verticalAlignment = Alignment.CenterVertically) { Icon(Icons.Default.Delete, null, tint = t, modifier = Modifier.size(16.dp)); Spacer(Modifier.width(5.dp)); Text(stringResource(label), color = t, fontSize = 12.sp, fontWeight = FontWeight.Medium) } }
 }
 
 @Composable
@@ -628,6 +656,7 @@ fun HomeContextMenu(
                     val sizeInfo = remember(app.packageName) { vm.getAppSizeInfo(app.packageName) }
                     val launchInfo = if (launchCount > 0) " · ${stringResource(R.string.launches_count, launchCount)}" else ""
                     Text("${app.packageName}${if (verInfo != null) " $verInfo" else ""}${if (sizeInfo != null) " · $sizeInfo" else ""}$launchInfo", color = c.textSecondary, fontSize = 10.sp, textAlign = TextAlign.Center, modifier = Modifier.padding(horizontal = 16.dp))
+                    if (app.isWorkProfile) Text(stringResource(R.string.work_profile_managed), color = c.accent, fontSize = 10.sp, fontWeight = FontWeight.Medium, modifier = Modifier.padding(top = 4.dp))
                 }
                 is GridCell.Folder -> {
                     FolderIconContent(cell, shape, { vm.resolveApp(it) }, 54.dp, showLabel = false)
@@ -714,7 +743,7 @@ fun HomeContextMenu(
                 HorizontalDivider(color = c.border.copy(alpha = 0.3f), thickness = 0.5.dp)
                 CtxItem(stringResource(R.string.app_info), c) { vm.appInfo(app); onDismiss() }
                 CtxItem(stringResource(R.string.remove_from_source, sourceLabel), c) { vm.removeFromGrid(menuState.source, menuState.index) }
-                if (!app.isSystemApp) {
+                if (!app.isSystemApp && !app.isWorkProfile) {
                     HorizontalDivider(color = c.border.copy(alpha = 0.3f), thickness = 0.5.dp)
                     CtxItem(stringResource(R.string.uninstall), c, isRed = true) { vm.requestUninstall(app, menuState.source, menuState.index) }
                 }
@@ -942,6 +971,7 @@ fun DrawerContextMenu(app: AppInfo, shape: IconShape, vm: LauncherViewModel, sho
             Spacer(Modifier.height(6.dp)); Text(app.label, color = c.text, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
             val launchInfo = if (launchCount > 0) " · ${stringResource(R.string.launches_count, launchCount)}" else ""
             Text("${app.packageName}${if (verInfo != null) " $verInfo" else ""}${if (sizeInfo != null) " · $sizeInfo" else ""}$launchInfo", color = c.textSecondary, fontSize = 10.sp, textAlign = TextAlign.Center, modifier = Modifier.padding(horizontal = 16.dp))
+            if (app.isWorkProfile) Text(stringResource(R.string.work_profile_managed), color = c.accent, fontSize = 10.sp, fontWeight = FontWeight.Medium, modifier = Modifier.padding(top = 4.dp))
             if (shortcuts.isNotEmpty()) {
                 Spacer(Modifier.height(8.dp)); HorizontalDivider(color = c.border.copy(alpha = 0.3f), thickness = 0.5.dp)
                 shortcuts.forEach { shortcut ->
@@ -972,7 +1002,7 @@ fun DrawerContextMenu(app: AppInfo, shape: IconShape, vm: LauncherViewModel, sho
             }
             CtxItem(stringResource(if (isFavorite) R.string.remove_favorite else R.string.add_favorite), c, onClick = onToggleFavorite)
             CtxItem(stringResource(R.string.hide_from_drawer), c, onClick = onHide); CtxItem(stringResource(R.string.app_info), c, onClick = onAppInfo)
-            if (!app.isSystemApp) { HorizontalDivider(color = c.border.copy(alpha = 0.3f), thickness = 0.5.dp); CtxItem(stringResource(R.string.uninstall), c, isRed = true, onClick = onUninstall) }
+            if (!app.isSystemApp && !app.isWorkProfile) { HorizontalDivider(color = c.border.copy(alpha = 0.3f), thickness = 0.5.dp); CtxItem(stringResource(R.string.uninstall), c, isRed = true, onClick = onUninstall) }
         }
     }
 }

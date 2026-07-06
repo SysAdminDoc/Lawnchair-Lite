@@ -302,12 +302,18 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     data class UninstallConfirm(val app: AppInfo, val source: DragSource?, val sourceIndex: Int?)
     private val _uninstallConfirm = MutableStateFlow<UninstallConfirm?>(null)
     val uninstallConfirm: StateFlow<UninstallConfirm?> = _uninstallConfirm.asStateFlow()
-    fun requestUninstall(app: AppInfo, source: DragSource? = null, sourceIndex: Int? = null) { _uninstallConfirm.value = UninstallConfirm(app, source, sourceIndex) }
+    fun requestUninstall(app: AppInfo, source: DragSource? = null, sourceIndex: Int? = null) {
+        if (app.isWorkProfile) {
+            toast(R.string.work_profile_policy_controls_app)
+            return
+        }
+        _uninstallConfirm.value = UninstallConfirm(app, source, sourceIndex)
+    }
     fun dismissUninstall() { _uninstallConfirm.value = null }
     fun confirmUninstall() {
         val confirm = _uninstallConfirm.value ?: return
-        uninstall(confirm.app)
-        if (confirm.source != null && confirm.sourceIndex != null) removeFromGrid(confirm.source, confirm.sourceIndex)
+        val uninstallStarted = uninstall(confirm.app)
+        if (uninstallStarted && confirm.source != null && confirm.sourceIndex != null) removeFromGrid(confirm.source, confirm.sourceIndex)
         _uninstallConfirm.value = null; _homeMenu.value = null; _shortcuts.value = emptyList()
     }
 
@@ -481,8 +487,18 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    fun appInfo(app: AppInfo) = repo.openAppInfo(app)
-    fun uninstall(app: AppInfo) = repo.uninstallApp(app)
+    fun appInfo(app: AppInfo) {
+        if (!repo.openAppInfo(app)) toast(R.string.app_info_unavailable)
+    }
+    fun uninstall(app: AppInfo): Boolean {
+        if (app.isWorkProfile) {
+            toast(R.string.work_profile_policy_controls_app)
+            return false
+        }
+        val started = repo.uninstallApp(app)
+        if (!started) toast(R.string.uninstall_unavailable)
+        return started
+    }
     fun setSearch(q: String) {
         _search.value = q
         if (q.length >= 2) {

@@ -21,6 +21,12 @@
     <string name="uninstall">Uninstall</string>
     <string name="uninstall_confirm">Are you sure you want to uninstall %1$s?</string>
     <string name="system_app">System App</string>
+    <string name="work_profile_app">Work Profile</string>
+    <string name="work_profile_badge">Work profile</string>
+    <string name="work_profile_managed">Managed by your work profile</string>
+    <string name="work_profile_policy_controls_app">Work profile policy controls this app</string>
+    <string name="app_info_unavailable">App info unavailable</string>
+    <string name="uninstall_unavailable">Uninstall unavailable</string>
     <string name="done">Done</string>
     <string name="edit">Edit</string>
     <string name="empty">Empty</string>

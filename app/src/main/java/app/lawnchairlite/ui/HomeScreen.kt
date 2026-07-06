@@ -284,7 +284,10 @@ fun HomeScreen(vm: LauncherViewModel) {
 
     fun hitTest(pos: Offset) {
         if (removeZoneBounds != Rect.Zero && removeZoneBounds.contains(pos)) { vm.setHoverRemove(true); return }
-        if (uninstallZoneBounds != Rect.Zero && uninstallZoneBounds.contains(pos)) { if (drag?.appInfo?.isSystemApp != true) { vm.setHoverUninstall(true); return } }
+        if (uninstallZoneBounds != Rect.Zero && uninstallZoneBounds.contains(pos)) {
+            val uninstallBlocked = drag?.appInfo?.let { it.isSystemApp || it.isWorkProfile } == true
+            if (!uninstallBlocked) { vm.setHoverUninstall(true); return }
+        }
         vm.setHoverRemove(false); vm.setHoverUninstall(false)
         for ((i, b) in dockBounds) { if (b.contains(pos)) { vm.setHover(i, true); return } }
         for ((li, b) in homeBounds) { if (b.contains(pos)) { vm.setHover(currentPage * pageSize + li, false); return } }
@@ -456,7 +459,7 @@ fun HomeScreen(vm: LauncherViewModel) {
                 AnimatedVisibility(isDragging, enter = slideInVertically(initialOffsetY = { -it }) + fadeIn(), exit = slideOutVertically(targetOffsetY = { -it }) + fadeOut()) {
                     Row(Modifier.fillMaxWidth()) {
                         Box(Modifier.weight(1f).onGloballyPositioned { removeZoneBounds = it.boundsInRoot() }) { RemoveZone(hoverRemove) }
-                        Box(Modifier.weight(1f).onGloballyPositioned { uninstallZoneBounds = it.boundsInRoot() }) { UninstallZone(hoverUninstall, drag?.appInfo?.isSystemApp == true) }
+                        Box(Modifier.weight(1f).onGloballyPositioned { uninstallZoneBounds = it.boundsInRoot() }) { UninstallZone(hoverUninstall, drag?.appInfo?.isSystemApp == true, drag?.appInfo?.isWorkProfile == true) }
                     }
                 }
 

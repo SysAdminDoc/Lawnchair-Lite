@@ -12,6 +12,8 @@ import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import app.lawnchairlite.data.AppInfo
+import app.lawnchairlite.data.IconShape
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -45,6 +47,28 @@ class AccessibilitySemanticsTest {
         }
 
         compose.onNodeWithContentDescription("Search apps")
+            .assertIsDisplayed()
+    }
+
+    @Test
+    fun workProfileAppIconExposesBadge() {
+        compose.setContent {
+            CompositionLocalProvider(LocalLauncherColors provides MidnightColors) {
+                AppIconContent(
+                    app = AppInfo(
+                        label = "Mail",
+                        packageName = "com.example.mail",
+                        activityName = "com.example.mail.Main",
+                        icon = null,
+                        isWorkProfile = true,
+                        profileSerial = 42L,
+                    ),
+                    shape = IconShape.SQUIRCLE,
+                )
+            }
+        }
+
+        compose.onNodeWithContentDescription("Work profile")
             .assertIsDisplayed()
     }
 
