@@ -54,7 +54,7 @@ Built on crash patterns identified across Lawnchair v14-v15 beta releases:
 - Notification badges (count/dot/hidden), app shortcuts via LauncherApps API, shortcut/PWA icon overrides, per-app swipe-up shortcut bindings, and a swipe-open global shortcut shelf
 - 5 page transitions (Slide, Cube, Stack, Fade, Depth, Carousel)
 - Wallpaper dimming (0-80%) with parallax effect and per-page overrides
-- Backup/restore layout as JSON with section selection, cloud-provider targets, privacy toggles, restore preview, and Nova backup migration import
+- Backup/restore layout as JSON with section selection, cloud-provider targets, weekly local scheduling, privacy toggles, restore preview, and Nova backup migration import
 - Uninstall confirmation dialog (all paths: D&D, home menu, drawer menu)
 - Reset all settings with confirmation dialog
 - Settings search filter across 8 collapsible sections
@@ -84,6 +84,7 @@ Built on crash patterns identified across Lawnchair v14-v15 beta releases:
 - `POST_NOTIFICATIONS` is used only for local crash-copy notifications on Android 13+; denied access does not block launcher use.
 - `READ_CONTACTS`, `READ_CALENDAR`, and `ACCESS_COARSE_LOCATION` are optional search/Smartspace features with Settings recovery actions.
 - `KILL_BACKGROUND_PROCESSES` and `EXPAND_STATUS_BAR` back user-triggered quick actions and degrade gracefully when Android or OEM policy blocks them.
+- `RECEIVE_BOOT_COMPLETED` reschedules the optional weekly local backup after reboot; no backup runs unless the user enables the schedule.
 - Widget placement uses Android's per-widget bind prompt; the protected `BIND_APPWIDGET` permission is not declared.
 
 ## Libre / F-Droid Readiness
@@ -111,6 +112,7 @@ $env:ANDROID_HOME = "$HOME\AppData\Local\Android\Sdk"
 - **Manual export controls** - Search history, usage/recents, and hidden apps are excluded unless explicitly enabled
 - **Selective backup sections** - Backup export can include only appearance, layout/widgets, drawer/search, gestures, feature settings, custom labels, or selected private data
 - **Cloud backup target** - Settings can bind a Drive, OneDrive, or WebDAV document-provider JSON target and overwrite it with the selected backup sections
+- **Weekly local backup** - Settings can schedule a weekly privacy-preserving JSON export to `Android/data/app.lawnchairlite/files/backups/` and run that export immediately
 - **Private restore preservation** - Omitted private sections no longer clear existing local search, usage, or hidden-app data
 - **Permission audit panel** - Advanced Settings explains each broad/runtime permission, current status, recovery action, and degraded behavior
 - **Restore preview** - Backup import now validates schema compatibility and shows sections, skipped fields, and private-data handling before applying

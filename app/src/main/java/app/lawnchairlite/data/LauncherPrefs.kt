@@ -191,6 +191,9 @@ class LauncherPrefs(private val context: Context) {
         val CLOUD_BACKUP_URI = stringPreferencesKey("cloud_backup_uri_v1")
         val CLOUD_BACKUP_NAME = stringPreferencesKey("cloud_backup_name_v1")
         val CLOUD_BACKUP_LAST_SUCCESS = longPreferencesKey("cloud_backup_last_success_v1")
+        val BACKUP_SCHEDULE_ENABLED = booleanPreferencesKey("backup_schedule_enabled_v1")
+        val BACKUP_SCHEDULE_LAST_SUCCESS = longPreferencesKey("backup_schedule_last_success_v1")
+        val BACKUP_SCHEDULE_LAST_PATH = stringPreferencesKey("backup_schedule_last_path_v1")
     }
 
     // Safe data flow: catches IOException (disk errors) and emits defaults
@@ -285,6 +288,14 @@ class LauncherPrefs(private val context: Context) {
             uri = p[CLOUD_BACKUP_URI].orEmpty(),
             displayName = p[CLOUD_BACKUP_NAME].orEmpty(),
             lastSuccessAt = p[CLOUD_BACKUP_LAST_SUCCESS] ?: 0L,
+        )
+    }
+
+    val backupScheduleState: Flow<BackupScheduleState> = safeData.map { p ->
+        BackupScheduleState(
+            enabled = p[BACKUP_SCHEDULE_ENABLED] ?: false,
+            lastSuccessAt = p[BACKUP_SCHEDULE_LAST_SUCCESS] ?: 0L,
+            lastPath = p[BACKUP_SCHEDULE_LAST_PATH].orEmpty(),
         )
     }
 
@@ -632,6 +643,21 @@ class LauncherPrefs(private val context: Context) {
         runCatching {
             context.dataStore.edit { it[CLOUD_BACKUP_LAST_SUCCESS] = timestamp }
         }.onFailure { Log.e(TAG, "Failed to mark cloud backup success", it) }
+    }
+
+    suspend fun setBackupScheduleEnabled(enabled: Boolean) {
+        runCatching {
+            context.dataStore.edit { it[BACKUP_SCHEDULE_ENABLED] = enabled }
+        }.onFailure { Log.e(TAG, "Failed to update backup schedule", it) }
+    }
+
+    suspend fun markScheduledBackupSuccess(path: String, timestamp: Long = System.currentTimeMillis()) {
+        runCatching {
+            context.dataStore.edit {
+                it[BACKUP_SCHEDULE_LAST_SUCCESS] = timestamp
+                it[BACKUP_SCHEDULE_LAST_PATH] = path
+            }
+        }.onFailure { Log.e(TAG, "Failed to mark scheduled backup success", it) }
     }
 
     suspend fun exportBackup(options: BackupExportOptions = BackupExportOptions()): String {

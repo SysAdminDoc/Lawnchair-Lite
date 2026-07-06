@@ -8,6 +8,7 @@ All notable changes to Lawnchair-Lite will be documented in this file.
 - Added manual backup privacy controls for search history, app usage/recents, and hidden apps.
 - Added selective launcher backup sections for appearance, layout/widgets, drawer/search, gestures, feature settings, custom labels, and private data.
 - Added cloud backup target support through Android document providers for Drive, OneDrive, WebDAV, and other JSON destinations.
+- Added weekly local backup scheduling to the app-specific external `backups` folder with a manual run-now action.
 - Preserved omitted private sections during restore instead of clearing them from partial backups.
 - Removed the system-only widget-bind permission declaration and documented the Android bind prompt fallback.
 - Added an Advanced Settings permission audit for package visibility, crash notifications, notification badges, contacts, calendar, location, and quick-action degradation.

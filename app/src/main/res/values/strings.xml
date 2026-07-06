@@ -223,6 +223,12 @@
     <string name="backup_to_cloud">Backup to Cloud</string>
     <string name="clear_cloud_backup_target">Clear Cloud Target</string>
     <string name="cloud_backup_ready">Ready</string>
+    <string name="backup_schedule">Backup Schedule</string>
+    <string name="backup_schedule_desc">Writes a privacy-preserving JSON backup weekly to the app-specific backups folder.</string>
+    <string name="weekly_auto_backup">Weekly Auto Backup</string>
+    <string name="run_backup_now">Run Backup Now</string>
+    <string name="app_data_backups_folder">Android/data/app.lawnchairlite/files/backups</string>
+    <string name="backup_schedule_last_path">Last backup: %1$s</string>
     <string name="restore_layout">Restore Layout</string>
     <string name="omitted_private_data_kept">Omitted private data is kept</string>
     <string name="diagnostics">Diagnostics</string>
@@ -248,6 +254,8 @@
     <string name="weather_location">Weather Location</string>
     <string name="weather_location_desc">Uses coarse last-known location for local weather; denied access hides weather.</string>
     <string name="quick_actions_desc">Status shade and background-process cleanup can be blocked by Android or OEM policy and fail without crashing.</string>
+    <string name="boot_backup_schedule">Boot Backup Schedule</string>
+    <string name="boot_backup_schedule_desc">Used only to reschedule the optional weekly local backup after reboot or app update.</string>
     <string name="hidden_apps">Hidden Apps</string>
     <string name="no_hidden_apps">No hidden apps</string>
     <string name="unhide">Unhide</string>
@@ -345,6 +353,10 @@
     <string name="cloud_backup_not_configured">Choose a cloud backup target first</string>
     <string name="cloud_backup_target_failed">Couldn\'t keep access to that cloud target</string>
     <string name="cloud_backup_target_cleared">Cloud target cleared</string>
+    <string name="backup_schedule_enabled">Weekly backup enabled</string>
+    <string name="backup_schedule_disabled">Weekly backup disabled</string>
+    <string name="backup_schedule_saved">Scheduled backup saved</string>
+    <string name="backup_schedule_failed">Scheduled backup failed</string>
     <string name="theme_exported">Theme exported</string>
     <string name="theme_imported">Theme imported</string>
     <string name="theme_import_failed">Theme import failed</string>

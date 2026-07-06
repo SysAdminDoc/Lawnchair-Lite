@@ -67,6 +67,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     private val _appMap = MutableStateFlow<Map<String, AppInfo>>(emptyMap())
     val settings = prefs.settings.stateIn(viewModelScope, SharingStarted.Eagerly, LauncherSettings())
     val cloudBackupTarget = prefs.cloudBackupTarget.stateIn(viewModelScope, SharingStarted.Eagerly, CloudBackupTarget())
+    val backupScheduleState = prefs.backupScheduleState.stateIn(viewModelScope, SharingStarted.Eagerly, BackupScheduleState())
 
     private val _availablePacks = MutableStateFlow<List<IconPackInfo>>(emptyList())
     val availablePacks: StateFlow<List<IconPackInfo>> = _availablePacks.asStateFlow()
@@ -347,6 +348,11 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             settings.filter { it.iconPacks.isNotEmpty() }.take(1).collect { s ->
                 applyIconPacks(s.iconPacks)
+            }
+        }
+        viewModelScope.launch {
+            backupScheduleState.filter { it.enabled }.take(1).collect {
+                BackupScheduler.schedule(ctx)
             }
         }
         // Sync flashlight state when user toggles via quick settings
@@ -1849,6 +1855,31 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         }
         toast(if (ok) R.string.cloud_backup_exported else R.string.cloud_backup_failed)
         return ok
+    }
+
+    fun setBackupScheduleEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            prefs.setBackupScheduleEnabled(enabled)
+            if (enabled) {
+                BackupScheduler.schedule(ctx)
+                toast(R.string.backup_schedule_enabled)
+            } else {
+                BackupScheduler.cancel(ctx)
+                toast(R.string.backup_schedule_disabled)
+            }
+        }
+    }
+
+    fun runScheduledBackupNow() {
+        viewModelScope.launch {
+            val result = withContext(Dispatchers.IO) { BackupScheduler.runBackupNow(ctx) }
+            if (result.success) {
+                if (backupScheduleState.value.enabled) BackupScheduler.schedule(ctx)
+                toast(R.string.backup_schedule_saved)
+            } else {
+                toast(R.string.backup_schedule_failed)
+            }
+        }
     }
 
     suspend fun exportTheme(): String = prefs.exportTheme()

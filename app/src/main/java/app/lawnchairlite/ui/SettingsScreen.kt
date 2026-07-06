@@ -75,6 +75,7 @@ fun SettingsPanel(
     val availablePacks by vm.availablePacks.collectAsState()
     val iconPackLoading by vm.iconPackLoading.collectAsState()
     val cloudBackupTarget by vm.cloudBackupTarget.collectAsState()
+    val backupScheduleState by vm.backupScheduleState.collectAsState()
     var includeBackupAppearance by remember { mutableStateOf(true) }
     var includeBackupLayout by remember { mutableStateOf(true) }
     var includeBackupDrawerSearch by remember { mutableStateOf(true) }
@@ -757,6 +758,15 @@ fun SettingsPanel(
                             }
                             Spacer(Modifier.height(8.dp))
                         }
+                        Lbl(stringResource(R.string.backup_schedule), colors)
+                        Text(stringResource(R.string.backup_schedule_desc), color = colors.textSecondary, fontSize = 12.sp, modifier = Modifier.padding(bottom = 6.dp))
+                        Tog(stringResource(R.string.weekly_auto_backup), backupScheduleState.enabled, colors) { vm.setBackupScheduleEnabled(it) }
+                        if (backupScheduleState.lastPath.isNotBlank()) {
+                            Text(stringResource(R.string.backup_schedule_last_path, backupScheduleState.lastPath), color = colors.textSecondary, fontSize = 12.sp, modifier = Modifier.padding(top = 6.dp, bottom = 2.dp))
+                        }
+                        Spacer(Modifier.height(8.dp))
+                        ActionBtn(stringResource(R.string.run_backup_now), stringResource(R.string.app_data_backups_folder), colors) { vm.runScheduledBackupNow() }
+                        Spacer(Modifier.height(8.dp))
                         ActionBtn(stringResource(R.string.restore_layout), stringResource(R.string.omitted_private_data_kept), colors) { importLauncher.launch(arrayOf("application/json", "*/*")) }
                         val preview = restorePreview
                         val restoreJson = pendingRestoreJson
@@ -869,6 +879,12 @@ fun SettingsPanel(
                                 title = stringResource(R.string.quick_actions),
                                 status = stringResource(R.string.best_effort),
                                 description = stringResource(R.string.quick_actions_desc),
+                                c = colors,
+                            )
+                            PermissionStatusRow(
+                                title = stringResource(R.string.boot_backup_schedule),
+                                status = stringResource(R.string.optional),
+                                description = stringResource(R.string.boot_backup_schedule_desc),
                                 c = colors,
                             )
                         }
