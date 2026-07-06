@@ -7,6 +7,8 @@ import kotlin.math.min
 
 object SearchScorer {
     private const val ALIAS_SCORE = 85
+    private const val SEMANTIC_SCORE = 82
+    private const val SEMANTIC_PACKAGE_SCORE = 62
     private const val INITIALS_SCORE = 75
     private const val ALIAS_CONTAINS_SCORE = 68
     private const val FUZZY_SCORE = 55
@@ -32,6 +34,31 @@ object SearchScorer {
         setOf("camera", "photo", "selfie"),
     )
 
+    private val semanticFillerTokens = setOf("app", "apps", "application", "my", "the", "open", "launch", "find")
+
+    private val semanticGroups = listOf(
+        SemanticGroup(
+            queryTerms = setOf("gym", "fitness", "workout", "workouts", "lift", "lifting", "training", "trainer", "exercise"),
+            appHints = setOf("strong", "stronglifts", "fit", "fitness", "workout", "gym", "training", "trainer", "exercise", "health", "strava", "garmin"),
+        ),
+        SemanticGroup(
+            queryTerms = setOf("password", "passwords", "vault", "login", "logins", "credential", "credentials", "2fa", "totp"),
+            appHints = setOf("bitwarden", "onepassword", "1password", "lastpass", "protonpass", "dashlane", "authy", "aegis", "authenticator"),
+        ),
+        SemanticGroup(
+            queryTerms = setOf("money", "cash", "bank", "banking", "pay", "payment", "wallet", "budget"),
+            appHints = setOf("cashapp", "cash", "venmo", "paypal", "wallet", "bank", "banking", "chime", "mint", "ynab"),
+        ),
+        SemanticGroup(
+            queryTerms = setOf("food", "delivery", "deliver", "restaurant", "restaurants", "order", "takeout", "groceries"),
+            appHints = setOf("doordash", "ubereats", "grubhub", "instacart", "amazon", "walmart", "restaurant", "food", "delivery"),
+        ),
+        SemanticGroup(
+            queryTerms = setOf("vpn", "privacy", "secure", "security", "shield"),
+            appHints = setOf("vpn", "protonvpn", "mullvad", "nord", "expressvpn", "hostshield", "shield", "security"),
+        ),
+    )
+
     private val aliasLookup: Map<String, Set<String>> = buildMap {
         aliasGroups.forEach { group ->
             val normalizedGroup = group.map { SearchText.from(it).text }.filter { it.isNotBlank() }.toSet()
@@ -48,10 +75,12 @@ object SearchScorer {
         val l = SearchText.from(label)
         val p = SearchText.from(packageName)
         val aliasScore = aliasScore(l, p, q)
+        val semanticScore = semanticScore(l, p, q)
         return when {
             l.text == q.text -> 100
             l.text.startsWith(q.text) || l.compact.startsWith(q.compact) -> 90
             l.tokens.any { it.startsWith(q.compact) } -> 80
+            semanticScore != null -> semanticScore
             aliasScore != null -> aliasScore
             l.initials == q.compact || (q.compact.length > 1 && l.initials.startsWith(q.compact)) -> INITIALS_SCORE
             l.text.contains(q.text) || l.compact.contains(q.compact) -> 70
@@ -59,6 +88,20 @@ object SearchScorer {
             fuzzyMatches(q, l) -> FUZZY_SCORE
             isSubsequence(q.compact, l.compact) -> 50
             else -> 0
+        }
+    }
+
+    private fun semanticScore(label: SearchText, packageName: SearchText, query: SearchText): Int? {
+        val meaningfulQueryTokens = query.tokens.filterNot { it in semanticFillerTokens }.toSet()
+        if (meaningfulQueryTokens.isEmpty()) return null
+
+        val matchedGroups = semanticGroups.filter { group -> meaningfulQueryTokens.any { it in group.queryTerms } }
+        if (matchedGroups.isEmpty()) return null
+
+        return when {
+            matchedGroups.any { group -> group.matchesLabel(label) } -> SEMANTIC_SCORE
+            matchedGroups.any { group -> group.matchesPackage(packageName) } -> SEMANTIC_PACKAGE_SCORE
+            else -> null
         }
     }
 
@@ -164,6 +207,19 @@ object SearchScorer {
                     initials = tokens.mapNotNull { it.firstOrNull() }.joinToString(""),
                 )
             }
+        }
+    }
+
+    private data class SemanticGroup(
+        val queryTerms: Set<String>,
+        val appHints: Set<String>,
+    ) {
+        fun matchesLabel(label: SearchText): Boolean = appHints.any { hint ->
+            label.tokens.any { token -> token == hint || token.startsWith(hint) } || label.compact.contains(hint)
+        }
+
+        fun matchesPackage(packageName: SearchText): Boolean = appHints.any { hint ->
+            packageName.tokens.any { token -> token == hint || token.startsWith(hint) } || packageName.compact.contains(hint)
         }
     }
 

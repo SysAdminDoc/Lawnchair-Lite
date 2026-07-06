@@ -44,6 +44,14 @@ class SearchScorerTest {
     }
 
     @Test
+    fun matchesLocalSemanticIntentPhrases() {
+        assertEquals(82, SearchScorer.score("Strong", "io.strongapp.strong", "my gym app"))
+        assertEquals(82, SearchScorer.score("Bitwarden", "com.x8bit.bitwarden", "password vault"))
+        assertEquals(82, SearchScorer.score("DoorDash", "com.doordash.driverapp", "food delivery"))
+        assertEquals(0, SearchScorer.score("Calendar", "com.google.android.calendar", "my gym app"))
+    }
+
+    @Test
     fun matchesTypoHeavyQueriesBelowPackagePriority() {
         assertEquals(55, SearchScorer.score("Calculator", "com.android.calculator2", "calcualtor"))
         assertEquals(55, SearchScorer.score("Google Calendar", "com.google.android.calendar", "gogle calender"))
