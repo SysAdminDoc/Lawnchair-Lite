@@ -117,6 +117,10 @@
     <string name="grayscale_icons">Grayscale Icons</string>
     <string name="active_pack">Active Pack</string>
     <string name="icon_pack_mixer_count">Icon mixer: %1$d packs</string>
+    <string name="icon_pack_theme">Pack theme</string>
+    <string name="icon_pack_theme_desc">Accent %1$s, %2$d wallpapers</string>
+    <string name="apply_pack_theme">Apply Theme</string>
+    <string name="open_pack_wallpaper">Open Wallpaper</string>
     <string name="primary_pack">Primary</string>
     <string name="fallback_pack">Fallback</string>
     <string name="make_primary">Make Primary</string>
@@ -386,6 +390,9 @@
     <string name="icon_pack_mixer_applied">Icon mixer applied (%1$d packs, %2$d icons)</string>
     <string name="failed_to_load_icon_pack">Failed to load icon pack</string>
     <string name="icon_pack_error">Icon pack error</string>
+    <string name="icon_pack_theme_applied">Icon pack theme applied</string>
+    <string name="icon_pack_theme_unavailable">Icon pack theme unavailable</string>
+    <string name="icon_pack_wallpaper_unavailable">Wallpaper unavailable</string>
     <string name="no_app_configured_for_gesture">No app configured for this gesture</string>
     <string name="assistant_unavailable">Assistant unavailable</string>
     <string name="flashlight_on">Flashlight on</string>

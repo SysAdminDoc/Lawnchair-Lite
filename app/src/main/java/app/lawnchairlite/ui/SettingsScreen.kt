@@ -1293,7 +1293,9 @@ private fun IconPackSection(
                     val inMixer = pack.packageName in activeChain
                     // Preview icons (loaded async to avoid blocking compose thread)
                     var previewIcons by remember { mutableStateOf<List<android.graphics.drawable.Drawable?>>(emptyList()) }
+                    var themeMetadata by remember { mutableStateOf<IconPackThemeMetadata?>(null) }
                     LaunchedEffect(pack.packageName) { vm.getIconPackPreviewAsync(pack.packageName) { previewIcons = it } }
+                    LaunchedEffect(pack.packageName) { vm.getIconPackThemeAsync(pack.packageName) { themeMetadata = it } }
                     Row(
                         Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
                             .background(if (inMixer) c.accent.copy(alpha = 0.1f) else c.card)
@@ -1329,6 +1331,39 @@ private fun IconPackSection(
                                         if (drawable != null) {
                                             Image(rememberDrawablePainter(drawable), null, Modifier.size(24.dp).clip(RoundedCornerShape(6.dp)))
                                         }
+                                    }
+                                }
+                            }
+                            val metadata = themeMetadata
+                            if (metadata != null) {
+                                val accentLabel = metadata.accentColor.ifBlank { stringResource(R.string.system_default) }
+                                val accentSwatch = remember(metadata.accentColor) {
+                                    runCatching { Color(android.graphics.Color.parseColor(metadata.accentColor)) }.getOrDefault(c.accent)
+                                }
+                                Spacer(Modifier.height(6.dp))
+                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    if (metadata.hasAccent) {
+                                        Box(Modifier.size(12.dp).clip(CircleShape).background(accentSwatch).border(0.5.dp, c.border, CircleShape))
+                                    }
+                                    Text(
+                                        stringResource(R.string.icon_pack_theme_desc, accentLabel, metadata.wallpaperSuggestions.size),
+                                        color = c.textSecondary,
+                                        fontSize = 10.sp,
+                                        maxLines = 1,
+                                    )
+                                }
+                                Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                                    if (metadata.hasAccent) {
+                                        Text(stringResource(R.string.apply_pack_theme), color = c.accent, fontSize = 11.sp, fontWeight = FontWeight.Medium,
+                                            modifier = Modifier.padding(top = 4.dp).clip(RoundedCornerShape(8.dp)).background(c.accent.copy(alpha = 0.12f))
+                                                .clickable { vm.applyIconPackTheme(pack.packageName) }
+                                                .padding(horizontal = 8.dp, vertical = 4.dp))
+                                    }
+                                    metadata.wallpaperSuggestions.firstOrNull()?.let { suggestion ->
+                                        Text(stringResource(R.string.open_pack_wallpaper), color = c.accent, fontSize = 11.sp, fontWeight = FontWeight.Medium,
+                                            modifier = Modifier.padding(top = 4.dp).clip(RoundedCornerShape(8.dp)).background(c.accent.copy(alpha = 0.12f))
+                                                .clickable { vm.openIconPackWallpaper(suggestion.uri) }
+                                                .padding(horizontal = 8.dp, vertical = 4.dp))
                                     }
                                 }
                             }

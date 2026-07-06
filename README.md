@@ -32,6 +32,7 @@ Built on crash patterns identified across Lawnchair v14-v15 beta releases:
 - Drawer groups/folders that filter any drawer tab by selected apps or package-prefix rules
 - Folder creation via drag-and-drop with 3x3 preview, app-icon covers, and emoji covers
 - Icon pack support (ADW/Nova format) with 4-icon preview per pack and ordered multi-pack fallback mixing
+- Icon-pack theme metadata API for accent colors and wallpaper suggestions shown in the icon-pack picker
 - Custom icon labels, hide apps from drawer with batch unhide
 - 6 theme modes (Midnight, Glass, OLED, Mocha, Aurora, Neon) with per-theme error colors
 - Custom accent color with 12 presets + hex input + theme-default reset chip
@@ -61,6 +62,18 @@ Built on crash patterns identified across Lawnchair v14-v15 beta releases:
 - Reset all settings with confirmation dialog
 - Settings search filter across 8 collapsible sections
 - Device admin for screen lock gesture, flashlight toggle gesture
+
+## Icon Pack Theme Metadata
+
+Icon packs can include `res/xml/lawnchair_theme.xml` or an asset named `lawnchair_theme.xml`:
+
+```xml
+<lawnchair-theme accent="#4ADE80">
+    <wallpaper label="Forest Glass" uri="https://example.com/wallpapers/forest.jpg" />
+</lawnchair-theme>
+```
+
+The accent is offered as an apply action in Settings. Wallpaper suggestions open through Android's standard view intent.
 
 ## Smoothness
 
@@ -123,6 +136,7 @@ $env:ANDROID_HOME = "$HOME\AppData\Local\Android\Sdk"
 - **Work profile parity** - Work apps render with a profile badge, open app info through `LauncherApps`, and block personal-profile uninstall flows when managed policy owns the app
 - **Tablet/foldable layout** - Expanded screens keep the workspace and dock/taskbar visible while the drawer opens as a bounded right-side pane
 - **Local semantic search** - Drawer search can resolve privacy-preserving intent phrases such as "my gym app" to matching installed apps
+- **Icon-pack theme API** - Icon packs can ship `lawnchair_theme.xml` metadata with accent and wallpaper suggestions surfaced in Settings
 - **Drawer groups** - Drawer folders can be created in Settings, populated manually or by package-prefix rule, filtered across All/Recent/Favorites/Work, and backed up with launcher JSON
 - **Widget picker previews** - The widget picker shows provider preview images when available, icon/placeholder fallbacks when unavailable, and confirms widget removal before deleting host IDs
 - **Widget stacks** - Edit-mode widgets can add compatible widgets into the same grid slot, swipe between stack pages, and remove the active stack item without clearing the rest

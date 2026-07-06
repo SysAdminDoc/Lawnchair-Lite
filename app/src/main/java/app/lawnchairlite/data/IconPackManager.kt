@@ -42,6 +42,7 @@ private data class LoadedIconPack(
     val packageName: String,
     val resources: Resources,
     val filterMap: Map<String, String>,
+    val themeMetadata: IconPackThemeMetadata?,
 )
 
 class IconPackManager(
@@ -122,9 +123,10 @@ class IconPackManager(
                     val res = pm.getResourcesForApplication(packageName)
                     val map = mutableMapOf<String, String>()
                     val parsed = tryParseXmlResource(packageName, res, map) || tryParseAssets(packageName, res, map)
+                    val themeMetadata = loadThemeMetadata(packageName, res)
                     if (parsed && map.isNotEmpty()) {
                         Log.d(TAG, "Loaded icon pack: $packageName (${map.size} mappings)")
-                        LoadedIconPack(packageName, res, map)
+                        LoadedIconPack(packageName, res, map, themeMetadata)
                     } else {
                         Log.w(TAG, "Icon pack had no valid mappings: $packageName")
                         null
@@ -177,6 +179,16 @@ class IconPackManager(
     fun mappedCount(): Int = loadedPacks.sumOf { it.filterMap.size }
     fun isLoaded(): Boolean = loadedPacks.isNotEmpty()
 
+    fun themeMetadata(packageName: String): IconPackThemeMetadata? {
+        return try {
+            val res = pm.getResourcesForApplication(packageName)
+            loadThemeMetadata(packageName, res)
+        } catch (e: Exception) {
+            Log.w(TAG, "themeMetadata failed for $packageName", e)
+            null
+        }
+    }
+
     /** Load a few sample icons from an icon pack for preview (without fully loading it). */
     fun previewIcons(packageName: String, count: Int = 4): List<Drawable?> {
         return try {
@@ -209,6 +221,35 @@ class IconPackManager(
         } catch (e: Exception) {
             Log.w(TAG, "Asset parse failed for $packageName", e)
             false
+        }
+    }
+
+    private fun loadThemeMetadata(packageName: String, res: Resources): IconPackThemeMetadata? {
+        return tryParseThemeXmlResource(packageName, res) ?: tryParseThemeAsset(packageName, res)
+    }
+
+    private fun tryParseThemeXmlResource(packageName: String, res: Resources): IconPackThemeMetadata? {
+        return try {
+            val id = res.getIdentifier("lawnchair_theme", "xml", packageName)
+            if (id == 0) return null
+            IconPackThemeMetadataParser.parse(packageName, res.getXml(id))
+        } catch (e: Exception) {
+            Log.w(TAG, "Theme XML resource parse failed for $packageName", e)
+            null
+        }
+    }
+
+    private fun tryParseThemeAsset(packageName: String, res: Resources): IconPackThemeMetadata? {
+        return try {
+            res.assets.open("lawnchair_theme.xml").use { stream ->
+                val factory = XmlPullParserFactory.newInstance()
+                val parser = factory.newPullParser()
+                parser.setInput(stream, "UTF-8")
+                IconPackThemeMetadataParser.parse(packageName, parser)
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Theme asset parse failed for $packageName", e)
+            null
         }
     }
 

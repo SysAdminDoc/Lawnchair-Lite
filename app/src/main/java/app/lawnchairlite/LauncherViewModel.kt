@@ -700,6 +700,42 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    fun getIconPackThemeAsync(packageName: String, callback: (IconPackThemeMetadata?) -> Unit) {
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            val metadata = iconPackManager.themeMetadata(packageName)
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) { callback(metadata) }
+        }
+    }
+
+    fun applyIconPackTheme(packageName: String) {
+        viewModelScope.launch {
+            val metadata = withContext(Dispatchers.IO) { iconPackManager.themeMetadata(packageName) }
+            val accent = metadata?.accentColor.orEmpty()
+            if (accent.isNotBlank()) {
+                prefs.set(LauncherPrefs.ACCENT_OVERRIDE, accent)
+                toast(R.string.icon_pack_theme_applied)
+            } else {
+                toast(R.string.icon_pack_theme_unavailable)
+            }
+        }
+    }
+
+    fun openIconPackWallpaper(uri: String) {
+        val safeUri = uri.trim()
+        if (safeUri.isBlank()) {
+            toast(R.string.icon_pack_wallpaper_unavailable)
+            return
+        }
+        try {
+            ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(safeUri)).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            })
+        } catch (e: Exception) {
+            Log.e(TAG, "openIconPackWallpaper failed", e)
+            toast(R.string.icon_pack_wallpaper_unavailable)
+        }
+    }
+
     private suspend fun applyIconPack(packageName: String) {
         applyIconPacks(listOf(packageName))
     }

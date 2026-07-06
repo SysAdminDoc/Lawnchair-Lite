@@ -17,6 +17,7 @@ All notable changes to Lawnchair-Lite will be documented in this file.
 - Added work-profile app badges, profile-aware app info, and managed-profile uninstall blocking.
 - Added a tablet/foldable drawer layout that keeps the workspace and dock/taskbar visible beside a bounded right-side drawer pane.
 - Added local semantic drawer search for intent phrases such as "my gym app", "password vault", and "food delivery" without remote AI dependencies.
+- Added an icon-pack theme metadata API so packs can suggest an accent color and wallpaper links in the Settings picker.
 - Added unread notification aggregation to the first-party At-a-Glance card alongside weather, calendar, and alarm signals.
 - Added a local adb smoke harness for launcher launch, drawer search, Settings, and widget-picker checks.
 - Hardened the adb smoke harness against Compose UI attribute-order changes and duplicate home-menu labels.
