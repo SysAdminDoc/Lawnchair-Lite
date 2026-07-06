@@ -15,6 +15,7 @@ All notable changes to Lawnchair-Lite will be documented in this file.
 - Added a restore preview that validates backup schema compatibility and reports sections, skipped values, unknown fields, and private-data handling before import.
 - Added local diagnostics storage plus Settings copy/share/delete actions for crash reports and support bundles.
 - Added work-profile app badges, profile-aware app info, and managed-profile uninstall blocking.
+- Added a tablet/foldable drawer layout that keeps the workspace and dock/taskbar visible beside a bounded right-side drawer pane.
 - Added unread notification aggregation to the first-party At-a-Glance card alongside weather, calendar, and alarm signals.
 - Added a local adb smoke harness for launcher launch, drawer search, Settings, and widget-picker checks.
 - Hardened the adb smoke harness against Compose UI attribute-order changes and duplicate home-menu labels.

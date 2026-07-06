@@ -60,6 +60,8 @@ import kotlinx.coroutines.launch
 fun AppDrawer(
     progress: Float,
     screenHeightPx: Float,
+    modifier: Modifier = Modifier,
+    largeScreenPane: Boolean = false,
     apps: List<AppInfo>,
     searchQuery: String,
     shape: IconShape,
@@ -192,7 +194,7 @@ fun AppDrawer(
         }
     }
 
-    val translationY = (1f - progress) * screenHeightPx
+    val translationY = if (largeScreenPane) 0f else (1f - progress) * screenHeightPx
     val effectiveTab = if (searchQuery.isBlank()) selectedTab else DrawerTab.ALL
     val tabApps = when (effectiveTab) {
         DrawerTab.ALL -> apps
@@ -272,15 +274,16 @@ fun AppDrawer(
 
     Box(
         Modifier
-            .fillMaxSize()
+            .then(if (largeScreenPane) Modifier.fillMaxHeight() else Modifier.fillMaxSize())
+            .then(modifier)
             .graphicsLayer {
                 this.translationY = translationY
                 alpha = if (progress < 0.01f) 0f else 1f
-                val entranceScale = 0.95f + progress.coerceIn(0f, 1f) * 0.05f
+                val entranceScale = if (largeScreenPane) 1f else 0.95f + progress.coerceIn(0f, 1f) * 0.05f
                 scaleX = entranceScale; scaleY = entranceScale
             }
             .background(colors.background.copy(alpha = drawerOpacity / 100f))
-            .statusBarsPadding()
+            .then(if (largeScreenPane) Modifier else Modifier.statusBarsPadding())
     ) {
         Column(Modifier.fillMaxSize()) {
             Column(Modifier.fillMaxWidth()) {

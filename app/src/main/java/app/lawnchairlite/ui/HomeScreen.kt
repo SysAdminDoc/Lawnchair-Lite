@@ -163,6 +163,14 @@ fun HomeScreen(vm: LauncherViewModel) {
     // ═══════════════════════════════════════════════════════════════════
     val density = LocalDensity.current
     val configuration = LocalConfiguration.current
+    val adaptiveLayout = remember(configuration.screenWidthDp, configuration.screenHeightDp, settings.drawerColumns, cols) {
+        resolveAdaptiveLauncherLayout(
+            screenWidthDp = configuration.screenWidthDp,
+            screenHeightDp = configuration.screenHeightDp,
+            requestedDrawerColumns = settings.drawerColumns,
+            homeColumns = cols,
+        )
+    }
     val screenHeightPx = with(density) { configuration.screenHeightDp.dp.toPx() }
     val screenWidthPx = with(density) { configuration.screenWidthDp.dp.toPx() }
     val assistantCornerWidthPx = with(density) { 112.dp.toPx() }
@@ -176,6 +184,7 @@ fun HomeScreen(vm: LauncherViewModel) {
     var openedViaSearch by remember { mutableStateOf(false) }
     val dpVal = drawerProgress.value
     val drawerVisible = dpVal > 0.01f
+    val drawerBlocksWorkspace = drawerVisible && !adaptiveLayout.largeScreen
     val drawerFullyOpen = dpVal > 0.95f
     // Stable refs for gesture lambdas — reads current value without
     // causing pointerInput key invalidation (the critical fix).
@@ -300,11 +309,17 @@ fun HomeScreen(vm: LauncherViewModel) {
     // ═══════════════════════════════════════════════════════════════════
     // Launcher3: workspace fades out early (step function at 0.4 of transition)
     // and scales down slightly. We use continuous interpolation instead.
-    val homeAlpha = (1f - dpVal * 2f).coerceIn(0f, 1f) // Fades out by 50% progress
-    val homeScale = 1f - (dpVal * 0.05f).coerceIn(0f, 0.05f) // Subtle shrink
-    val homeBlurEffect = remember(dpVal, density) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && dpVal > 0.01f) {
-            val radiusPx = with(density) { (dpVal.coerceIn(0f, 1f) * 18f).dp.toPx() }
+    val workspaceEffectProgress = if (adaptiveLayout.largeScreen) 0f else dpVal
+    val workspaceEndPadding = if (adaptiveLayout.largeScreen) {
+        (adaptiveLayout.homeEndPaddingDp * dpVal.coerceIn(0f, 1f)).dp
+    } else {
+        0.dp
+    }
+    val homeAlpha = (1f - workspaceEffectProgress * 2f).coerceIn(0f, 1f) // Fades out by 50% progress
+    val homeScale = 1f - (workspaceEffectProgress * 0.05f).coerceIn(0f, 0.05f) // Subtle shrink
+    val homeBlurEffect = remember(workspaceEffectProgress, density) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && workspaceEffectProgress > 0.01f) {
+            val radiusPx = with(density) { (workspaceEffectProgress.coerceIn(0f, 1f) * 18f).dp.toPx() }
             RenderEffect.createBlurEffect(radiusPx, radiusPx, Shader.TileMode.CLAMP).asComposeRenderEffect()
         } else {
             null
@@ -339,6 +354,7 @@ fun HomeScreen(vm: LauncherViewModel) {
         // ═════════════════════════════════════════════════════════════
         Box(
             Modifier.fillMaxSize()
+                .padding(end = workspaceEndPadding)
                 .graphicsLayer {
                     alpha = homeAlpha
                     scaleX = homeScale
@@ -506,7 +522,7 @@ fun HomeScreen(vm: LauncherViewModel) {
 
                 val gridPadH = settings.gridPaddingH.dp
                 val gridPadV = settings.gridPaddingV.dp
-                HorizontalPager(state = pagerState, modifier = Modifier.fillMaxWidth().weight(1f), userScrollEnabled = !isDragging && !drawerVisible) { page ->
+                HorizontalPager(state = pagerState, modifier = Modifier.fillMaxWidth().weight(1f), userScrollEnabled = !isDragging && !drawerBlocksWorkspace) { page ->
                     val ps = page * pageSize
                     val pageCells = paddedGrid.subList(ps.coerceAtMost(paddedGrid.size), (ps + pageSize).coerceAtMost(paddedGrid.size))
                     LaunchedEffect(page) { if (page == currentPage) homeBounds.clear() }
@@ -908,15 +924,29 @@ fun HomeScreen(vm: LauncherViewModel) {
         // DRAWER LAYER (always composed, hidden via graphicsLayer when closed
         // to preserve scroll position and avoid recomposition on open/close)
         // ═════════════════════════════════════════════════════════════
-        Box(Modifier.graphicsLayer { alpha = if (dpVal > 0.005f) 1f else 0f }) {
+        Box(
+            Modifier
+                .fillMaxSize()
+                .graphicsLayer { alpha = if (dpVal > 0.005f) 1f else 0f },
+            contentAlignment = if (adaptiveLayout.largeScreen) Alignment.CenterEnd else Alignment.TopStart,
+        ) {
             AppDrawer(
                 progress = dpVal,
                 screenHeightPx = screenHeightPx,
+                modifier = if (adaptiveLayout.largeScreen) {
+                    Modifier
+                        .padding(top = 18.dp, end = 16.dp, bottom = 18.dp)
+                        .width(adaptiveLayout.drawerPaneWidthDp.dp)
+                        .clip(RoundedCornerShape(26.dp))
+                } else {
+                    Modifier
+                },
+                largeScreenPane = adaptiveLayout.largeScreen,
                 apps = allApps,
                 searchQuery = search,
                 shape = settings.iconShape,
                 iconSizeDp = iconDp,
-                columns = if (settings.drawerColumns > 0) settings.drawerColumns else cols,
+                columns = adaptiveLayout.drawerColumns,
                 recentApps = recentApps,
                 favoriteApps = favoriteApps,
                 workProfileApps = workProfileApps,
