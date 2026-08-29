@@ -2,7 +2,11 @@
 
 All notable changes to Lawnchair-Lite will be documented in this file.
 
-## [v2.27.0] - 2026-07-02
+## [v2.27.1], 2026-08-29
+
+- New app icon: adaptive, themed (monochrome) and legacy variants regenerated from the 2026-08 icon set.
+
+## [v2.27.0], 2026-07-02
 
 - Added Auto Backup/Data Extraction rules so launcher DataStore state is not silently sent to cloud backup.
 - Added manual backup privacy controls for search history, app usage/recents, and hidden apps.
@@ -16,11 +20,11 @@ All notable changes to Lawnchair-Lite will be documented in this file.
 - Added local diagnostics storage plus Settings copy/share/delete actions for crash reports and support bundles.
 - Added work-profile app badges, profile-aware app info, and managed-profile uninstall blocking.
 - Added a tablet/foldable drawer layout that keeps the workspace and dock/taskbar visible beside a bounded right-side drawer pane.
-- Added local semantic drawer search for intent phrases such as "my gym app", "password vault", and "food delivery" without remote AI dependencies.
+- Added local semantic drawer search for intent phrases such as "my gym app", "password vault", and "food delivery" without remote model services.
 - Added an icon-pack theme metadata API so packs can suggest an accent color and wallpaper links in the Settings picker.
 - Added unread notification aggregation to the first-party At-a-Glance card alongside weather, calendar, and alarm signals.
-- Added a local adb smoke harness for launcher launch, drawer search, Settings, and widget-picker checks.
-- Hardened the adb smoke harness against Compose UI attribute-order changes and duplicate home-menu labels.
+- Added a local adb smoke test rig for launcher launch, drawer search, Settings, and widget-picker checks.
+- Hardened the adb smoke test rig against Compose UI attribute-order changes and duplicate home-menu labels.
 - Added accessibility semantics for custom Compose controls plus instrumentation coverage for search and home menu actions.
 - Added resource-backed UI strings, localized enum display labels, and a partial Spanish smoke resource file for translation workflow validation.
 - Split search scoring, Smartspace loading, widget placement decisions, and backup restore orchestration into focused services with unit coverage.
@@ -50,7 +54,7 @@ All notable changes to Lawnchair-Lite will be documented in this file.
 - Added backup export metadata and unit tests for privacy defaults.
 - Updated release version metadata to v2.27.0.
 
-## [v2.26.0] - 2026-06-28
+## [v2.26.0]: 2026-06-28
 
 - Added Android AppWidget bind permission recovery for third-party widgets that require host approval.
 - Added provider configuration flow handling before widget placement.
@@ -58,14 +62,14 @@ All notable changes to Lawnchair-Lite will be documented in this file.
 - Added unit coverage for widget grid span placement.
 - Updated release version metadata to v2.26.0.
 
-## [v2.25.0] - 2026-06-27
+## [v2.25.0]: 2026-06-27
 
 - Added optional dock labels for apps and folders.
 - Added dock label opacity control in Dock settings.
 - Persisted dock label settings through DataStore and backup export/import.
 - Updated release version metadata to v2.25.0.
 
-## [v2.24.0] - 2026-06-27
+## [v2.24.0]: 2026-06-27
 
 - Added folder covers with emoji and folder-app icon choices from the folder context menu.
 - Added cover rendering for home/dock folder icons while preserving preview fallback behavior.
@@ -73,7 +77,7 @@ All notable changes to Lawnchair-Lite will be documented in this file.
 - Added model tests for legacy folder serialization and cover round-trips.
 - Updated release version metadata to v2.24.0.
 
-## [v2.23.0] - 2026-06-27
+## [v2.23.0]: 2026-06-27
 
 - Added Material 3 drawer tabs for All, Recent, Favorites, and Work profile app views.
 - Added persisted drawer favorites with context-menu add/remove and backup export/import.
@@ -81,7 +85,7 @@ All notable changes to Lawnchair-Lite will be documented in this file.
 - Added profile-key model tests while preserving existing personal-profile app keys.
 - Updated release version metadata to v2.23.0.
 
-## [v2.22.0] - 2026-06-27
+## [v2.22.0]: 2026-06-27
 
 - Added Drawer category rules with app-name regex, package prefix, and install-source matchers.
 - Added Settings UI for adding, disabling, and removing category rules.
@@ -89,14 +93,14 @@ All notable changes to Lawnchair-Lite will be documented in this file.
 - Added categorizer unit tests for rule overrides and fallback behavior.
 - Updated release version metadata to v2.22.0.
 
-## [v2.21.0] - 2026-06-27
+## [v2.21.0]: 2026-06-27
 
 - Added first-party Smartspace weather and next-calendar-event chips on the home clock surface.
 - Added location/calendar runtime permission prompts with graceful degraded states.
 - Raised Gradle JVM heap for reliable R8 release builds and fixed the release lint gate.
 - Updated release version metadata to v2.21.0.
 
-## [v2.20.0] - %Y->- (HEAD -> main, origin/main, origin/HEAD)
+## [v2.20.0]: %Y->- (HEAD -> main, origin/main, origin/HEAD)
 
 - Enable R8 minification for release build
 - Changed: Update README.md
@@ -105,11 +109,11 @@ All notable changes to Lawnchair-Lite will be documented in this file.
 - Fixed: fix: faster settings exit animation, revert foreground extraction (native icons already correct)
 - Added: feat: NONE icon shape default (native icons, no background), snappier settings dismiss
 - Added: feat: swipe-down-to-dismiss settings panel with drag handle and overscroll detection
-- ui: audit fixes — label text shadows, wider labels, search bar contrast, bigger fast scroller, brighter drawer handle
+- ui: audit fixes: label text shadows, wider labels, search bar contrast, bigger fast scroller, brighter drawer handle
 - Fixed: fix: remove settings gear from home screen, keep top bar for edit mode only
 - Fixed: fix: add text shadow to clock/date for wallpaper readability across all themes
 
-## Roadmap archive — 2026-08-10 — ROADMAP.md
+## Roadmap archive: 2026-08-10: ROADMAP.md
 
 <details>
 <summary>Original roadmap snapshot</summary>

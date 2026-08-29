@@ -8,7 +8,7 @@
     <string name="no_recent_apps">No recent apps</string>
     <string name="no_favorites_yet">No favorites yet</string>
     <string name="no_work_profile_apps">No work profile apps</string>
-    <string name="version">v2.27.0</string>
+    <string name="version">v2.27.1</string>
     <string name="settings">Settings</string>
     <string name="search_apps_content_description">Search apps</string>
     <string name="search_engine_hint">Search %1$s\u2026</string>

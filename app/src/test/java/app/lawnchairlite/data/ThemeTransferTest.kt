@@ -22,7 +22,7 @@ class ThemeTransferTest {
             grayscaleIcons = true,
         )
 
-        val parsed = ThemeTransfer.parse(ThemeTransfer.export(snapshot, appVersion = "2.27.0"))
+        val parsed = ThemeTransfer.parse(ThemeTransfer.export(snapshot, appVersion = "2.27.1"))
 
         assertEquals(snapshot, parsed)
     }

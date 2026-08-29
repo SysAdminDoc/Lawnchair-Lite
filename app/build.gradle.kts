@@ -14,8 +14,8 @@ android {
         applicationId = "app.lawnchairlite"
         minSdk = 28
         targetSdk = 36
-        versionCode = 56
-        versionName = "2.27.0"
+        versionCode = 57
+        versionName = "2.27.1"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         testProguardFiles("test-proguard-rules.pro")
     }
