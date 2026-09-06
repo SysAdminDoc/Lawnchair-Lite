@@ -1,1 +1,1 @@
-Fast, private, customizable Android launcher
+Private Android launcher with local search and deep customization

@@ -1,0 +1,6 @@
+New in 2.27.2:
+
+• Added a complete product screenshot set captured from the signed release
+• Reworked project and store copy around privacy, local search, customization, and daily use
+• Added clearer install, compatibility, permission, and download verification guidance
+• Retained the current mint and charcoal icon after a full visual brand review

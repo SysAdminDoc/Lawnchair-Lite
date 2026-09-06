@@ -1,16 +1,24 @@
-Lawnchair Lite is a fast, local-first Android launcher focused on smooth home screens, a searchable app drawer, widgets, icon packs, gestures, and careful backup controls.
+Lawnchair Lite gives you a calm, flexible Android home screen without adding ads, analytics, or another account.
 
-Highlights:
-- Multiple home pages, dock, folders, widgets, and app drawer tabs
-- Fuzzy app search with local calculator and unit conversion
-- Optional contacts, calendar, weather, and notification badge integrations
-- Icon packs, shortcut icon overrides, drawer groups, and backup/restore preview
-- Local crash diagnostics and privacy-aware manual exports
+Shape the launcher around your phone:
+• Multiple home pages with folders, widgets, an adjustable dock, and six page transitions
+• Six dark themes, Material You color, custom accents, icon packs, shapes, and font import
+• App drawer tabs for All, Recent, Favorites, and Work
+• Tablet and foldable layouts that keep the workspace visible beside the drawer
 
-Privacy and libre distribution:
-- No ads
-- No analytics
-- No cloud account required
-- No Firebase, Play services, proprietary crash reporting, or tracker SDKs
-- Optional weather uses the no-key Open-Meteo API only after location permission is granted
-- Android Auto Backup excludes launcher DataStore state from cloud backup
+Find what you need:
+• Fast fuzzy matching for app names and imperfect typing
+• Local intent phrases such as “my gym app”
+• Calculator and unit conversion results inside search
+• Optional local contact results and user-triggered web search
+
+Keep control of your data:
+• No ads or sponsored placements
+• No analytics or behavior tracking
+• No cloud account required
+• No Firebase or proprietary crash reporting
+• Contacts, calendar events, alarms, and notification badges are processed locally
+• Manual backups let you choose which settings and private fields to include
+• Restore preview checks an import before applying it
+
+Optional weather uses Open-Meteo after coarse location access is granted. Android Auto Backup excludes launcher preferences.
